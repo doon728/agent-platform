@@ -2,6 +2,7 @@ services:
   agent-runtime:
     build:
       context: ./services/agent-runtime
+      dockerfile: ./services/agent-runtime/Dockerfile
     image: agent-runtime:local
     ports:
       - "${AGENT_RUNTIME_PORT:-8081}:8080"
