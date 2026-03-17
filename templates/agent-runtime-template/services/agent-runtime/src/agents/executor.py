@@ -72,6 +72,43 @@ def execute(steps: List[str], ctx: Dict[str, Any]) -> Any:
         add_step(run_id, "tool_call", {"tool": tool, "input": tool_input})
         result = _invoke_tool(tool, tool_input, ctx)
 
+        # -----------------------------
+        # Retrieval fallback handling
+        # -----------------------------
+        retrieval_cfg = ctx.get("usecase_config", {}).get("retrieval", {})
+
+        if tool == retrieval_cfg.get("default_tool"):
+            results = result.get("results") if isinstance(result, dict) else None
+
+            no_results = not results or len(results) == 0
+
+            if no_results:
+                fallback_cfg = retrieval_cfg.get("fallback", {})
+                allow_no_results = fallback_cfg.get("allow_no_results_response", True)
+
+                if not allow_no_results:
+                    finish_run(run_id)
+                    return {
+                        "result": "OK",
+                        "mode": "SAFE_NO_RESULTS",
+                        "answer": "No relevant knowledge found. Escalate or refine query.",
+                    }
+
+                # allow platform to continue with LLM reasoning
+                add_step(run_id, "retrieval_fallback", {"reason": "no_results"})
+                answer = generate_answer(ctx.get("prompt", ""), tool, result, ctx)
+
+                finish_run(run_id)
+                return {
+                    "result": "OK",
+                    "mode": "RAG_FALLBACK",
+                    "answer": answer,
+                    "tool": tool,
+                    "input": tool_input,
+                    "output": result,
+                }
+
+
         if isinstance(result, dict) and result.get("result") == "APPROVAL_REQUIRED":
             finish_run(run_id)
             return result
