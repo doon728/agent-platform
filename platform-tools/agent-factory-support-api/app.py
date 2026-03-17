@@ -79,26 +79,72 @@ def copy_template_repo(src: Path, dest: Path):
         "template_root": str(src),
     }
 
+def copy_platform_assets_into_agent_repo(repo_root: Path):
+    src = PLATFORM_ROOT / "platform"
+    dest = repo_root / "platform"
+
+    if not src.exists():
+        return {
+            "ok": False,
+            "error": f"Platform assets not found: {src}",
+            "path": str(src),
+        }
+
+    if dest.exists():
+        shutil.rmtree(dest, ignore_errors=True)
+
+    shutil.copytree(src, dest)
+
+    return {
+        "ok": True,
+        "platform_root": str(dest),
+    }
+
+
 
 def inject_agent_usecase_and_prompt_config(
     repo_root: Path,
     app_name: str,
     agent_type: str,
+    capability_name: str,
     usecase: str,
 ):
     cfg_file = repo_root / "services" / "agent-runtime" / "config" / "base.yaml"
-    if cfg_file.exists():
-        data = yaml.safe_load(cfg_file.read_text()) or {}
-        data["app"] = data.get("app", {})
-        data["app"]["active_usecase"] = usecase
-        data["prompt_service"] = {
-            "url": "http://host.docker.internal:8101",
-            "app_name": app_name,
-            "agent_type": agent_type,
-            "usecase_name": usecase,
-            "environment": "dev",
-        }
-        cfg_file.write_text(yaml.safe_dump(data, sort_keys=False))
+
+    if not cfg_file.exists():
+        return
+
+    data = yaml.safe_load(cfg_file.read_text()) or {}
+
+    # -------- APP SECTION ----------
+    data["app"] = data.get("app", {})
+    data["app"]["active_usecase"] = usecase
+    data["app"]["capability_name"] = capability_name
+    data["app"]["contract_version"] = "v1"
+
+    # -------- PROMPT SERVICE ----------
+    data["prompt_service"] = {
+        "url": "http://host.docker.internal:8101",
+        "app_name": app_name,
+        "agent_type": agent_type,
+        "usecase_name": usecase,
+        "environment": "dev",
+    }
+
+    # -------- TOOL GATEWAY ----------
+    data["tool_gateway"] = {
+        "url": "http://healthcare-tool-gateway:8080"
+    }
+
+    # -------- IMPORTANT ----------
+    # REMOVE ANY TOOL POLICY OR FEATURE OVERRIDES
+    data.pop("tools", None)
+    data.pop("features", None)
+    data.pop("planner_mode", None)
+
+    cfg_file.write_text(
+        yaml.safe_dump(data, sort_keys=False)
+    )
 
 
 def inject_app_config(
@@ -250,7 +296,7 @@ def create_application(payload: dict[str, Any]):
             return {"ok": False, "error": "Missing repo names"}
 
         capability_name = create_cfg.get("capability_name", "care-management")
-        usecase_name = create_cfg.get("usecase_name", "cm-assistant")
+        usecase_name = create_cfg.get("usecase_name", "cm_assistant")
 
         target_root = GENERATED_REPOS_ROOT / capability_name / usecase_name
         target_root.mkdir(parents=True, exist_ok=True)
@@ -268,10 +314,20 @@ def create_application(payload: dict[str, Any]):
                 shutil.rmtree(app_repo_root, ignore_errors=True)
             return agent_copy
 
+        platform_copy = copy_platform_assets_into_agent_repo(agent_repo_root)
+        if not platform_copy["ok"]:
+            if app_repo_root.exists():
+                shutil.rmtree(app_repo_root, ignore_errors=True)
+            if agent_repo_root.exists():
+                shutil.rmtree(agent_repo_root, ignore_errors=True)
+            return platform_copy
+
         inject_app_config(
             repo_root=app_repo_root,
             app_name=app_name,
         )
+
+
 
         inject_repo_env(
             repo_root=agent_repo_root,
@@ -294,6 +350,7 @@ def create_application(payload: dict[str, Any]):
             repo_root=agent_repo_root,
             app_name=app_name,
             agent_type=agent_type,
+            capability_name=capability_name,
             usecase=usecase_name,
         )
 
@@ -642,16 +699,17 @@ def workspace_status(
 
 @app.get("/repo-exists")
 def repo_exists(name: str):
-    repo_path = resolve_repo_path(name)
+    matches = list(GENERATED_REPOS_ROOT.rglob(name))
 
     return {
         "ok": True,
         "name": name,
-        "exists": repo_path.exists(),
-        "path": str(repo_path),
+        "exists": len(matches) > 0,
+        "paths": [str(p) for p in matches],
         "backend": "local_filesystem"
-    }
-    
+    }    
+
+
 @app.get("/next-available-repo-name")
 def next_available_repo_name(base: str):
     base_slug = base.strip()
@@ -659,7 +717,9 @@ def next_available_repo_name(base: str):
     candidate = base_slug
     counter = 2
 
-    while (GENERATED_REPOS_ROOT / candidate).exists():
+    existing_names = {p.name for p in GENERATED_REPOS_ROOT.rglob("*") if p.is_dir()}
+
+    while candidate in existing_names:
         candidate = f"{base_slug}-{counter}"
         counter += 1
 

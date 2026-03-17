@@ -6,17 +6,15 @@ from src.platform.config import load_config
 from src.platform.llm.responder import generate_answer
 from src.platform.observability.tracer import start_run, add_step, finish_run
 from src.platform.tools.registry import registry
+from src.platform.tools.router import route_step
 
 
 cfg = load_config()
 USECASE = cfg.app.active_usecase
 
-from src.platform.tools.router import route_step
-
 
 def _invoke_tool(tool_name: str, tool_input: Dict[str, Any], ctx: Dict[str, Any]) -> Any:
-    usecase_cfg = ctx.get("usecase_config") or {}
-    tool_policy = usecase_cfg.get("tool_policy") or {}
+    tool_policy = ctx.get("tool_policy") or {}
 
     mode = tool_policy.get("mode", "selected")
     allowed_tools = tool_policy.get("allowed_tools") or []
@@ -75,11 +73,10 @@ def execute(steps: List[str], ctx: Dict[str, Any]) -> Any:
         # -----------------------------
         # Retrieval fallback handling
         # -----------------------------
-        retrieval_cfg = ctx.get("usecase_config", {}).get("retrieval", {})
+        retrieval_cfg = ctx.get("retrieval") or {}
 
         if tool == retrieval_cfg.get("default_tool"):
             results = result.get("results") if isinstance(result, dict) else None
-
             no_results = not results or len(results) == 0
 
             if no_results:
@@ -94,7 +91,6 @@ def execute(steps: List[str], ctx: Dict[str, Any]) -> Any:
                         "answer": "No relevant knowledge found. Escalate or refine query.",
                     }
 
-                # allow platform to continue with LLM reasoning
                 add_step(run_id, "retrieval_fallback", {"reason": "no_results"})
                 answer = generate_answer(ctx.get("prompt", ""), tool, result, ctx)
 
@@ -107,7 +103,6 @@ def execute(steps: List[str], ctx: Dict[str, Any]) -> Any:
                     "input": tool_input,
                     "output": result,
                 }
-
 
         if isinstance(result, dict) and result.get("result") == "APPROVAL_REQUIRED":
             finish_run(run_id)
