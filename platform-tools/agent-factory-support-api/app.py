@@ -25,8 +25,8 @@ SHARED_INFRA_ROOT = PLATFORM_ROOT / "shared-infra" / "industry-tool-gateway-heal
 app = FastAPI(title="Agent Factory Support API", version="v1")
 
 TEMPLATES_ROOT = PLATFORM_ROOT / "templates"
-AGENT_TEMPLATE_ROOT = TEMPLATES_ROOT / "chat-agent-template"
-APP_TEMPLATE_ROOT = TEMPLATES_ROOT / "app-template"
+AGENT_TEMPLATE_ROOT = TEMPLATES_ROOT / "agent-runtime-template"
+APP_TEMPLATE_ROOT = TEMPLATES_ROOT / "capability-ui-template"
 
 app.add_middleware(
     CORSMiddleware,
@@ -84,12 +84,6 @@ def inject_agent_usecase_and_prompt_config(
             "environment": "dev",
         }
         cfg_file.write_text(yaml.safe_dump(data, sort_keys=False))
-
-    prompts_dir = repo_root / "services" / "agent-runtime" / "src" / "usecases"
-    if prompts_dir.exists():
-        for child in prompts_dir.iterdir():
-            if child.is_dir() and child.name != usecase:
-                shutil.rmtree(child, ignore_errors=True)
 
 
 def inject_app_config(
