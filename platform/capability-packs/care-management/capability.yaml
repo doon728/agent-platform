@@ -1,0 +1,20 @@
+capability:
+  id: care-management
+  name: Care Management
+  description: Clinical care coordination, assessments, outreach, and care plans.
+
+domains:
+  - id: assessments
+    description: Member clinical assessments and reassessments
+
+  - id: care-plans
+    description: Care plan creation and monitoring
+
+  - id: outreach
+    description: Member outreach and engagement workflows
+
+  - id: behavioral-health
+    description: Behavioral and mental health coordination
+
+  - id: utilization
+    description: Utilization monitoring and intervention

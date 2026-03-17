@@ -26,18 +26,35 @@ def load_usecase_config(capability_name: str, usecase_name: str) -> Dict[str, An
         usecase_name,
     )
 
-    usecase_yaml = os.path.join(usecase_dir, "usecase.yaml")
-    tool_policy_yaml = os.path.join(usecase_dir, "tool-policy.yaml")
-    prompt_defaults_yaml = os.path.join(usecase_dir, "prompt-defaults.yaml")
-    retrieval_yaml = os.path.join(usecase_dir, "retrieval.yaml")
-    memory_yaml = os.path.join(usecase_dir, "memory.yaml")
-    workflow_rules_yaml = os.path.join(usecase_dir, "workflow-rules.yaml")
+    raw = _load_yaml_if_exists(os.path.join(usecase_dir, "usecase.yaml"))
+    prompts = _load_yaml_if_exists(os.path.join(usecase_dir, "prompt-defaults.yaml"))
+    memory = _load_yaml_if_exists(os.path.join(usecase_dir, "memory.yaml"))
+    workflow_rules = _load_yaml_if_exists(os.path.join(usecase_dir, "workflow-rules.yaml"))
+
+    usecase_cfg = raw.get("usecase") or {}
+    agent_cfg = raw.get("agent") or {}
+    tools_cfg = raw.get("tools") or {}
+    retrieval_cfg = raw.get("retrieval") or {}
+    risk_cfg = raw.get("risk") or {}
+    features_cfg = raw.get("features") or {}
 
     return {
-        "usecase": _load_yaml_if_exists(usecase_yaml),
-        "tool_policy": _load_yaml_if_exists(tool_policy_yaml),
-        "prompts": _load_yaml_if_exists(prompt_defaults_yaml),
-        "retrieval": _load_yaml_if_exists(retrieval_yaml),
-        "memory": _load_yaml_if_exists(memory_yaml),
-        "workflow_rules": _load_yaml_if_exists(workflow_rules_yaml),
+        "usecase": {
+            "name": usecase_cfg.get("name"),
+            "description": usecase_cfg.get("description"),
+        },
+        "agent": {
+            "type": agent_cfg.get("type"),
+            "planner_mode": agent_cfg.get("planner_mode"),
+        },
+        "tool_policy": {
+            "mode": tools_cfg.get("mode", "selected"),
+            "allowed_tools": tools_cfg.get("allowed", []),
+        },
+        "retrieval": retrieval_cfg,
+        "risk": risk_cfg,
+        "features": features_cfg,
+        "prompts": prompts,
+        "memory": memory,
+        "workflow_rules": workflow_rules,
     }
