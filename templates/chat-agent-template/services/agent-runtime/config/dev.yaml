@@ -1,0 +1,37 @@
+environment: development
+logging:
+  level: DEBUG
+  format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+
+tool_gateway:
+  url: http://tool-gateway:8080
+  timeout: 10
+
+prompt_service:
+  url: ""
+  app_name: ""
+  agent_type: "chat_agent"
+  usecase_name: ""
+  environment: "dev"
+  
+observability:
+  enabled: false
+  sampling_rate: 0.1
+
+secrets:
+  kb_api_key: placeholder_dev_key
+  db_connection: sqlite:///dev_database.db
+  
+tools:
+  allowed:
+    - search_kb
+    - get_member
+    - write_case_note
+    - get_member_summary
+    - get_assessment_summary
+  risk_levels:
+    search_kb: low
+    get_member: medium
+    write_case_note: high
+    get_member_summary: medium
+    get_assessment_summary: medium

@@ -1,0 +1,19 @@
+name: Agent Tools CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  ci:
+    uses: doon728/agent-platform-ci/.github/workflows/python-agent-tools.yml@main
+    with:
+      push_images: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && !startsWith(github.repository, 'doon728/tmpl-') }}
+    permissions:
+      contents: read
+      packages: write

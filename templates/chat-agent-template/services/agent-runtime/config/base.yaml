@@ -1,0 +1,29 @@
+app:
+  contract_version: "v1"
+  active_usecase: "cm_assistant"
+
+tool_gateway:
+  url: "http://healthcare-tool-gateway:8080"
+
+prompt_service:
+  url: "http://host.docker.internal:8101"
+  app_name: "TBD_APP"
+  agent_type: "chat_agent"
+  usecase_name: "TBD_USECASE"
+  environment: "dev"
+
+features:
+  memory: false
+  hitl: false
+  observability: true
+  planner_mode: "rules
+
+tools:
+  allowed:
+    - search_kb
+    - get_member
+    - write_case_note
+  risk_levels:
+    search_kb: low
+    get_member: medium
+    write_case_note: high

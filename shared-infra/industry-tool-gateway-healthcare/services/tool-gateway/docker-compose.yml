@@ -1,0 +1,31 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: agentdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+
+  tool-gateway:
+    build:
+      context: .
+    ports:
+      - "${TOOL_GATEWAY_PORT:-8080}:8080"
+    env_file:
+      - .env
+    environment:
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      KB_PG_HOST: postgres
+      KB_PG_PORT: 5432
+      KB_PG_DB: agentdb
+      KB_PG_USER: postgres
+      KB_PG_PASSWORD: postgres
+    depends_on:
+      - postgres
+
+volumes:
+  pgdata:

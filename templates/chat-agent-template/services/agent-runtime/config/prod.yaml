@@ -1,0 +1,16 @@
+environment: production
+logging:
+  level: WARNING
+  format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+
+tool_gateway:
+  url: http://tool-gateway.prod.internal
+  timeout: 3
+
+observability:
+  enabled: true
+  sampling_rate: 0.01
+
+secrets:
+  kb_api_key: ${PROD_KB_API_KEY}
+  db_connection: ${PROD_DB_CONNECTION}

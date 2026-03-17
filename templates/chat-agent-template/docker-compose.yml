@@ -1,0 +1,19 @@
+services:
+  agent-runtime:
+    build:
+      context: ./services/agent-runtime
+    image: agent-runtime:local
+    ports:
+      - "${AGENT_RUNTIME_PORT:-8081}:8080"
+    environment:
+      CONTRACT_VERSION: "v1"
+      TOOL_GATEWAY_URL: ${TOOL_GATEWAY_URL:-http://host.docker.internal:8080}
+      AUTH_MODE: "OPTIONAL"
+      AGENT_ENV: "dev"
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+    volumes:
+      - ./data:/app/data
+      - ./state:/app/state
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

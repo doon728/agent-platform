@@ -1,0 +1,31 @@
+[tool.poetry]
+name = "tool-gateway"
+version = "0.1.0"
+description = "REST tool gateway (OpenAPI) for AgentCore Gateway targets"
+authors = ["you"]
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "^0.115.0"
+uvicorn = {extras = ["standard"], version = "^0.30.0"}
+pydantic = "^2.8.0"
+pyyaml = "^6.0"
+mangum = "^0.17.0"
+jsonschema = "^4.22.0"
+psycopg = {extras = ["binary"], version = "^3.3.3"}
+openai = "^2.26.0"
+python-dotenv = "^1.2.2"
+
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0.0"
+ruff = "^0.4.0"
+httpx = "^0.27.0"
+
+[tool.ruff]
+line-length = 100
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

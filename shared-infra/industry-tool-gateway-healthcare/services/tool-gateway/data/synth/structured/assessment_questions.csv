@@ -1,0 +1,61 @@
+question_id,domain,question_text,answer_type
+q-0001,Medical,Any ER visits in the last 30 days?,YESNO
+q-0002,Medical,How would you rate pain today (1-5)?,SCALE_1_5
+q-0003,Medical,List current top health concerns.,TEXT
+q-0004,Behavioral,Any recent anxiety/panic symptoms?,YESNO
+q-0005,Behavioral,Stress level this week (1-5)?,SCALE_1_5
+q-0006,Behavioral,Any barriers to following the care plan?,TEXT
+q-0007,SDOH,Any food insecurity concerns?,YESNO
+q-0008,SDOH,Any transportation issues for appointments?,YESNO
+q-0009,SDOH,Housing situation summary.,TEXT
+q-0010,MedAdherence,Missed any doses in the last week?,YESNO
+q-0011,MedAdherence,Confidence in managing meds (1-5)?,SCALE_1_5
+q-0012,MedAdherence,Medication list notes.,TEXT
+q-0013,Behavioral,Rate behavioral stability (1-5).,SCALE_1_5
+q-0014,SDOH,Rate sdoh stability (1-5).,SCALE_1_5
+q-0015,Medical,Rate medical stability (1-5).,SCALE_1_5
+q-0016,MedAdherence,Any new issues related to medadherence in the past month?,YESNO
+q-0017,Behavioral,Rate behavioral stability (1-5).,SCALE_1_5
+q-0018,Behavioral,Rate behavioral stability (1-5).,SCALE_1_5
+q-0019,Medical,Rate medical stability (1-5).,SCALE_1_5
+q-0020,Medical,Provide additional details for medical.,TEXT
+q-0021,Medical,Any new issues related to medical in the past month?,YESNO
+q-0022,Behavioral,Provide additional details for behavioral.,TEXT
+q-0023,SDOH,Rate sdoh stability (1-5).,SCALE_1_5
+q-0024,Medical,Rate medical stability (1-5).,SCALE_1_5
+q-0025,Behavioral,Provide additional details for behavioral.,TEXT
+q-0026,Behavioral,Provide additional details for behavioral.,TEXT
+q-0027,SDOH,Provide additional details for sdoh.,TEXT
+q-0028,SDOH,Any new issues related to sdoh in the past month?,YESNO
+q-0029,MedAdherence,Rate medadherence stability (1-5).,SCALE_1_5
+q-0030,MedAdherence,Rate medadherence stability (1-5).,SCALE_1_5
+q-0031,Medical,Rate medical stability (1-5).,SCALE_1_5
+q-0032,Behavioral,Rate behavioral stability (1-5).,SCALE_1_5
+q-0033,SDOH,Any new issues related to sdoh in the past month?,YESNO
+q-0034,Behavioral,Provide additional details for behavioral.,TEXT
+q-0035,MedAdherence,Provide additional details for medadherence.,TEXT
+q-0036,Behavioral,Rate behavioral stability (1-5).,SCALE_1_5
+q-0037,Behavioral,Rate behavioral stability (1-5).,SCALE_1_5
+q-0038,Medical,Any new issues related to medical in the past month?,YESNO
+q-0039,SDOH,Any new issues related to sdoh in the past month?,YESNO
+q-0040,SDOH,Rate sdoh stability (1-5).,SCALE_1_5
+q-0041,SDOH,Any new issues related to sdoh in the past month?,YESNO
+q-0042,MedAdherence,Rate medadherence stability (1-5).,SCALE_1_5
+q-0043,Medical,Rate medical stability (1-5).,SCALE_1_5
+q-0044,SDOH,Any new issues related to sdoh in the past month?,YESNO
+q-0045,Behavioral,Any new issues related to behavioral in the past month?,YESNO
+q-0046,SDOH,Rate sdoh stability (1-5).,SCALE_1_5
+q-0047,Medical,Provide additional details for medical.,TEXT
+q-0048,MedAdherence,Provide additional details for medadherence.,TEXT
+q-0049,MedAdherence,Rate medadherence stability (1-5).,SCALE_1_5
+q-0050,Medical,Rate medical stability (1-5).,SCALE_1_5
+q-0051,Behavioral,Rate behavioral stability (1-5).,SCALE_1_5
+q-0052,Behavioral,Rate behavioral stability (1-5).,SCALE_1_5
+q-0053,Behavioral,Rate behavioral stability (1-5).,SCALE_1_5
+q-0054,MedAdherence,Any new issues related to medadherence in the past month?,YESNO
+q-0055,Behavioral,Any new issues related to behavioral in the past month?,YESNO
+q-0056,Medical,Provide additional details for medical.,TEXT
+q-0057,Behavioral,Provide additional details for behavioral.,TEXT
+q-0058,Behavioral,Rate behavioral stability (1-5).,SCALE_1_5
+q-0059,Medical,Any new issues related to medical in the past month?,YESNO
+q-0060,MedAdherence,Rate medadherence stability (1-5).,SCALE_1_5

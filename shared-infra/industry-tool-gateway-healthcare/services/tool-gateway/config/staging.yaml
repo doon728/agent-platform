@@ -1,0 +1,7 @@
+environment: staging
+server:
+  host: tool-gateway.staging.internal
+  port: 8080
+logging:
+  level: INFO
+  format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'

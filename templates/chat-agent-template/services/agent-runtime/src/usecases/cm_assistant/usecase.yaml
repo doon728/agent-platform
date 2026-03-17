@@ -1,0 +1,52 @@
+name: cm_assistant
+agent_type: chat_agent
+persona: care_manager
+
+tool_policy:
+  mode: selected
+  allowed_tools:
+    - search_kb
+    - get_member
+    - write_case_note
+    - get_member_summary
+    - get_assessment_summary
+  allowed_tags: []
+
+rag:
+  enabled: true
+  top_k: 3
+  score_threshold: 0.35
+
+model:
+  provider: openai
+  model: gpt-4o-mini
+  temperature: 0
+
+approval:
+  enabled: true
+  write_tools:
+    - write_case_note
+
+memory:
+  enabled: true
+  thread: true
+  case: true
+  long_term: false
+
+embeddings:
+  provider: openai
+  model: text-embedding-3-small
+
+chunking:
+  strategy: fixed
+  chunk_size: 500
+  chunk_overlap: 100
+
+document_ingestion:
+  enabled: true
+  upload_via_ui: true
+  allowed_types:
+    - txt
+    - pdf
+    - docx
+  auto_embed_on_upload: true
