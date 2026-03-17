@@ -5,7 +5,7 @@ import yaml
 from typing import Dict, Any
 
 
-PLATFORM_ROOT = os.getenv("PLATFORM_ROOT", "/Users/tgaba/agent-platform")
+PLATFORM_ROOT = os.getenv("PLATFORM_ROOT", "/app")
 
 
 def _load_yaml_if_exists(path: str) -> Dict[str, Any]:
