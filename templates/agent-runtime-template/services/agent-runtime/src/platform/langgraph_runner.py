@@ -44,10 +44,12 @@ class LangGraphRunner:
             cfg.app.capability_name,
             cfg.app.active_usecase
         )
-
         ctx["usecase_config"] = usecase_cfg
-        ctx["prompts_config"] = usecase_cfg.get("prompts", {})
-
+        ctx["prompts"] = usecase_cfg.get("prompts", {})
+        ctx["tool_policy"] = usecase_cfg.get("tool_policy", {})
+        ctx["retrieval"] = usecase_cfg.get("retrieval", {})
+        ctx["memory"] = usecase_cfg.get("memory", {})
+        ctx["workflow_rules"] = usecase_cfg.get("workflow_rules", {})
         self._ensure_app()
 
         thread_history: List[Dict[str, Any]] = memory.get_history(

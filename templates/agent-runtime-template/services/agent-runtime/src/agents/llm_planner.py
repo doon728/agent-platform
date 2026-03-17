@@ -13,7 +13,7 @@ from src.platform.tools.registry import registry
 
 
 def _get_planner_prompt(ctx: Dict[str, Any]) -> str:
-    prompts_cfg = ctx.get("prompts_config") or {}
+    prompts_cfg = ctx.get("prompts") or {}
     local_prompt = prompts_cfg.get("planner_system_prompt")
 
     prompt_client = PromptServiceClient()
@@ -88,30 +88,21 @@ def _history_text(history: List[Dict[str, Any]]) -> str:
 
 
 def _get_allowed_tools(ctx: Dict[str, Any]) -> List[str]:
-    retrieval_cfg = ctx.get("usecase_config", {}).get("retrieval", {})
+    retrieval_cfg = ctx.get("retrieval") or {}
 
     if retrieval_cfg.get("enabled"):
         default_tool = retrieval_cfg.get("default_tool")
         if default_tool:
             return [default_tool]
             
-    usecase_cfg = ctx.get("usecase_config") or {}
-
-    tool_policy = usecase_cfg.get("tool_policy") or {}
-    retrieval_cfg = usecase_cfg.get("retrieval") or {}
+    tool_policy = ctx.get("tool_policy") or {}
+    retrieval_cfg = ctx.get("retrieval") or {}
 
     mode = tool_policy.get("mode", "selected")
 
     # explicit allow list
     if mode == "selected":
         tools = tool_policy.get("allowed_tools") or []
-
-        # if retrieval enabled → ensure default retrieval tool available
-        if retrieval_cfg.get("enabled"):
-            default_tool = retrieval_cfg.get("default_tool", "search_kb")
-            if default_tool not in tools:
-                tools.append(default_tool)
-
         return tools
 
     # auto discovery by tag
@@ -217,7 +208,7 @@ Rules:
     line = resp.splitlines()[0].strip()
     line = line.replace("Tool:", "").replace("tool:", "").strip()
 
-    retrieval_cfg = (ctx.get("usecase_config") or {}).get("retrieval") or {}
+    retrieval_cfg = ctx.get("retrieval") or {}
     default_retrieval_tool = retrieval_cfg.get("default_tool", "search_kb")
 
     if ":" not in line:
