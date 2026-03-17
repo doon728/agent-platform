@@ -34,6 +34,7 @@ def _read_yaml(path: Path) -> Dict[str, Any]:
 class AppConfig:
     contract_version: str
     active_usecase: str
+    capability_name: str
 
 
 @dataclass(frozen=True)
@@ -84,7 +85,9 @@ def load_config() -> Config:
         {
             "app": {
                 "contract_version": os.getenv("CONTRACT_VERSION") or merged.get("app", {}).get("contract_version"),
+                "capability_name": os.getenv("CAPABILITY_NAME") or merged.get("app", {}).get("capability_name"),
                 "active_usecase": os.getenv("ACTIVE_USECASE") or merged.get("app", {}).get("active_usecase"),
+
             },
             "tool_gateway": {
                 "url": os.getenv("TOOL_GATEWAY_URL") or merged.get("tool_gateway", {}).get("url"),
@@ -109,6 +112,8 @@ def load_config() -> Config:
         app=AppConfig(
             contract_version=str(app.get("contract_version", "v1")),
             active_usecase=str(app.get("active_usecase", "usecase")),
+            capability_name=str(app.get("capability_name", "capability")),
+           
         ),
         tool_gateway=ToolGatewayConfig(url=str(tg.get("url", "http://host.docker.internal:8080"))),
         features=FeatureFlags(

@@ -1,0 +1,18 @@
+name: "cm-assistant"
+capability_name: "care-management"
+description: "Interactive care management assistant for nurse and care team support"
+primary_personas:
+  - "nurse"
+  - "care-manager"
+default_agent_type: "chat-agent"
+default_app_type: "nurse-ui"
+supported_apps:
+  - "nurse-ui"
+  - "supervisor-ui"
+supported_agent_types:
+  - "chat-agent"
+business_outcomes:
+  - "member-summary"
+  - "assessment-summary"
+  - "policy-guidance"
+  - "case-note-support"

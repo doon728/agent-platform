@@ -40,9 +40,12 @@ class LangGraphRunner:
         ctx["run_id"] = run_id
 
         cfg = load_config()
-        usecase_cfg = load_usecase_config(cfg.app.active_usecase)
+        usecase_cfg = load_usecase_config(
+            cfg.app.capability_name,
+            cfg.app.active_usecase
+        )
 
-        ctx["usecase_config"] = usecase_cfg.get("usecase", {})
+        ctx["usecase_config"] = usecase_cfg
         ctx["prompts_config"] = usecase_cfg.get("prompts", {})
 
         self._ensure_app()

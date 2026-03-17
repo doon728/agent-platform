@@ -5,30 +5,39 @@ import yaml
 from typing import Dict, Any
 
 
-USECASES_ROOT = os.path.join(
-    os.path.dirname(os.path.dirname(__file__)),
-    "usecases",
-)
+PLATFORM_ROOT = os.getenv("PLATFORM_ROOT", "/Users/tgaba/agent-platform")
 
 
-def _load_yaml(path: str) -> Dict[str, Any]:
+def _load_yaml_if_exists(path: str) -> Dict[str, Any]:
     if not os.path.exists(path):
-        raise RuntimeError(f"Config file not found: {path}")
+        return {}
 
     with open(path, "r", encoding="utf-8") as f:
         return yaml.safe_load(f) or {}
 
 
-def load_usecase_config(usecase_name: str) -> Dict[str, Any]:
-    usecase_dir = os.path.join(USECASES_ROOT, usecase_name)
+def load_usecase_config(capability_name: str, usecase_name: str) -> Dict[str, Any]:
+    usecase_dir = os.path.join(
+        PLATFORM_ROOT,
+        "platform",
+        "capability-packs",
+        capability_name,
+        "usecases",
+        usecase_name,
+    )
 
     usecase_yaml = os.path.join(usecase_dir, "usecase.yaml")
-    prompts_yaml = os.path.join(usecase_dir, "prompts.yaml")
-
-    usecase_config = _load_yaml(usecase_yaml)
-    prompts_config = _load_yaml(prompts_yaml)
+    tool_policy_yaml = os.path.join(usecase_dir, "tool-policy.yaml")
+    prompt_defaults_yaml = os.path.join(usecase_dir, "prompt-defaults.yaml")
+    retrieval_yaml = os.path.join(usecase_dir, "retrieval.yaml")
+    memory_yaml = os.path.join(usecase_dir, "memory.yaml")
+    workflow_rules_yaml = os.path.join(usecase_dir, "workflow-rules.yaml")
 
     return {
-        "usecase": usecase_config,
-        "prompts": prompts_config,
+        "usecase": _load_yaml_if_exists(usecase_yaml),
+        "tool_policy": _load_yaml_if_exists(tool_policy_yaml),
+        "prompts": _load_yaml_if_exists(prompt_defaults_yaml),
+        "retrieval": _load_yaml_if_exists(retrieval_yaml),
+        "memory": _load_yaml_if_exists(memory_yaml),
+        "workflow_rules": _load_yaml_if_exists(workflow_rules_yaml),
     }
