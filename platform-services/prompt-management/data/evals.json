@@ -1,0 +1,15 @@
+[
+  {
+    "eval_id": "eval-f9d072ff90",
+    "prompt_id": "prm-4d7b100a31",
+    "input_query": "Summarize assessment asmt-000001",
+    "expected_tool": "get_assessment_summary",
+    "expected_keywords": [
+      "assessment",
+      "summary"
+    ],
+    "actual_output": "[SIMULATED_EVAL] prompt=cm_planner_v1 input=Summarize assessment asmt-000001",
+    "pass_fail": true,
+    "score": 0.5
+  }
+]

@@ -1,0 +1,41 @@
+[
+  {
+    "prompt_id": "prm-4d7b100a31",
+    "prompt_name": "cm_planner_v1",
+    "prompt_type": "planner",
+    "agent_type": "chat_agent",
+    "usecase_name": "cm_assistant",
+    "version": 1,
+    "template_text": "You are a care-management planner. Choose the best next tool based on the user query and available tool metadata.",
+    "status": "active",
+    "tags": [
+      "care_management",
+      "planner",
+      "v1"
+    ],
+    "created_at": "2026-03-16T14:25:50.124393+00:00",
+    "updated_at": "2026-03-16T14:25:50.124393+00:00"
+  },
+  {
+    "prompt_id": "prm-1880d745af",
+    "prompt_name": "cm_planner_v2",
+    "prompt_type": "planner",
+    "app_name": "cm_demo_app",
+    "agent_type": "chat_agent",
+    "usecase_name": "cm_assistant",
+    "environment": "dev",
+    "version": 2,
+    "template_text": "You are the approved care-management planner prompt for dev.",
+    "status": "active",
+    "approval_status": "approved",
+    "is_active": true,
+    "tags": [
+      "care_management",
+      "planner",
+      "approved",
+      "dev"
+    ],
+    "created_at": "2026-03-16T14:52:42.414043+00:00",
+    "updated_at": "2026-03-16T14:52:42.414043+00:00"
+  }
+]
