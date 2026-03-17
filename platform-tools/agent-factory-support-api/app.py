@@ -16,6 +16,21 @@ GENERATED_REPOS_ROOT = Path(
     os.getenv("GENERATED_REPOS_ROOT", str(Path.home() / "agent-platform" / "generated-repos"))
 )
 
+def resolve_repo_path(repo_name: str) -> Path:
+    """
+    Finds repo anywhere under generated-repos (supports capability/usecase nesting)
+    """
+    direct = GENERATED_REPOS_ROOT / repo_name
+    if direct.exists():
+        return direct
+
+    matches = list(GENERATED_REPOS_ROOT.rglob(repo_name))
+    if matches:
+        return matches[0]
+
+    return direct
+
+
 PLATFORM_ROOT = Path(
     os.getenv("AGENT_PLATFORM_ROOT", str(Path.home() / "agent-platform"))
 )
@@ -96,6 +111,23 @@ def inject_app_config(
         data["app_name"] = app_name
         cfg_file.write_text(yaml.safe_dump(data, sort_keys=False))
 
+
+
+
+def inject_repo_env(repo_root: Path, env_values: dict[str, str]):
+    env_file = repo_root / ".env"
+
+    existing: dict[str, str] = {}
+    if env_file.exists():
+        for line in env_file.read_text().splitlines():
+            if "=" in line and not line.strip().startswith("#"):
+                k, v = line.split("=", 1)
+                existing[k.strip()] = v.strip()
+
+    merged = {**existing, **env_values}
+
+    lines = [f"{k}={v}" for k, v in merged.items()]
+    env_file.write_text("\n".join(lines) + "\n")
 
 
 def inject_prompt_config(repo_root: Path, app_name: str, agent_type: str, usecase: str):
@@ -217,8 +249,14 @@ def create_application(payload: dict[str, Any]):
         if not app_repo_name or not agent_repo_name:
             return {"ok": False, "error": "Missing repo names"}
 
-        app_repo_root = GENERATED_REPOS_ROOT / app_repo_name
-        agent_repo_root = GENERATED_REPOS_ROOT / agent_repo_name
+        capability_name = create_cfg.get("capability_name", "care-management")
+        usecase_name = create_cfg.get("usecase_name", "cm-assistant")
+
+        target_root = GENERATED_REPOS_ROOT / capability_name / usecase_name
+        target_root.mkdir(parents=True, exist_ok=True)
+
+        app_repo_root = target_root / app_repo_name
+        agent_repo_root = target_root / agent_repo_name
 
         app_copy = copy_template_repo(APP_TEMPLATE_ROOT, app_repo_root)
         if not app_copy["ok"]:
@@ -234,6 +272,23 @@ def create_application(payload: dict[str, Any]):
             repo_root=app_repo_root,
             app_name=app_name,
         )
+
+        inject_repo_env(
+            repo_root=agent_repo_root,
+            env_values={
+                "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY", ""),
+                "OPENAI_MODEL": os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+                "TOOL_GATEWAY_URL": os.getenv("TOOL_GATEWAY_URL", "http://host.docker.internal:8080"),
+            },
+        )
+
+        inject_repo_env(
+            repo_root=app_repo_root,
+            env_values={
+                "VITE_API_PROXY_TARGET": "http://host.docker.internal:8081",
+            },
+        )
+
 
         inject_agent_usecase_and_prompt_config(
             repo_root=agent_repo_root,
@@ -378,8 +433,10 @@ def infra_start():
 @app.post("/runtime/stop")
 def runtime_stop(repo_name: str):
     try:
-        repo_root = GENERATED_REPOS_ROOT / repo_name
+        repo_root = resolve_repo_path(repo_name)
+
         down = docker_compose_down(repo_root)
+
         return {
             "ok": down["ok"],
             "repo": repo_name,
@@ -399,8 +456,10 @@ def runtime_stop(repo_name: str):
 @app.post("/app/stop")
 def app_stop(repo_name: str):
     try:
-        repo_root = GENERATED_REPOS_ROOT / repo_name
+        repo_root = resolve_repo_path(repo_name)
+
         down = docker_compose_down(repo_root)
+
         return {
             "ok": down["ok"],
             "repo": repo_name,
@@ -420,7 +479,7 @@ def app_stop(repo_name: str):
 @app.post("/runtime/start")
 def runtime_start(repo_name: str, port: int = 8081):
     try:
-        repo_root = GENERATED_REPOS_ROOT / repo_name
+        repo_root = resolve_repo_path(repo_name)
 
         if not repo_root.exists():
             return {
@@ -461,7 +520,7 @@ def runtime_start(repo_name: str, port: int = 8081):
 @app.post("/app/start")
 def app_start(repo_name: str, port: int = 3000, runtime_url: str = "http://localhost:8081"):
     try:
-        repo_root = GENERATED_REPOS_ROOT / repo_name
+        repo_root = resolve_repo_path(repo_name)
 
         if not repo_root.exists():
             return {
@@ -502,7 +561,6 @@ def app_start(repo_name: str, port: int = 3000, runtime_url: str = "http://local
         }
 
 
-
 @app.post("/workspace/start")
 def workspace_start(
     agent_repo: str,
@@ -518,7 +576,7 @@ def workspace_start(
     runtime_cleanup = runtime_stop(repo_name=agent_repo)
     app_cleanup = app_stop(repo_name=app_repo)
 
-    agent_repo_root = GENERATED_REPOS_ROOT / agent_repo
+    agent_repo_root = resolve_repo_path(agent_repo)
 
     inject_prompt_config(
         repo_root=agent_repo_root,
@@ -582,10 +640,10 @@ def workspace_status(
         },
     }
 
-
 @app.get("/repo-exists")
 def repo_exists(name: str):
-    repo_path = GENERATED_REPOS_ROOT / name
+    repo_path = resolve_repo_path(name)
+
     return {
         "ok": True,
         "name": name,
@@ -593,8 +651,7 @@ def repo_exists(name: str):
         "path": str(repo_path),
         "backend": "local_filesystem"
     }
-
-
+    
 @app.get("/next-available-repo-name")
 def next_available_repo_name(base: str):
     base_slug = base.strip()

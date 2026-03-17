@@ -49,6 +49,7 @@ export default function ApplicationForm() {
   const [agentType, setAgentType] = useState("chat_agent")
   const [persona, setPersona] = useState("care_manager")
   const [usecaseName, setUsecaseName] = useState("cm_assistant")
+  const [capabilityName, setCapabilityName] = useState("care-management")
 
   const [repoNameTouched, setRepoNameTouched] = useState(false)
   const [agentRepoNameTouched, setAgentRepoNameTouched] = useState(false)
@@ -218,8 +219,9 @@ export default function ApplicationForm() {
             capabilities: selectedTools,
             create_config: {
               repo_name: agentRepoName,
+              capability_name: capabilityName,
               usecase_name: usecaseName,
-              agent_type: agentType,
+              agent_type: agentType,  
               persona,
               tool_policy: {
                 mode: "selected",
@@ -452,6 +454,16 @@ export default function ApplicationForm() {
                     placeholder="Medicaid"
                     value={lob}
                     onChange={(e) => setLob(e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <label style={labelStyle}>Capability Name</label>
+                  <input
+                    style={inputStyle}
+                    placeholder="care-management"
+                    value={capabilityName}
+                    onChange={(e) => setCapabilityName(e.target.value)}
                   />
                 </div>
 
