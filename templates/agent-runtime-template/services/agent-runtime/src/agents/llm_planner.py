@@ -88,6 +88,13 @@ def _history_text(history: List[Dict[str, Any]]) -> str:
 
 
 def _get_allowed_tools(ctx: Dict[str, Any]) -> List[str]:
+    retrieval_cfg = ctx.get("usecase_config", {}).get("retrieval", {})
+
+    if retrieval_cfg.get("enabled"):
+        default_tool = retrieval_cfg.get("default_tool")
+        if default_tool:
+            return [default_tool]
+            
     usecase_cfg = ctx.get("usecase_config") or {}
 
     tool_policy = usecase_cfg.get("tool_policy") or {}
