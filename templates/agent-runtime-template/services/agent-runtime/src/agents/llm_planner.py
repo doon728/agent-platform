@@ -89,24 +89,41 @@ def _history_text(history: List[Dict[str, Any]]) -> str:
 
 def _get_allowed_tools(ctx: Dict[str, Any]) -> List[str]:
     usecase_cfg = ctx.get("usecase_config") or {}
+
     tool_policy = usecase_cfg.get("tool_policy") or {}
+    retrieval_cfg = usecase_cfg.get("retrieval") or {}
 
     mode = tool_policy.get("mode", "selected")
 
+    # explicit allow list
     if mode == "selected":
-        return tool_policy.get("allowed_tools") or []
+        tools = tool_policy.get("allowed_tools") or []
 
+        # if retrieval enabled → ensure default retrieval tool available
+        if retrieval_cfg.get("enabled"):
+            default_tool = retrieval_cfg.get("default_tool", "search_kb")
+            if default_tool not in tools:
+                tools.append(default_tool)
+
+        return tools
+
+    # auto discovery by tag
     if mode == "auto":
         allowed_tags = set(tool_policy.get("allowed_tags") or [])
         specs = registry.list_specs()
 
-        if not allowed_tags:
-            return [spec.name for spec in specs]
-
         matched = []
         for spec in specs:
-            if allowed_tags.intersection(set(spec.tags or [])):
+            if not allowed_tags:
                 matched.append(spec.name)
+            elif allowed_tags.intersection(set(spec.tags or [])):
+                matched.append(spec.name)
+
+        # ensure retrieval tool if enabled
+        if retrieval_cfg.get("enabled"):
+            default_tool = retrieval_cfg.get("default_tool", "search_kb")
+            if default_tool not in matched:
+                matched.append(default_tool)
 
         return matched
 
@@ -193,10 +210,13 @@ Rules:
     line = resp.splitlines()[0].strip()
     line = line.replace("Tool:", "").replace("tool:", "").strip()
 
+    retrieval_cfg = (ctx.get("usecase_config") or {}).get("retrieval") or {}
+    default_retrieval_tool = retrieval_cfg.get("default_tool", "search_kb")
+
     if ":" not in line:
-        if "search_kb" in allowed_tools:
-            return [f"search_kb: {p}"]
-        return [f"{allowed_tools[0]}: {p}"] if allowed_tools else [f"search_kb: {p}"]
+        if default_retrieval_tool in allowed_tools:
+            return [f"{default_retrieval_tool}: {p}"]
+        return [f"{allowed_tools[0]}: {p}"] if allowed_tools else [f"{default_retrieval_tool}: {p}"]
 
     tool, arg = line.split(":", 1)
     tool = tool.strip()
