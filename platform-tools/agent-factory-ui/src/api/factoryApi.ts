@@ -34,6 +34,10 @@ export const startWorkspace = (agentRepo: string, appRepo: string) => {
     },
   })
 }
+
+export const getWorkspaceStatus = () => {
+  return SUPPORT_API.get("/workspace/status")
+}
 const PROMPT_API = axios.create({
   baseURL: import.meta.env.VITE_PROMPT_API
 })

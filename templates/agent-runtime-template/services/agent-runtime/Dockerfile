@@ -1,20 +1,22 @@
-services:
-    agent-runtime:
-      build:
-        context: .
-        dockerfile: services/agent-runtime/Dockerfile
-      image: agent-runtime:local
-      ports:
-        - "${AGENT_RUNTIME_PORT:-8081}:8080"
-      environment:
-        CONTRACT_VERSION: "v1"
-        TOOL_GATEWAY_URL: ${TOOL_GATEWAY_URL:-http://host.docker.internal:8080}
-        AUTH_MODE: "OPTIONAL"
-        AGENT_ENV: "dev"
-        OPENAI_API_KEY: ${OPENAI_API_KEY}
-        OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
-      volumes:
-        - ./data:/app/data
-        - ./state:/app/state
-      extra_hosts:
-        - "host.docker.internal:host-gateway"
+FROM python:3.11-slim
+
+WORKDIR /app
+ENV PYTHONPATH=/app
+
+RUN pip install --no-cache-dir poetry
+
+# install deps
+COPY services/agent-runtime/pyproject.toml services/agent-runtime/poetry.lock* /app/
+RUN poetry config virtualenvs.create false \
+ && poetry install --no-interaction --no-ansi --no-root
+
+# copy runtime
+COPY services/agent-runtime/config/ /app/config
+COPY services/agent-runtime/src/ /app/src
+
+# VERY IMPORTANT → platform folder is at template ROOT
+COPY platform/ /app/platform
+
+EXPOSE 8080
+
+CMD ["poetry", "run", "uvicorn", "src.platform.app:app", "--host", "0.0.0.0", "--port", "8080"]

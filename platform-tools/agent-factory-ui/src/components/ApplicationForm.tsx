@@ -3,8 +3,10 @@ import {
   createApplication,
   getGatewayTools,
   getNextAvailableRepoName,
+  getWorkspaceStatus,
   startWorkspace,
 } from "../api/factoryApi"
+
 type GatewayTool = {
   name: string
   description?: string
@@ -64,7 +66,6 @@ export default function ApplicationForm() {
   const [modelName, setModelName] = useState("gpt-4o-mini")
   const [temperature, setTemperature] = useState("0")
 
-  // Local profile (real/wired)
   const [localHumanReviewEnabled, setLocalHumanReviewEnabled] = useState(true)
 
   const [localMemoryEnabled, setLocalMemoryEnabled] = useState(true)
@@ -76,7 +77,6 @@ export default function ApplicationForm() {
   const [localTopK, setLocalTopK] = useState("3")
   const [localScoreThreshold, setLocalScoreThreshold] = useState("0.35")
 
-  // AgentCore teaser
   const [showAgentCoreProfile, setShowAgentCoreProfile] = useState(false)
   const [agentCoreEnabled] = useState(true)
   const [agentCoreHumanReviewEnabled] = useState(true)
@@ -177,30 +177,30 @@ export default function ApplicationForm() {
     try {
       setMessage("Checking repo names...")
       setResult(null)
-  
+
       if (!repoName || !agentRepoName) {
         setMessage("Error: App repo name and agent repo name are required.")
         return
       }
-  
+
       const appExists = await repoExists(repoName)
       if (appExists) {
         setMessage(`Error: App repo name already exists: ${repoName}`)
         return
       }
-  
+
       const agentExists = await repoExists(agentRepoName)
       if (agentExists) {
         setMessage(`Error: Agent repo name already exists: ${agentRepoName}`)
         return
       }
-  
+
       setMessage("Creating application and agent repos...")
-  
+
       const writeTools = availableTools
         .filter((t) => t.mode === "write" && selectedTools.includes(t.name))
         .map((t) => t.name)
-  
+
       const payload = {
         industry,
         customer_name: customer,
@@ -221,7 +221,7 @@ export default function ApplicationForm() {
               repo_name: agentRepoName,
               capability_name: capabilityName,
               usecase_name: usecaseName,
-              agent_type: agentType,  
+              agent_type: agentType,
               persona,
               tool_policy: {
                 mode: "selected",
@@ -271,24 +271,25 @@ export default function ApplicationForm() {
           },
         ],
       }
-  
+
       const createRes = await createApplication(payload)
-  
+
       if (!createRes?.data?.ok) {
         throw new Error(createRes?.data?.error || "create-application failed")
       }
-  
+
       const createdAppRepo = createRes.data.app_repo_name || repoName
       const createdAgentRepo = createRes.data.agents?.[0]?.repo_name || agentRepoName
-  
+
       setMessage("Starting workspace...")
-  
-      const workspaceRes = await startWorkspace(createdAgentRepo, createdAppRepo)
-  
+
+      await startWorkspace(createdAgentRepo, createdAppRepo)
+      const workspaceStatusRes = await getWorkspaceStatus()
+
       setResult({
         ...(createRes.data || {}),
-        workspace: workspaceRes.data,
-        workspace_urls: workspaceRes.data?.urls,
+        workspace: workspaceStatusRes.data,
+        workspace_urls: workspaceStatusRes.data?.urls,
         selected_gateway: selectedGateway,
         local_profile: {
           human_review: localHumanReviewEnabled,
@@ -325,7 +326,7 @@ export default function ApplicationForm() {
           },
         },
       })
-  
+
       setMessage("Application and agent generated successfully.")
     } catch (err: any) {
       console.error(err)
@@ -335,6 +336,7 @@ export default function ApplicationForm() {
       )
     }
   }
+
   const pageStyle: CSSProperties = {
     minHeight: "100vh",
     background: "#f8fafc",
@@ -1039,78 +1041,77 @@ export default function ApplicationForm() {
                 <div><strong>App Repo:</strong> {result.app_repo_name}</div>
                 <div><strong>App Path:</strong> {result.app_repo_url}</div>
                 <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid #e5e7eb" }}>
-                <div><strong>Infra Started:</strong> {String(result.workspace?.infra?.ok)}</div>
-                <div><strong>Runtime Started:</strong> {String(result.workspace?.runtime?.ok)}</div>
-                <div><strong>App Started:</strong> {String(result.workspace?.app?.ok)}</div>
+                <div><strong>Workspace Ready:</strong> {String(result.workspace?.ok)}</div>
+                <div><strong>Tool Gateway Ready:</strong> {String(!!result.workspace?.urls?.tool_gateway_url)}</div>
+                <div><strong>Agent Runtime Ready:</strong> {String(!!result.workspace?.urls?.agent_runtime_url)}</div>
+                <div><strong>App UI Ready:</strong> {String(!!result.workspace?.urls?.app_ui_url)}</div>
               </div>
 
-              <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid #e5e7eb" }}>
+                <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid #e5e7eb" }}>
+                  <div style={{ marginBottom: 12 }}>
+                    <strong>App UI</strong>
+                    <div>
+                      <a href={result.workspace_urls?.app_ui_url} target="_blank" rel="noreferrer">
+                        {result.workspace_urls?.app_ui_url}
+                      </a>
+                    </div>
+                    <div>
+                      Launch:{" "}
+                      <a
+                        href={result.workspace_urls?.app_ui_url ? `${result.workspace_urls.app_ui_url}/nurse` : "#"}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {result.workspace_urls?.app_ui_url ? `${result.workspace_urls.app_ui_url}/nurse` : ""}
+                      </a>
+                    </div>
+                  </div>
 
-              <div style={{ marginBottom: 12 }}>
-                <strong>App UI</strong>
-                <div>
-                  <a href={result.workspace_urls?.app_ui_url} target="_blank" rel="noreferrer">
-                    {result.workspace_urls?.app_ui_url}
-                  </a>
-                </div>
-                <div>
-                  Launch:{" "}
-                  <a
-                    href={result.workspace_urls?.app_ui_url ? `${result.workspace_urls.app_ui_url}/nurse` : "#"}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    {result.workspace_urls?.app_ui_url ? `${result.workspace_urls.app_ui_url}/nurse` : ""}
-                  </a>
-                </div>
-              </div>
+                  <div style={{ marginBottom: 12 }}>
+                    <strong>Agent Runtime</strong>
+                    <div>
+                      <a href={result.workspace_urls?.agent_runtime_url} target="_blank" rel="noreferrer">
+                        {result.workspace_urls?.agent_runtime_url}
+                      </a>
+                    </div>
+                    <div>
+                      Docs:{" "}
+                      <a
+                        href={result.workspace_urls?.agent_runtime_url ? `${result.workspace_urls.agent_runtime_url}/docs` : "#"}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {result.workspace_urls?.agent_runtime_url ? `${result.workspace_urls.agent_runtime_url}/docs` : ""}
+                      </a>
+                    </div>
+                  </div>
 
-              <div style={{ marginBottom: 12 }}>
-                <strong>Agent Runtime</strong>
-                <div>
-                  <a href={result.workspace_urls?.agent_runtime_url} target="_blank" rel="noreferrer">
-                    {result.workspace_urls?.agent_runtime_url}
-                  </a>
-                </div>
-                <div>
-                  Docs:{" "}
-                  <a
-                    href={result.workspace_urls?.agent_runtime_url ? `${result.workspace_urls.agent_runtime_url}/docs` : "#"}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    {result.workspace_urls?.agent_runtime_url ? `${result.workspace_urls.agent_runtime_url}/docs` : ""}
-                  </a>
-                </div>
-              </div>
+                  <div style={{ marginBottom: 12 }}>
+                    <strong>Tool Gateway</strong>
+                    <div>
+                      <a href={result.workspace_urls?.tool_gateway_url} target="_blank" rel="noreferrer">
+                        {result.workspace_urls?.tool_gateway_url}
+                      </a>
+                    </div>
+                    <div>
+                      Tools:{" "}
+                      <a
+                        href={result.workspace_urls?.tool_gateway_url ? `${result.workspace_urls.tool_gateway_url}/tools/specs` : "#"}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {result.workspace_urls?.tool_gateway_url ? `${result.workspace_urls.tool_gateway_url}/tools/specs` : ""}
+                      </a>
+                    </div>
+                  </div>
 
-              <div style={{ marginBottom: 12 }}>
-                <strong>Tool Gateway</strong>
-                <div>
-                  <a href={result.workspace_urls?.tool_gateway_url} target="_blank" rel="noreferrer">
-                    {result.workspace_urls?.tool_gateway_url}
-                  </a>
+                  <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid #e5e7eb" }}>
+                    <div><strong>Requested Runtime Port:</strong> {result.workspace?.ports?.requested_runtime_port}</div>
+                    <div><strong>Resolved Runtime Port:</strong> {result.workspace?.ports?.resolved_runtime_port}</div>
+                    <div><strong>Requested App Port:</strong> {result.workspace?.ports?.requested_app_port}</div>
+                    <div><strong>Resolved App Port:</strong> {result.workspace?.ports?.resolved_app_port}</div>
+                  </div>
                 </div>
-                <div>
-                  Tools:{" "}
-                  <a
-                    href={result.workspace_urls?.tool_gateway_url ? `${result.workspace_urls.tool_gateway_url}/tools/specs` : "#"}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    {result.workspace_urls?.tool_gateway_url ? `${result.workspace_urls.tool_gateway_url}/tools/specs` : ""}
-                  </a>
-                </div>
-              </div>
-
-              <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid #e5e7eb" }}>
-                <div><strong>Requested Runtime Port:</strong> {result.workspace?.ports?.requested_runtime_port}</div>
-                <div><strong>Resolved Runtime Port:</strong> {result.workspace?.ports?.resolved_runtime_port}</div>
-                <div><strong>Requested App Port:</strong> {result.workspace?.ports?.requested_app_port}</div>
-                <div><strong>Resolved App Port:</strong> {result.workspace?.ports?.resolved_app_port}</div>
-              </div>
-
-              </div>
 
                 {result.agents?.map((agent: any) => (
                   <div

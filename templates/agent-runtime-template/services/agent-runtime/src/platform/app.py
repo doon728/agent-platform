@@ -65,7 +65,7 @@ async def invocations(request: Request) -> JSONResponse:
 
     ctx = build_context(request, payload)
     ctx["run_id"] = f"run_{uuid4().hex[:8]}"
-    ctx["prompt"] = payload.get("prompt") or payload.get("text") or ""
+    ctx["prompt"] = payload.get("prompt") or payload.get("text") or payload.get("message") or ""
 
     print(
         f"[ctx] run={ctx.get('run_id')} tenant={ctx.get('tenant_id')} "
@@ -86,7 +86,7 @@ async def invocations(request: Request) -> JSONResponse:
             },
         )
 
-    prompt = payload.get("prompt") or payload.get("text") or ""
+    prompt = payload.get("prompt") or payload.get("text") or payload.get("message") or ""
     if not prompt:
         prompt = "hello"
 

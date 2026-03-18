@@ -9,6 +9,7 @@ import yaml
 from pathlib import Path
 import shutil 
 from typing import Any
+import time
 
 
 load_dotenv(Path(__file__).resolve().parent / ".env")
@@ -36,7 +37,7 @@ PLATFORM_ROOT = Path(
 )
 
 SHARED_INFRA_ROOT = PLATFORM_ROOT / "shared-infra" / "industry-tool-gateway-healthcare" / "services" / "tool-gateway"
-
+LAST_WORKSPACE_STATE: dict[str, Any] = {}
 app = FastAPI(title="Agent Factory Support API", version="v1")
 
 TEMPLATES_ROOT = PLATFORM_ROOT / "templates"
@@ -176,23 +177,7 @@ def inject_repo_env(repo_root: Path, env_values: dict[str, str]):
     env_file.write_text("\n".join(lines) + "\n")
 
 
-def inject_prompt_config(repo_root: Path, app_name: str, agent_type: str, usecase: str):
-    cfg_file = repo_root / "services" / "agent-runtime" / "config" / "base.yaml"
 
-    if not cfg_file.exists():
-        return
-
-    data = yaml.safe_load(cfg_file.read_text())
-
-    data["prompt_service"] = {
-        "url": "http://host.docker.internal:8101",
-        "app_name": app_name,
-        "agent_type": agent_type,
-        "usecase_name": usecase,
-        "environment": "dev",
-    }
-
-    cfg_file.write_text(yaml.dump(data))
 
 
 def run_cmd(cmd: list[str], cwd: str | None = None, env: dict | None = None):
@@ -552,10 +537,18 @@ def runtime_start(repo_name: str, port: int = 8081):
             env["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY", "")
 
         result = run_cmd(
-            ["docker", "compose", "up", "-d"],
+            [
+                "docker",
+                "compose",
+                "up",
+                "-d",
+                "--build",
+                "--force-recreate",
+                "--remove-orphans",
+            ],
             cwd=str(repo_root),
             env=env,
-        )
+)
 
         return {
             "ok": result.returncode == 0,
@@ -593,7 +586,15 @@ def app_start(repo_name: str, port: int = 3000, runtime_url: str = "http://local
         env["VITE_API_PROXY_TARGET"] = f"http://host.docker.internal:{runtime_port}"
 
         result = run_cmd(
-            ["docker", "compose", "up", "-d"],
+            [
+                "docker",
+                "compose",
+                "up",
+                "-d",
+                "--build",
+                "--force-recreate",
+                "--remove-orphans",
+            ],
             cwd=str(repo_root),
             env=env,
         )
@@ -626,21 +627,24 @@ def workspace_start(
     app_port: int = 3000,
 ):
     resolved_runtime_port = find_free_port(runtime_port)
+    app_cleanup = app_stop(repo_name=app_repo)
+    time.sleep(2)
+    
+    runtime_cleanup = runtime_stop(repo_name=agent_repo)
     resolved_app_port = find_free_port(app_port)
+    
+    
 
-    infra = infra_start()
+    infra = infra_status()
+    if not infra.get("ok") or int(infra.get("services_found", 0)) == 0:
+        infra = infra_start()
 
     runtime_cleanup = runtime_stop(repo_name=agent_repo)
     app_cleanup = app_stop(repo_name=app_repo)
 
     agent_repo_root = resolve_repo_path(agent_repo)
 
-    inject_prompt_config(
-        repo_root=agent_repo_root,
-        app_name=app_repo,
-        agent_type="chat_agent",
-        usecase="cm_assistant",
-    )
+
 
     runtime = runtime_start(repo_name=agent_repo, port=resolved_runtime_port)
     app_result = app_start(
@@ -649,6 +653,19 @@ def workspace_start(
         runtime_url=f"http://localhost:{resolved_runtime_port}",
     )
 
+    global LAST_WORKSPACE_STATE
+
+    LAST_WORKSPACE_STATE = {
+        "agent_repo": agent_repo,
+        "app_repo": app_repo,
+        "requested_runtime_port": runtime_port,
+        "requested_app_port": app_port,
+        "resolved_runtime_port": resolved_runtime_port,
+        "resolved_app_port": resolved_app_port,
+        "tool_gateway_url": "http://localhost:8080",
+        "agent_runtime_url": f"http://localhost:{resolved_runtime_port}",
+        "app_ui_url": f"http://localhost:{resolved_app_port}",
+    }
     return {
         "ok": infra.get("ok") and runtime.get("ok") and app_result.get("ok"),
         "infra": infra,
@@ -672,22 +689,25 @@ def workspace_start(
     }
 
 @app.get("/workspace/status")
-def workspace_status(
-    agent_repo: str,
-    app_repo: str,
-    runtime_port: int = 8081,
-    app_port: int = 3000,
-):
+def workspace_status():
+    global LAST_WORKSPACE_STATE
+
     return {
         "ok": True,
         "repos": {
-            "agent_repo": agent_repo,
-            "app_repo": app_repo,
+            "agent_repo": LAST_WORKSPACE_STATE.get("agent_repo"),
+            "app_repo": LAST_WORKSPACE_STATE.get("app_repo"),
+        },
+        "ports": {
+            "requested_runtime_port": LAST_WORKSPACE_STATE.get("requested_runtime_port"),
+            "requested_app_port": LAST_WORKSPACE_STATE.get("requested_app_port"),
+            "resolved_runtime_port": LAST_WORKSPACE_STATE.get("resolved_runtime_port"),
+            "resolved_app_port": LAST_WORKSPACE_STATE.get("resolved_app_port"),
         },
         "urls": {
-            "tool_gateway_url": "http://localhost:8080",
-            "agent_runtime_url": f"http://localhost:{runtime_port}",
-            "app_ui_url": f"http://localhost:{app_port}",
+            "tool_gateway_url": LAST_WORKSPACE_STATE.get("tool_gateway_url"),
+            "agent_runtime_url": LAST_WORKSPACE_STATE.get("agent_runtime_url"),
+            "app_ui_url": LAST_WORKSPACE_STATE.get("app_ui_url"),
         },
         "runtime_model": {
             "gateway": "shared_external_local",

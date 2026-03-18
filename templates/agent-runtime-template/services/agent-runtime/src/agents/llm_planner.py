@@ -28,8 +28,8 @@ def _get_planner_prompt(ctx: Dict[str, Any]) -> str:
     )
 
     if resolved_prompt:
-            print("[planner] using prompt from prompt service")
-            return resolved_prompt
+        print("[planner] using prompt from prompt service")
+        return resolved_prompt
     if local_prompt:
         return local_prompt
 
@@ -88,24 +88,17 @@ def _history_text(history: List[Dict[str, Any]]) -> str:
 
 
 def _get_allowed_tools(ctx: Dict[str, Any]) -> List[str]:
-    retrieval_cfg = ctx.get("retrieval") or {}
 
-    if retrieval_cfg.get("enabled"):
-        default_tool = retrieval_cfg.get("default_tool")
-        if default_tool:
-            return [default_tool]
-            
+
     tool_policy = ctx.get("tool_policy") or {}
     retrieval_cfg = ctx.get("retrieval") or {}
 
     mode = tool_policy.get("mode", "selected")
 
-    # explicit allow list
     if mode == "selected":
         tools = tool_policy.get("allowed_tools") or []
         return tools
 
-    # auto discovery by tag
     if mode == "auto":
         allowed_tags = set(tool_policy.get("allowed_tags") or [])
         specs = registry.list_specs()
@@ -117,7 +110,6 @@ def _get_allowed_tools(ctx: Dict[str, Any]) -> List[str]:
             elif allowed_tags.intersection(set(spec.tags or [])):
                 matched.append(spec.name)
 
-        # ensure retrieval tool if enabled
         if retrieval_cfg.get("enabled"):
             default_tool = retrieval_cfg.get("default_tool", "search_kb")
             if default_tool not in matched:
@@ -164,14 +156,32 @@ def plan(prompt: str, history: List[Dict[str, Any]], ctx: Dict[str, Any]) -> Lis
     planner_prompt = _get_planner_prompt(ctx)
     allowed_tools = _get_allowed_tools(ctx)
 
+
     explicit_assessment_id = _extract_assessment_id(p)
     latest_assessment_id = _extract_latest_assessment_id(history)
     active_assessment_id = explicit_assessment_id or latest_assessment_id
-
+    print(f"[planner] allowed_tools={allowed_tools} explicit_assessment_id={explicit_assessment_id} prompt={p}", flush=True)
     history_text = _history_text(history)
 
+    # --------------------------------------------------
+    # HARD ROUTING — deterministic routing before LLM
+    # --------------------------------------------------
+    clinical_summary_phrases = [
+        "summarize",
+        "summary",
+        "status",
+        "latest note",
+        "last note",
+    ]
+
+    if explicit_assessment_id and any(x in lower_p for x in clinical_summary_phrases):
+        if "get_assessment_summary" in allowed_tools:
+            print("[planner] HARD ROUTE -> get_assessment_summary", flush=True)
+            return [f"get_assessment_summary: {explicit_assessment_id}"]
+
     model_name = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-    llm = ChatOpenAI(model=model_name, temperature=0)
+    api_key = os.getenv("OPENAI_API_KEY", "")
+    llm = ChatOpenAI(model=model_name, temperature=0, api_key=api_key)
 
     tools_text = _get_tool_descriptions(allowed_tools)
 
@@ -234,11 +244,9 @@ Rules:
         "assessment summary",
     ]
 
-    # Explicit assessment in current prompt always wins
     if explicit_assessment_id and any(x in lower_p for x in patient_phrases):
         return [f"get_assessment_summary: {explicit_assessment_id}"]
 
-    # Prevent invented member IDs
     if tool == "get_member_summary":
         if not arg_member_id and active_assessment_id:
             return [f"get_assessment_summary: {active_assessment_id}"]
@@ -248,13 +256,11 @@ Rules:
                 return [f"get_assessment_summary: {active_assessment_id}"]
             return [f"search_kb: {p}"]
 
-    # Recover missing assessment ID from explicit prompt first, then history
     if tool == "get_assessment_summary" and "get_assessment_summary" in allowed_tools:
         resolved_assessment_id = arg_assessment_id or explicit_assessment_id or latest_assessment_id
         if resolved_assessment_id:
             return [f"get_assessment_summary: {resolved_assessment_id}"]
 
-    # If no explicit prompt ID, then use active context
     if active_assessment_id and any(x in lower_p for x in patient_phrases):
         return [f"get_assessment_summary: {active_assessment_id}"]
 

@@ -40,7 +40,8 @@ def _extract_tool_facts(result: Any) -> str:
 
 def build_chat_answer(prompt: str, history: List[Dict[str, Any]], result: Any) -> str:
     model_name = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-    llm = ChatOpenAI(model=model_name, temperature=0)
+    api_key = os.getenv("OPENAI_API_KEY", "")
+    llm = ChatOpenAI(model=model_name, temperature=0, api_key=api_key)
 
     history_text = ""
     for m in history[-8:]:
