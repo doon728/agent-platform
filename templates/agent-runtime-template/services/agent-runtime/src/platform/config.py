@@ -4,7 +4,6 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict
-from src.platform.usecase_config_loader import load_usecase_config
 
 import yaml
 
@@ -45,10 +44,11 @@ class ToolGatewayConfig:
 @dataclass(frozen=True)
 class PromptServiceConfig:
     url: str
-    app_name: str
+    capability_name: str
     agent_type: str
     usecase_name: str
     environment: str
+
 
 @dataclass(frozen=True)
 class FeatureFlags:
@@ -65,12 +65,12 @@ class Config:
     prompt_service: PromptServiceConfig
     features: FeatureFlags
 
+
 def load_config() -> Config:
     """
     Load YAML config and apply env overrides.
     Precedence: base.yaml -> env.yaml (optional) -> env vars.
     """
-    # config/ lives at services/agent-runtime/config, but this module runs from /app/src
     repo_config_dir = Path(os.getenv("CONFIG_DIR", "/app/config"))
     base = _read_yaml(repo_config_dir / "base.yaml")
 
@@ -79,23 +79,24 @@ def load_config() -> Config:
 
     merged = _deep_merge(base, env_cfg)
 
-    # Env overrides (minimal for now)
+    app = merged.get("app", {})
+
     merged = _deep_merge(
         merged,
         {
             "app": {
-                "contract_version": os.getenv("CONTRACT_VERSION") or merged.get("app", {}).get("contract_version"),
-                "capability_name": os.getenv("CAPABILITY_NAME") or merged.get("app", {}).get("capability_name"),
-                "active_usecase": os.getenv("ACTIVE_USECASE") or merged.get("app", {}).get("active_usecase"),
-
+                "contract_version": os.getenv("CONTRACT_VERSION") or app.get("contract_version"),
+                "capability_name": os.getenv("CAPABILITY_NAME") or app.get("capability_name"),
+                "active_usecase": os.getenv("ACTIVE_USECASE") or app.get("active_usecase"),
             },
             "tool_gateway": {
                 "url": os.getenv("TOOL_GATEWAY_URL") or merged.get("tool_gateway", {}).get("url"),
             },
-
             "prompt_service": {
                 "url": os.getenv("PROMPT_SERVICE_URL") or merged.get("prompt_service", {}).get("url"),
-                "app_name": os.getenv("APP_NAME") or merged.get("prompt_service", {}).get("app_name"),
+                "capability_name": os.getenv("CAPABILITY_NAME")
+                or merged.get("prompt_service", {}).get("capability_name")
+                or app.get("capability_name"),
                 "agent_type": os.getenv("AGENT_TYPE") or merged.get("prompt_service", {}).get("agent_type"),
                 "usecase_name": os.getenv("USECASE_NAME") or merged.get("prompt_service", {}).get("usecase_name"),
                 "environment": os.getenv("ENVIRONMENT") or merged.get("prompt_service", {}).get("environment"),
@@ -103,7 +104,6 @@ def load_config() -> Config:
         },
     )
 
-    # Build typed config
     app = merged.get("app", {})
     tg = merged.get("tool_gateway", {})
     ff = merged.get("features", {})
@@ -113,9 +113,10 @@ def load_config() -> Config:
             contract_version=str(app.get("contract_version", "v1")),
             active_usecase=str(app.get("active_usecase", "usecase")),
             capability_name=str(app.get("capability_name", "capability")),
-           
         ),
-        tool_gateway=ToolGatewayConfig(url=str(tg.get("url", "http://host.docker.internal:8080"))),
+        tool_gateway=ToolGatewayConfig(
+            url=str(tg.get("url", "http://host.docker.internal:8080"))
+        ),
         features=FeatureFlags(
             memory=bool(ff.get("memory", False)),
             hitl=bool(ff.get("hitl", False)),
@@ -124,10 +125,13 @@ def load_config() -> Config:
         ),
         prompt_service=PromptServiceConfig(
             url=str(merged.get("prompt_service", {}).get("url", "")),
-            app_name=str(merged.get("prompt_service", {}).get("app_name", "")),
+            capability_name=str(
+                merged.get("prompt_service", {}).get("capability_name", app.get("capability_name", ""))
+            ),
             agent_type=str(merged.get("prompt_service", {}).get("agent_type", "chat_agent")),
-            usecase_name=str(merged.get("prompt_service", {}).get("usecase_name", app.get("active_usecase", "usecase"))),
+            usecase_name=str(
+                merged.get("prompt_service", {}).get("usecase_name", app.get("active_usecase", "usecase"))
+            ),
             environment=str(merged.get("prompt_service", {}).get("environment", "dev")),
         ),
-
     )
