@@ -189,5 +189,27 @@
       "hitl": false
     },
     "default_model": "gpt-4o-mini"
+  },
+  {
+    "capability_name": "care-management",
+    "usecase_name": "cm_overlay_test_v4",
+    "agent_type": "chat_agent",
+    "app_name": "cm-test-v4",
+    "app_repo_name": "cm-test-app-v4",
+    "agent_name": "cm_test_agent_v4",
+    "agent_repo_name": "cm-test-agent-v4",
+    "components": {
+      "planner": false,
+      "responder": false,
+      "workflow": false,
+      "router": false
+    },
+    "prompt_types": [],
+    "features": {
+      "memory": false,
+      "rag": false,
+      "hitl": false
+    },
+    "default_model": "gpt-4o-mini"
   }
 ]
