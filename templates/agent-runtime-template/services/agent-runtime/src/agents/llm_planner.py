@@ -20,7 +20,7 @@ def _get_planner_prompt(ctx: Dict[str, Any]) -> str:
     cfg = load_config()
 
     resolved_prompt = prompt_client.resolve_prompt(
-        app_name=cfg.prompt_service.app_name,
+        capability_name=cfg.prompt_service.capability_name,
         agent_type=cfg.prompt_service.agent_type,
         usecase_name=cfg.prompt_service.usecase_name,
         prompt_type="planner",

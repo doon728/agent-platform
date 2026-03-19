@@ -8,14 +8,14 @@ class PromptServiceClient:
         cfg = load_config()
         self.base_url = cfg.prompt_service.url
 
-    def resolve_prompt(
-        self,
-        app_name: str,
-        agent_type: str,
-        usecase_name: str,
-        prompt_type: str,
-        environment: str,
-    ):
+        def resolve_prompt(
+            self,
+            capability_name: str,
+            agent_type: str,
+            usecase_name: str,
+            prompt_type: str,
+            environment: str,
+        ):
         if not self.base_url:
             return None
 
@@ -23,7 +23,7 @@ class PromptServiceClient:
             resp = requests.get(
                 f"{self.base_url}/prompts/resolve",
                 params={
-                    "app_name": app_name,
+                    "capability_name": capability_name,
                     "agent_type": agent_type,
                     "usecase_name": usecase_name,
                     "prompt_type": prompt_type,

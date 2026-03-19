@@ -3,22 +3,28 @@ from pydantic import BaseModel, Field
 
 
 PromptType = Literal["planner", "responder", "router", "summarizer"]
-PromptStatus = Literal["draft", "active", "retired"]
-ApprovalStatus = Literal["pending", "approved", "rejected"]
+PromptLifecycleStatus = Literal["draft", "active", "retired"]
+PromptVersionStatus = Literal["draft", "approved", "rejected"]
 EnvironmentType = Literal["dev", "test", "prod"]
 
 
 class PromptCreate(BaseModel):
     prompt_name: str = Field(..., min_length=1)
+    capability_name: str = Field(..., min_length=1)
+    usecase_name: str = Field(..., min_length=1)
+    agent_type: str = Field(..., min_length=1)
     prompt_type: PromptType
-    app_name: str
-    agent_type: str
-    usecase_name: str
     environment: EnvironmentType = "dev"
+
     version: int = 1
     template_text: str = Field(..., min_length=1)
-    status: PromptStatus = "draft"
-    approval_status: ApprovalStatus = "pending"
+
+    model_provider: str = "openai"
+    model_name: str = "gpt-4o-mini"
+    temperature: float = 0
+
+    lifecycle_status: PromptLifecycleStatus = "draft"
+    version_status: PromptVersionStatus = "draft"
     is_active: bool = False
     tags: List[str] = []
 
@@ -26,17 +32,24 @@ class PromptCreate(BaseModel):
 class PromptRecord(BaseModel):
     prompt_id: str
     prompt_name: str
-    prompt_type: PromptType
-    app_name: str
-    agent_type: str
+    capability_name: str
     usecase_name: str
+    agent_type: str
+    prompt_type: PromptType
     environment: EnvironmentType
+
     version: int
     template_text: str
-    status: PromptStatus
-    approval_status: ApprovalStatus
+
+    model_provider: Optional[str] = None
+    model_name: Optional[str] = None
+    temperature: Optional[float] = None
+
+    lifecycle_status: PromptLifecycleStatus
+    version_status: PromptVersionStatus
     is_active: bool
-    tags: List[str]
+
+    tags: List[str] = []
     created_at: str
     updated_at: str
 
@@ -44,17 +57,22 @@ class PromptRecord(BaseModel):
 class PromptResolveResponse(BaseModel):
     prompt_id: str
     prompt_name: str
-    prompt_type: PromptType
-    app_name: str
-    agent_type: str
+    capability_name: str
     usecase_name: str
+    agent_type: str
+    prompt_type: PromptType
     environment: EnvironmentType
+
     version: int
     template_text: str
-    status: PromptStatus
-    approval_status: ApprovalStatus
+
+    model_provider: Optional[str] = None
+    model_name: Optional[str] = None
+    temperature: Optional[float] = None
+
+    lifecycle_status: PromptLifecycleStatus
+    version_status: PromptVersionStatus
     is_active: bool
-    tags: List[str]
 
 
 class EvalRunRequest(BaseModel):

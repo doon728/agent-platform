@@ -9,8 +9,19 @@ import yaml
 from pathlib import Path
 import shutil 
 from typing import Any
+from usecase_contract_store import create_usecase_contract
 import time
+from usecase_metadata import get_usecase_metadata
+from pydantic import BaseModel
 
+from usecase_registry_store import (
+    save_registry_record,
+    list_registry_records,
+    list_capabilities,
+    list_usecases,
+    list_agents,
+    get_app_by_capability,
+)
 
 load_dotenv(Path(__file__).resolve().parent / ".env")
 GENERATED_REPOS_ROOT = Path(
@@ -79,6 +90,49 @@ def copy_template_repo(src: Path, dest: Path):
         "repo_root": str(dest),
         "template_root": str(src),
     }
+
+
+def ensure_capability_app_repo(
+    capability_name: str,
+    app_repo_name: str,
+    app_name: str,
+):
+    capability_root = GENERATED_REPOS_ROOT / capability_name
+    capability_root.mkdir(parents=True, exist_ok=True)
+
+    app_repo_root = capability_root / app_repo_name
+
+    if app_repo_root.exists():
+        return {
+            "ok": True,
+            "repo_root": str(app_repo_root),
+            "app_created": False,
+            "app_reused": True,
+        }
+
+    app_copy = copy_template_repo(APP_TEMPLATE_ROOT, app_repo_root)
+    if not app_copy["ok"]:
+        return app_copy
+
+    inject_app_config(
+        repo_root=app_repo_root,
+        app_name=app_name,
+    )
+
+    inject_repo_env(
+        repo_root=app_repo_root,
+        env_values={
+            "VITE_API_PROXY_TARGET": "http://host.docker.internal:8081",
+        },
+    )
+
+    return {
+        "ok": True,
+        "repo_root": str(app_repo_root),
+        "app_created": True,
+        "app_reused": False,
+    }
+
 
 def copy_platform_assets_into_agent_repo(repo_root: Path):
     src = PLATFORM_ROOT / "platform"
@@ -254,7 +308,6 @@ def infra_status():
         }
 
 
-
 @app.post("/create-application")
 def create_application(payload: dict[str, Any]):
     try:
@@ -275,62 +328,66 @@ def create_application(payload: dict[str, Any]):
         agent_repo_name = create_cfg.get("repo_name")
         agent_name = first_agent.get("agent_name") or agent_repo_name
         agent_type = first_agent.get("agent_type", "chat_agent")
+
+        capability_name = create_cfg.get("capability_name", "care-management")
         usecase_name = create_cfg.get("usecase_name", "cm_assistant")
 
         if not app_repo_name or not agent_repo_name:
             return {"ok": False, "error": "Missing repo names"}
 
-        capability_name = create_cfg.get("capability_name", "care-management")
-        usecase_name = create_cfg.get("usecase_name", "cm_assistant")
+        # ======================================================
+        # NEW HIERARCHY
+        # capability/
+        #   app_repo
+        #   usecases/
+        #       usecase/
+        #           agent_repo
+        # ======================================================
 
-        target_root = GENERATED_REPOS_ROOT / capability_name / usecase_name
-        target_root.mkdir(parents=True, exist_ok=True)
+        capability_root = GENERATED_REPOS_ROOT / capability_name
+        capability_root.mkdir(parents=True, exist_ok=True)
 
-        app_repo_root = target_root / app_repo_name
-        agent_repo_root = target_root / agent_repo_name
+        usecase_root = capability_root / "usecases" / usecase_name
+        usecase_root.mkdir(parents=True, exist_ok=True)
 
-        app_copy = copy_template_repo(APP_TEMPLATE_ROOT, app_repo_root)
-        if not app_copy["ok"]:
-            return app_copy
+        # ---------- ensure app repo exists ----------
+        app_result = ensure_capability_app_repo(
+            capability_name=capability_name,
+            app_repo_name=app_repo_name,
+            app_name=app_name,
+        )
+        if not app_result["ok"]:
+            return app_result
+
+        app_repo_root = Path(app_result["repo_root"])
+
+        # ---------- create agent repo ----------
+        agent_repo_root = usecase_root / agent_repo_name
 
         agent_copy = copy_template_repo(AGENT_TEMPLATE_ROOT, agent_repo_root)
         if not agent_copy["ok"]:
-            if app_repo_root.exists():
-                shutil.rmtree(app_repo_root, ignore_errors=True)
             return agent_copy
 
+        # ---------- copy platform runtime ----------
         platform_copy = copy_platform_assets_into_agent_repo(agent_repo_root)
         if not platform_copy["ok"]:
-            if app_repo_root.exists():
-                shutil.rmtree(app_repo_root, ignore_errors=True)
-            if agent_repo_root.exists():
-                shutil.rmtree(agent_repo_root, ignore_errors=True)
+            shutil.rmtree(agent_repo_root, ignore_errors=True)
             return platform_copy
 
-        inject_app_config(
-            repo_root=app_repo_root,
-            app_name=app_name,
-        )
-
-
-
+        # ---------- agent env ----------
         inject_repo_env(
             repo_root=agent_repo_root,
             env_values={
                 "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY", ""),
                 "OPENAI_MODEL": os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
-                "TOOL_GATEWAY_URL": os.getenv("TOOL_GATEWAY_URL", "http://host.docker.internal:8080"),
+                "TOOL_GATEWAY_URL": os.getenv(
+                    "TOOL_GATEWAY_URL",
+                    "http://host.docker.internal:8080"
+                ),
             },
         )
 
-        inject_repo_env(
-            repo_root=app_repo_root,
-            env_values={
-                "VITE_API_PROXY_TARGET": "http://host.docker.internal:8081",
-            },
-        )
-
-
+        # ---------- inject runtime config ----------
         inject_agent_usecase_and_prompt_config(
             repo_root=agent_repo_root,
             app_name=app_name,
@@ -339,14 +396,78 @@ def create_application(payload: dict[str, Any]):
             usecase=usecase_name,
         )
 
+        # ======================================================
+        # AUTO REGISTRY SAVE
+        # ======================================================
+
+        prompts_cfg = create_cfg.get("prompts") or {}
+
+        components = {
+            "planner": bool(prompts_cfg.get("planner_system_prompt")),
+            "responder": bool(prompts_cfg.get("responder_system_prompt")),
+            "workflow": agent_type == "workflow_agent",
+            "router": agent_type in ("supervisor_agent", "multi_agent"),
+        }
+
+        prompt_types = []
+        if components["planner"]:
+            prompt_types.append("planner")
+        if components["responder"]:
+            prompt_types.append("responder")
+
+        features = {
+            "memory": bool((create_cfg.get("memory") or {}).get("enabled", False)),
+            "rag": bool((create_cfg.get("rag") or {}).get("enabled", False)),
+            "hitl": bool((create_cfg.get("approval") or {}).get("enabled", False)),
+        }
+
+        default_model = (
+            (create_cfg.get("model") or {}).get("model")
+            or "gpt-4o-mini"
+        )
+
+        save_registry_record({
+            "capability_name": capability_name,
+            "usecase_name": usecase_name,
+            "agent_type": agent_type,
+            "app_name": app_name,
+            "app_repo_name": app_repo_name,
+            "agent_name": agent_name,
+            "agent_repo_name": agent_repo_name,
+            "components": components,
+            "prompt_types": prompt_types,
+            "features": features,
+            "default_model": default_model,
+        })
+
+        # ======================================================
+        # AUTO CONTRACT GENERATION (DYNAMIC)
+        # ======================================================
+
+        contract = {
+            "capability_name": capability_name,
+            "usecase_name": usecase_name,
+            "agent_type": agent_type,
+            "app_name": app_name,
+            "app_repo_name": app_repo_name,
+            "agent_repo_name": agent_repo_name,
+            "components": components,
+            "prompt_types": prompt_types,
+            "features": features,
+            "default_model": default_model,
+        }
+
+        create_usecase_contract(contract)
+
         return {
             "ok": True,
             "status": "application_generated",
-            "industry": payload.get("industry", ""),
-            "customer_name": payload.get("customer_name", ""),
-            "line_of_business": payload.get("line_of_business", ""),
+            "capability_name": capability_name,
+            "usecase_name": usecase_name,
             "app_repo_name": app_repo_name,
             "app_repo_url": str(app_repo_root),
+            "app_created": app_result.get("app_created"),
+            "app_reused": app_result.get("app_reused"),
             "agents": [
                 {
                     "agent_name": agent_name,
@@ -360,6 +481,8 @@ def create_application(payload: dict[str, Any]):
 
     except Exception as e:
         return {"ok": False, "error": str(e)}
+
+
 
 
 @app.post("/infra/start")
@@ -747,4 +870,143 @@ def next_available_repo_name(base: str):
         "ok": True,
         "base": base_slug,
         "suggested": candidate
+    }
+
+@app.get("/usecases/metadata")
+def usecase_metadata(capability_name: str, usecase_name: str):
+    record = get_usecase_metadata(capability_name, usecase_name)
+    if not record:
+        return {
+            "ok": False,
+            "error": f"No metadata found for capability={capability_name} usecase={usecase_name}",
+        }
+    return {
+        "ok": True,
+        "metadata": record,
+    }
+
+@app.get("/contracts/usecase")
+def get_contract(capability_name: str, usecase_name: str, agent_type: str):
+    from usecase_contract_store import get_usecase_contract
+
+    c = get_usecase_contract(capability_name, usecase_name, agent_type)
+
+    if not c:
+        return {"ok": False}
+
+    return {"ok": True, "contract": c}
+
+# =========================================================
+# USE CASE REGISTRY ENDPOINTS (NEW)
+# =========================================================
+
+class UsecaseRegistryRecord(BaseModel):
+    capability_name: str
+    usecase_name: str
+    agent_type: str
+    app_name: str
+    app_repo_name: str
+    agent_name: str
+    agent_repo_name: str
+    components: dict
+    prompt_types: list[str]
+    features: dict
+    default_model: str
+
+class CreateCapabilityRequest(BaseModel):
+    capability_name: str
+    app_name: str
+    app_repo_name: str
+    description: str | None = None
+
+
+@app.get("/registry/usecases")
+def get_registry_records():
+    return {
+        "ok": True,
+        "records": list_registry_records(),
+    }
+
+
+@app.post("/registry/usecases")
+def create_or_update_registry_record(payload: UsecaseRegistryRecord):
+    saved = save_registry_record(payload.model_dump())
+    return {
+        "ok": True,
+        "record": saved,
+    }
+
+
+@app.get("/registry/capabilities")
+def get_registry_capabilities():
+    return {
+        "ok": True,
+        "capabilities": list_capabilities(),
+    }
+
+
+@app.get("/registry/usecases/by-capability")
+def get_registry_usecases(capability_name: str):
+    return {
+        "ok": True,
+        "usecases": list_usecases(capability_name),
+    }
+
+
+@app.get("/registry/agents")
+def get_registry_agents(capability_name: str, usecase_name: str):
+    return {
+        "ok": True,
+        "agents": list_agents(capability_name, usecase_name),
+    }
+
+    @app.get("/registry/app-by-capability")
+    def get_registry_app_by_capability(capability_name: str):
+        app_record = get_app_by_capability(capability_name)
+        return {
+            "ok": True,
+            "app": app_record,
+        }
+
+@app.post("/capability/create")
+def create_capability(payload: CreateCapabilityRequest):
+    try:
+        capability_name = payload.capability_name.strip()
+        app_name = payload.app_name.strip()
+        app_repo_name = payload.app_repo_name.strip()
+
+        if not capability_name:
+            return {"ok": False, "error": "capability_name is required"}
+        if not app_name:
+            return {"ok": False, "error": "app_name is required"}
+        if not app_repo_name:
+            return {"ok": False, "error": "app_repo_name is required"}
+
+        app_result = ensure_capability_app_repo(
+            capability_name=capability_name,
+            app_repo_name=app_repo_name,
+            app_name=app_name,
+        )
+        if not app_result["ok"]:
+            return app_result
+
+        return {
+            "ok": True,
+            "status": "capability_created",
+            "capability_name": capability_name,
+            "app_name": app_name,
+            "app_repo_name": app_repo_name,
+            "app_repo_url": app_result["repo_root"],
+            "app_created": app_result.get("app_created", False),
+            "app_reused": app_result.get("app_reused", False),
+        }
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+@app.get("/registry/app-by-capability")
+def get_registry_app_by_capability(capability_name: str):
+    app_record = get_app_by_capability(capability_name)
+    return {
+        "ok": True,
+        "app": app_record,
     }

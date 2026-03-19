@@ -2,6 +2,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, HTTPException, Query
 from dotenv import load_dotenv
 from pathlib import Path
+
 from app.schemas import PromptCreate, EvalRunRequest
 from app.models import build_prompt_record, build_eval_result
 from app.store import (
@@ -10,6 +11,8 @@ from app.store import (
     create_prompt_with_version,
     append_eval,
     resolve_active_prompt,
+    approve_prompt_version,
+    activate_prompt_version,
 )
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
@@ -43,16 +46,16 @@ def get_prompts():
 
 @app.get("/prompts/resolve")
 def resolve_prompt(
-    app_name: str = Query(...),
-    agent_type: str = Query(...),
+    capability_name: str = Query(...),
     usecase_name: str = Query(...),
+    agent_type: str = Query(...),
     prompt_type: str = Query(...),
     environment: str = Query(...),
 ):
     record = resolve_active_prompt(
-        app_name=app_name,
-        agent_type=agent_type,
+        capability_name=capability_name,
         usecase_name=usecase_name,
+        agent_type=agent_type,
         prompt_type=prompt_type,
         environment=environment,
     )
@@ -67,9 +70,6 @@ def get_prompt(prompt_id: str):
     if not record:
         raise HTTPException(status_code=404, detail=f"Prompt not found: {prompt_id}")
     return {"ok": True, "prompt": record}
-
-
-from app.store import approve_prompt_version, activate_prompt_version
 
 
 @app.post("/prompts/{prompt_id}/approve")
@@ -89,13 +89,14 @@ def activate_prompt(prompt_id: str, version: int = Query(...)):
         raise HTTPException(status_code=400, detail="Version must be approved before activation")
     return {"ok": True, "activation": row}
 
+
 @app.post("/eval/run")
 def run_eval(payload: EvalRunRequest):
     prompt = get_prompt_by_id(payload.prompt_id)
     if not prompt:
         raise HTTPException(status_code=404, detail=f"Prompt not found: {payload.prompt_id}")
 
-    actual_output = f"[SIMULATED_EVAL] prompt={prompt['prompt_name']} input={payload.input_query}"
+    actual_output = f"[SIMULATED_EVAL] prompt_id={payload.prompt_id} input={payload.input_query}"
 
     keyword_hits = 0
     for keyword in payload.expected_keywords:

@@ -1,0 +1,98 @@
+{
+  "::cm_assistant::chat_agent": {
+    "capability_name": "",
+    "usecase_name": "cm_assistant",
+    "agent_type": "chat_agent",
+    "app_name": "CM-APP-NEW-V1",
+    "app_repo_name": "cm-app-new-v1",
+    "agent_repo_name": "cm-chat-agent-v1",
+    "components": {
+      "planner": true,
+      "responder": true,
+      "workflow": false,
+      "router": false
+    },
+    "prompt_types": [
+      "planner",
+      "responder"
+    ],
+    "features": {
+      "memory": true,
+      "rag": true,
+      "hitl": true
+    },
+    "default_model": "gpt-4o-mini"
+  },
+  "care-management::CM Buddy::chat_agent": {
+    "capability_name": "care-management",
+    "usecase_name": "CM Buddy",
+    "agent_type": "chat_agent",
+    "app_name": "CM Capability App",
+    "app_repo_name": "cm-capability-app-v1",
+    "agent_repo_name": "cm-postassess-buddy",
+    "components": {
+      "planner": true,
+      "responder": true,
+      "workflow": false,
+      "router": false
+    },
+    "prompt_types": [
+      "planner",
+      "responder"
+    ],
+    "features": {
+      "memory": true,
+      "rag": true,
+      "hitl": true
+    },
+    "default_model": "gpt-4o-mini"
+  },
+  "care-management::cm_buddy_postAssesment::chat_agent": {
+    "capability_name": "care-management",
+    "usecase_name": "cm_buddy_postAssesment",
+    "agent_type": "chat_agent",
+    "app_name": "CM Capability App",
+    "app_repo_name": "cm-capability-app-v1",
+    "agent_repo_name": "cm-postassess-chat-agent",
+    "components": {
+      "planner": true,
+      "responder": true,
+      "workflow": false,
+      "router": false
+    },
+    "prompt_types": [
+      "planner",
+      "responder"
+    ],
+    "features": {
+      "memory": true,
+      "rag": true,
+      "hitl": true
+    },
+    "default_model": "gpt-4o-mini"
+  },
+  "care-management::CM Like::chat_agent": {
+    "capability_name": "care-management",
+    "usecase_name": "CM Like",
+    "agent_type": "chat_agent",
+    "app_name": "CM Capability App",
+    "app_repo_name": "cm-capability-app-v1",
+    "agent_repo_name": "cm-clone-chat",
+    "components": {
+      "planner": true,
+      "responder": true,
+      "workflow": false,
+      "router": false
+    },
+    "prompt_types": [
+      "planner",
+      "responder"
+    ],
+    "features": {
+      "memory": true,
+      "rag": true,
+      "hitl": true
+    },
+    "default_model": "gpt-4o-mini"
+  }
+}
