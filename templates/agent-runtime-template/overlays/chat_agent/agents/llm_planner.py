@@ -162,6 +162,7 @@ def plan(prompt: str, history: List[Dict[str, Any]], ctx: Dict[str, Any]) -> Lis
     active_assessment_id = explicit_assessment_id or latest_assessment_id
     print(f"[planner] allowed_tools={allowed_tools} explicit_assessment_id={explicit_assessment_id} prompt={p}", flush=True)
     history_text = _history_text(history)
+    prompt_member_id = _extract_member_id(p)
 
     # --------------------------------------------------
     # HARD ROUTING — deterministic routing before LLM
@@ -221,10 +222,20 @@ Rules:
     retrieval_cfg = ctx.get("retrieval") or {}
     default_retrieval_tool = retrieval_cfg.get("default_tool", "search_kb")
 
+    if prompt_member_id and (
+        "summary" in lower_p or "summarize" in lower_p or "member" in lower_p or "show" in lower_p
+    ):
+        if "get_member_summary" in allowed_tools:
+            return [f"get_member_summary: {prompt_member_id}"]
+
+    if explicit_assessment_id and any(x in lower_p for x in clinical_summary_phrases):
+        if "get_assessment_summary" in allowed_tools:
+            return [f"get_assessment_summary: {explicit_assessment_id}"]
+
     if ":" not in line:
         if default_retrieval_tool in allowed_tools:
             return [f"{default_retrieval_tool}: {p}"]
-        return [f"{allowed_tools[0]}: {p}"] if allowed_tools else [f"{default_retrieval_tool}: {p}"]
+        return [f"{default_retrieval_tool}: {p}"]
 
     tool, arg = line.split(":", 1)
     tool = tool.strip()
@@ -245,23 +256,34 @@ Rules:
     ]
 
     if explicit_assessment_id and any(x in lower_p for x in patient_phrases):
-        return [f"get_assessment_summary: {explicit_assessment_id}"]
+        if "get_assessment_summary" in allowed_tools:
+            return [f"get_assessment_summary: {explicit_assessment_id}"]
+        return [f"{default_retrieval_tool}: {p}"]
 
     if tool == "get_member_summary":
-        if not arg_member_id and active_assessment_id:
+        if not arg_member_id and active_assessment_id and "get_assessment_summary" in allowed_tools:
             return [f"get_assessment_summary: {active_assessment_id}"]
 
         if arg_member_id and arg_member_id not in {prompt_member_id, history_member_id}:
-            if active_assessment_id:
+            if active_assessment_id and "get_assessment_summary" in allowed_tools:
                 return [f"get_assessment_summary: {active_assessment_id}"]
-            return [f"search_kb: {p}"]
+            return [f"{default_retrieval_tool}: {p}"]
 
-    if tool == "get_assessment_summary" and "get_assessment_summary" in allowed_tools:
+    if tool == "get_assessment_summary":
         resolved_assessment_id = arg_assessment_id or explicit_assessment_id or latest_assessment_id
-        if resolved_assessment_id:
+        if resolved_assessment_id and "get_assessment_summary" in allowed_tools:
             return [f"get_assessment_summary: {resolved_assessment_id}"]
 
-    if active_assessment_id and any(x in lower_p for x in patient_phrases):
-        return [f"get_assessment_summary: {active_assessment_id}"]
+        if prompt_member_id and "get_member_summary" in allowed_tools:
+            return [f"get_member_summary: {prompt_member_id}"]
 
-    return [f"{tool}: {arg}"]
+        return [f"{default_retrieval_tool}: {p}"]
+
+    if active_assessment_id and any(x in lower_p for x in patient_phrases):
+        if "get_assessment_summary" in allowed_tools:
+            return [f"get_assessment_summary: {active_assessment_id}"]
+
+    if tool in allowed_tools:
+        return [f"{tool}: {arg}"]
+
+    return [f"{default_retrieval_tool}: {p}"]

@@ -94,5 +94,68 @@
       "hitl": true
     },
     "default_model": "gpt-4o-mini"
+  },
+  "care-management::cm_overlay_test::chat_agent": {
+    "capability_name": "care-management",
+    "usecase_name": "cm_overlay_test",
+    "agent_type": "chat_agent",
+    "app_name": "cm-test",
+    "app_repo_name": "cm-test-app-v1",
+    "agent_repo_name": "cm-test-agent-v1",
+    "components": {
+      "planner": false,
+      "responder": false,
+      "workflow": false,
+      "router": false
+    },
+    "prompt_types": [],
+    "features": {
+      "memory": false,
+      "rag": false,
+      "hitl": false
+    },
+    "default_model": "gpt-4o-mini"
+  },
+  "care-management::cm_overlay_test_v2::chat_agent": {
+    "capability_name": "care-management",
+    "usecase_name": "cm_overlay_test_v2",
+    "agent_type": "chat_agent",
+    "app_name": "cm-test-v2",
+    "app_repo_name": "cm-test-app-v2",
+    "agent_repo_name": "cm-test-agent-v2",
+    "components": {
+      "planner": false,
+      "responder": false,
+      "workflow": false,
+      "router": false
+    },
+    "prompt_types": [],
+    "features": {
+      "memory": false,
+      "rag": false,
+      "hitl": false
+    },
+    "default_model": "gpt-4o-mini"
+  },
+  "care-management::cm_overlay_test_v3::chat_agent": {
+    "capability_name": "care-management",
+    "usecase_name": "cm_overlay_test_v3",
+    "agent_type": "chat_agent",
+    "app_name": "cm-test-v3",
+    "app_repo_name": "cm-test-app-v3",
+    "agent_repo_name": "cm-test-agent-v3",
+    "components": {
+      "planner": false,
+      "responder": false,
+      "workflow": false,
+      "router": false
+    },
+    "prompt_types": [],
+    "features": {
+      "memory": false,
+      "rag": false,
+      "hitl": false
+    },
+    "default_model": "gpt-4o-mini"
   }
 }

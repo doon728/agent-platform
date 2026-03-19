@@ -92,6 +92,47 @@ def copy_template_repo(src: Path, dest: Path):
     }
 
 
+def assemble_agent_repo_from_template(
+    dest: Path,
+    agent_type: str,
+):
+    if dest.exists():
+        return {
+            "ok": False,
+            "error": f"Target repo already exists: {dest}",
+            "path": str(dest),
+        }
+
+    common_root = AGENT_TEMPLATE_ROOT / "common"
+    overlay_root = AGENT_TEMPLATE_ROOT / "overlays" / agent_type
+
+    if not common_root.exists():
+        return {
+            "ok": False,
+            "error": f"Common agent template not found: {common_root}",
+            "path": str(common_root),
+        }
+
+    if not overlay_root.exists():
+        return {
+            "ok": False,
+            "error": f"Overlay template not found for agent_type '{agent_type}': {overlay_root}",
+            "path": str(overlay_root),
+        }
+
+    shutil.copytree(common_root, dest)
+
+    dest_overlay_root = dest / "overlays" / agent_type
+    dest_overlay_root.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(overlay_root, dest_overlay_root)
+
+    return {
+        "ok": True,
+        "repo_root": str(dest),
+        "common_root": str(common_root),
+        "overlay_root": str(overlay_root),
+    }
+
 def ensure_capability_app_repo(
     capability_name: str,
     app_repo_name: str,
@@ -154,6 +195,103 @@ def copy_platform_assets_into_agent_repo(repo_root: Path):
         "ok": True,
         "platform_root": str(dest),
     }
+
+def materialize_usecase_pack(
+    repo_root: Path,
+    capability_name: str,
+    usecase_name: str,
+    agent_type: str,
+    create_cfg: dict[str, Any],
+):
+    usecase_dir = (
+        repo_root
+        / "platform"
+        / "capability-packs"
+        / capability_name
+        / "usecases"
+        / usecase_name
+    )
+    usecase_dir.mkdir(parents=True, exist_ok=True)
+
+    prompts_cfg = create_cfg.get("prompts") or {}
+    memory_cfg = create_cfg.get("memory") or {}
+    rag_cfg = create_cfg.get("rag") or {}
+    approval_cfg = create_cfg.get("approval") or {}
+    tool_policy_cfg = create_cfg.get("tool_policy") or {}
+
+    allowed_tools = tool_policy_cfg.get("allowed_tools") or []
+
+    if not allowed_tools:
+        allowed_tools = [
+            "get_member_summary",
+            "get_member",
+            "get_assessment_summary",
+            "search_kb",
+            "write_case_note",
+        ]
+
+    usecase_yaml = {
+        "usecase": {
+            "name": usecase_name,
+            "description": create_cfg.get("description") or f"{usecase_name} generated use case",
+        },
+        "agent": {
+            "type": agent_type,
+            "planner_mode": "llm",
+        },
+        "tools": {
+            "mode": "selected",
+            "allowed": allowed_tools,
+        },
+        "retrieval": {
+            "enabled": bool(rag_cfg.get("enabled", True)),
+            "default_tool": rag_cfg.get("default_tool", "search_kb"),
+            "fallback": {
+                "allow_no_results_response": True,
+            },
+        },
+        "risk": {
+            "approval_required": bool(approval_cfg.get("enabled", False)),
+        },
+        "features": {
+            "memory": bool(memory_cfg.get("enabled", False)),
+            "rag": bool(rag_cfg.get("enabled", True)),
+            "hitl": bool(approval_cfg.get("enabled", False)),
+            "observability": True,
+            "prompt_versioning": True,
+        },
+    }
+
+    prompt_defaults_yaml = {
+        "planner_system_prompt": prompts_cfg.get("planner_system_prompt")
+        or (
+            "You are a care management planner.\n"
+            "Use get_member_summary for member ids like m-100001.\n"
+            "Use get_assessment_summary only for assessment ids like asmt-100001.\n"
+            "If no direct member or assessment lookup fits, use search_kb."
+        ),
+        "responder_system_prompt": prompts_cfg.get("responder_system_prompt")
+        or (
+            "You are a care management nurse assistant.\n"
+            "Answer clearly and briefly using tool output only."
+        ),
+    }
+
+    memory_yaml = {
+        "enabled": bool(memory_cfg.get("enabled", False)),
+        "thread": bool(memory_cfg.get("thread", True)),
+        "case": bool(memory_cfg.get("case", True)),
+        "long_term": bool(memory_cfg.get("long_term", False)),
+    }
+
+    workflow_rules_yaml = {
+        "rules": create_cfg.get("workflow_rules") or []
+    }
+
+    (usecase_dir / "usecase.yaml").write_text(yaml.safe_dump(usecase_yaml, sort_keys=False))
+    (usecase_dir / "prompt-defaults.yaml").write_text(yaml.safe_dump(prompt_defaults_yaml, sort_keys=False))
+    (usecase_dir / "memory.yaml").write_text(yaml.safe_dump(memory_yaml, sort_keys=False))
+    (usecase_dir / "workflow-rules.yaml").write_text(yaml.safe_dump(workflow_rules_yaml, sort_keys=False))
 
 
 
@@ -364,7 +502,7 @@ def create_application(payload: dict[str, Any]):
         # ---------- create agent repo ----------
         agent_repo_root = usecase_root / agent_repo_name
 
-        agent_copy = copy_template_repo(AGENT_TEMPLATE_ROOT, agent_repo_root)
+        agent_copy = assemble_agent_repo_from_template(agent_repo_root, agent_type)
         if not agent_copy["ok"]:
             return agent_copy
 
@@ -374,6 +512,14 @@ def create_application(payload: dict[str, Any]):
             shutil.rmtree(agent_repo_root, ignore_errors=True)
             return platform_copy
 
+
+        materialize_usecase_pack(
+            repo_root=agent_repo_root,
+            capability_name=capability_name,
+            usecase_name=usecase_name,
+            agent_type=agent_type,
+            create_cfg=create_cfg,
+        )
         # ---------- agent env ----------
         inject_repo_env(
             repo_root=agent_repo_root,

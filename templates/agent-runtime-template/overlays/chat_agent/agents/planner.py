@@ -1,5 +1,5 @@
 from __future__ import annotations
-from platform.prompt.prompt_client import PromptServiceClient
+from src.platform.prompt.prompt_client import PromptServiceClient
 from src.platform.config import load_config
 import os
 
