@@ -1,0 +1,88 @@
+memory:
+  enabled: true
+
+  scope_taxonomy:
+    - conversation
+    - user
+    - member
+    - case
+    - assessment
+    - care_plan
+
+  scope_resolution:
+    priority:
+      - explicit_request
+      - ui_context
+      - domain_lookup
+      - prompt_inference
+      - conversation_fallback
+
+  write_policies:
+    short_term:
+      enabled: true
+      trigger: every_turn
+      primary_scope: conversation
+      retain_last_n_turns: 12
+
+    episodic:
+      enabled: true
+      triggers:
+        - tool_success
+        - workflow_checkpoint
+        - assessment_completed
+      allowed_scopes:
+        - case
+        - assessment
+      link_to_parent_scope: true
+      link_to_root_scope: true
+      link_to_member_scope: true
+
+    semantic:
+      enabled: true
+      trigger: extractor
+      extractor_profile: stable_fact_extractor_v1
+      confidence_threshold: 0.85
+      allowed_scopes:
+        - member
+        - user
+
+    summary:
+      enabled: true
+      triggers:
+        every_n_turns: 10
+        on_session_end: true
+        on_workflow_end: true
+      allowed_scopes:
+        - conversation
+        - case
+
+  retrieval_policies:
+    conversation:
+      short_term:
+        include: true
+        max_turns: 8
+
+      summary:
+        include: true
+        max_items: 1
+
+    case:
+      episodic:
+        include: true
+        top_k: 5
+        include_parent_scope: true
+        include_root_scope: true
+
+      summary:
+        include: true
+        max_items: 1
+
+    member:
+      semantic:
+        include: true
+        top_k: 3
+
+  context_assembly:
+    max_total_items: 12
+    prefer_summaries_over_raw: true
+    deduplicate: true
