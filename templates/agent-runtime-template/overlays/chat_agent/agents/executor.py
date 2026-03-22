@@ -63,12 +63,39 @@ def execute(steps: List[str], ctx: Dict[str, Any]) -> Any:
     plan = route_step(step, ctx, raw_prompt=ctx.get("prompt", step))
     mode = plan.get("mode")
 
+
+        # -----------------------------
+        # FIX: extract assessment id from planner step
+        # -----------------------------
+    if mode == "direct_tool":
+        if ":" in step and "|" in step:
+            try:
+                tool_part, rest = step.split(":", 1)
+                assessment_part, note_part = rest.split("|", 1)
+
+                extracted_assessment_id = assessment_part.strip()
+                extracted_note = note_part.strip()
+
+                if "input" not in plan:
+                    plan["input"] = {}
+
+                # inject parsed values
+                plan["input"]["assessment_id"] = extracted_assessment_id
+                plan["input"]["note"] = extracted_note
+
+                print(f"[executor_fix] assessment_id={extracted_assessment_id}")
+
+            except Exception as e:
+                print(f"[executor_fix_error] {e}")
+
     if mode == "direct_tool":
         tool = plan["tool"]
         tool_input = plan["input"]
 
         add_step(run_id, "tool_call", {"tool": tool, "input": tool_input})
         result = _invoke_tool(tool, tool_input, ctx)
+
+
 
         # -----------------------------
         # Retrieval fallback handling

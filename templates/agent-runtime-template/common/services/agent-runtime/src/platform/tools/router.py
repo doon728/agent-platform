@@ -142,7 +142,7 @@ def route_step(step: str, ctx: Dict[str, Any], raw_prompt: str | None = None) ->
                 "mode": "direct_tool",
                 "tool": "write_case_note",
                 "input": {
-                    "case_id": case_id,
+                    "assessment_id": case_id,
                     "note": note,
                 },
             }

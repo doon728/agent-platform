@@ -278,10 +278,145 @@ def materialize_usecase_pack(
     }
 
     memory_yaml = {
-        "enabled": bool(memory_cfg.get("enabled", False)),
-        "thread": bool(memory_cfg.get("thread", True)),
-        "case": bool(memory_cfg.get("case", True)),
-        "long_term": bool(memory_cfg.get("long_term", False)),
+        "enabled": bool(memory_cfg.get("enabled", True)),
+        "scope_taxonomy": memory_cfg.get("scope_taxonomy") or [
+            "conversation",
+            "user",
+            "member",
+            "case",
+            "assessment",
+            "care_plan",
+        ],
+        "scope_resolution": {
+            "priority": (
+                (memory_cfg.get("scope_resolution") or {}).get("priority")
+                or [
+                    "explicit_request",
+                    "ui_context",
+                    "domain_lookup",
+                    "prompt_inference",
+                    "conversation_fallback",
+                ]
+            )
+        },
+        "write_policies": {
+            "short_term": {
+                "enabled": (
+                    ((memory_cfg.get("write_policies") or {}).get("short_term") or {}).get("enabled", True)
+                ),
+                "trigger": (
+                    ((memory_cfg.get("write_policies") or {}).get("short_term") or {}).get("trigger", "every_turn")
+                ),
+                "primary_scope": (
+                    ((memory_cfg.get("write_policies") or {}).get("short_term") or {}).get("primary_scope", "conversation")
+                ),
+                "retain_last_n_turns": (
+                    ((memory_cfg.get("write_policies") or {}).get("short_term") or {}).get("retain_last_n_turns", 12)
+                ),
+            },
+            "episodic": {
+                "enabled": (
+                    ((memory_cfg.get("write_policies") or {}).get("episodic") or {}).get("enabled", True)
+                ),
+                "triggers": (
+                    ((memory_cfg.get("write_policies") or {}).get("episodic") or {}).get("triggers")
+                    or ["tool_success", "workflow_checkpoint", "assessment_completed"]
+                ),
+                "allowed_scopes": (
+                    ((memory_cfg.get("write_policies") or {}).get("episodic") or {}).get("allowed_scopes")
+                    or ["case", "assessment"]
+                ),
+                "link_to_parent_scope": (
+                    ((memory_cfg.get("write_policies") or {}).get("episodic") or {}).get("link_to_parent_scope", True)
+                ),
+                "link_to_root_scope": (
+                    ((memory_cfg.get("write_policies") or {}).get("episodic") or {}).get("link_to_root_scope", True)
+                ),
+                "link_to_member_scope": (
+                    ((memory_cfg.get("write_policies") or {}).get("episodic") or {}).get("link_to_member_scope", True)
+                ),
+            },
+            "semantic": {
+                "enabled": (
+                    ((memory_cfg.get("write_policies") or {}).get("semantic") or {}).get("enabled", False)
+                ),
+                "trigger": (
+                    ((memory_cfg.get("write_policies") or {}).get("semantic") or {}).get("trigger", "extractor")
+                ),
+                "extractor_profile": (
+                    ((memory_cfg.get("write_policies") or {}).get("semantic") or {}).get(
+                        "extractor_profile", "stable_fact_extractor_v1"
+                    )
+                ),
+                "confidence_threshold": (
+                    ((memory_cfg.get("write_policies") or {}).get("semantic") or {}).get(
+                        "confidence_threshold", 0.85
+                    )
+                ),
+                "allowed_scopes": (
+                    ((memory_cfg.get("write_policies") or {}).get("semantic") or {}).get("allowed_scopes")
+                    or ["member", "user"]
+                ),
+            },
+            "summary": {
+                "enabled": (
+                    ((memory_cfg.get("write_policies") or {}).get("summary") or {}).get("enabled", True)
+                ),
+                "triggers": (
+                    ((memory_cfg.get("write_policies") or {}).get("summary") or {}).get("triggers")
+                    or {
+                        "every_n_turns": 10,
+                        "on_session_end": True,
+                        "on_workflow_end": True,
+                    }
+                ),
+                "allowed_scopes": (
+                    ((memory_cfg.get("write_policies") or {}).get("summary") or {}).get("allowed_scopes")
+                    or ["conversation", "case"]
+                ),
+            },
+        },
+        "retrieval_policies": (
+            memory_cfg.get("retrieval_policies")
+            or {
+                "conversation": {
+                    "short_term": {
+                        "include": True,
+                        "max_turns": 8,
+                    },
+                    "summary": {
+                        "include": True,
+                        "max_items": 1,
+                    },
+                },
+                "case": {
+                    "episodic": {
+                        "include": True,
+                        "top_k": 5,
+                        "include_parent_scope": True,
+                        "include_root_scope": True,
+                    },
+                    "summary": {
+                        "include": True,
+                        "max_items": 1,
+                    },
+                },
+                "member": {
+                    "semantic": {
+                        "include": True,
+                        "top_k": 3,
+                    },
+                },
+            }
+        ),
+        "context_assembly": (
+            memory_cfg.get("context_assembly")
+            or {
+                "max_total_items": 12,
+                "prefer_summaries_over_raw": True,
+                "deduplicate": True,
+            }
+        ),
     }
 
     workflow_rules_yaml = {
@@ -293,6 +428,60 @@ def materialize_usecase_pack(
     (usecase_dir / "memory.yaml").write_text(yaml.safe_dump(memory_yaml, sort_keys=False))
     (usecase_dir / "workflow-rules.yaml").write_text(yaml.safe_dump(workflow_rules_yaml, sort_keys=False))
 
+
+def derive_generation_metadata(
+    agent_type: str,
+    create_cfg: dict[str, Any],
+):
+    prompts_cfg = create_cfg.get("prompts") or {}
+    memory_cfg = create_cfg.get("memory") or {}
+    rag_cfg = create_cfg.get("rag") or {}
+    approval_cfg = create_cfg.get("approval") or {}
+
+    planner_prompt = prompts_cfg.get("planner_system_prompt") or (
+        "You are a care management planner.\n"
+        "Use get_member_summary for member ids like m-100001.\n"
+        "Use get_assessment_summary only for assessment ids like asmt-100001.\n"
+        "If no direct member or assessment lookup fits, use search_kb."
+    )
+
+    responder_prompt = prompts_cfg.get("responder_system_prompt") or (
+        "You are a care management nurse assistant.\n"
+        "Answer clearly and briefly using tool output only."
+    )
+
+    components = {
+        "planner": bool(planner_prompt),
+        "responder": bool(responder_prompt),
+        "workflow": agent_type == "workflow_agent",
+        "router": agent_type in ("supervisor_agent", "multi_agent"),
+    }
+
+    prompt_types = []
+    if components["planner"]:
+        prompt_types.append("planner")
+    if components["responder"]:
+        prompt_types.append("responder")
+
+    features = {
+        "memory": bool(memory_cfg.get("enabled", False)),
+        "rag": bool(rag_cfg.get("enabled", True)),
+        "hitl": bool(approval_cfg.get("enabled", False)),
+        "observability": True,
+        "prompt_versioning": True,
+    }
+
+    default_model = (
+        (create_cfg.get("model") or {}).get("model")
+        or "gpt-4o-mini"
+    )
+
+    return {
+        "components": components,
+        "prompt_types": prompt_types,
+        "features": features,
+        "default_model": default_model,
+    }
 
 
 def inject_agent_usecase_and_prompt_config(
@@ -546,31 +735,15 @@ def create_application(payload: dict[str, Any]):
         # AUTO REGISTRY SAVE
         # ======================================================
 
-        prompts_cfg = create_cfg.get("prompts") or {}
-
-        components = {
-            "planner": bool(prompts_cfg.get("planner_system_prompt")),
-            "responder": bool(prompts_cfg.get("responder_system_prompt")),
-            "workflow": agent_type == "workflow_agent",
-            "router": agent_type in ("supervisor_agent", "multi_agent"),
-        }
-
-        prompt_types = []
-        if components["planner"]:
-            prompt_types.append("planner")
-        if components["responder"]:
-            prompt_types.append("responder")
-
-        features = {
-            "memory": bool((create_cfg.get("memory") or {}).get("enabled", False)),
-            "rag": bool((create_cfg.get("rag") or {}).get("enabled", False)),
-            "hitl": bool((create_cfg.get("approval") or {}).get("enabled", False)),
-        }
-
-        default_model = (
-            (create_cfg.get("model") or {}).get("model")
-            or "gpt-4o-mini"
+        generation_meta = derive_generation_metadata(
+            agent_type=agent_type,
+            create_cfg=create_cfg,
         )
+
+        components = generation_meta["components"]
+        prompt_types = generation_meta["prompt_types"]
+        features = generation_meta["features"]
+        default_model = generation_meta["default_model"]
 
         save_registry_record({
             "capability_name": capability_name,
@@ -1136,6 +1309,20 @@ def create_capability(payload: CreateCapabilityRequest):
         if not app_result["ok"]:
             return app_result
 
+
+        save_registry_record({
+            "capability_name": capability_name,
+            "usecase_name": "__capability__",
+            "agent_type": "__app__",
+            "app_name": app_name,
+            "app_repo_name": app_repo_name,
+            "agent_name": "",
+            "agent_repo_name": "",
+            "components": {},
+            "prompt_types": [],
+            "features": {},
+            "default_model": "",
+        })
         return {
             "ok": True,
             "status": "capability_created",

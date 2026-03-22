@@ -3,14 +3,21 @@ from __future__ import annotations
 from typing import Any, Dict, List
 
 from langgraph.checkpoint.memory import MemorySaver
+from src.platform.memory.memory_store import FileMemoryStore
+from src.platform.memory.summary_engine import maybe_write_conversation_summary
+from src.platform.memory.write_engine import (
+    write_raw_turns,
+    write_episodic_event,
+    write_semantic_memories,
+)
 
 from src.graph.build_graph import build_graph
-from src.platform.memory import get_memory_service
 from src.platform.observability.tracer import start_run, finish_run
 from src.platform.usecase_config_loader import load_usecase_config
 from src.platform.config import load_config
-
-memory = get_memory_service()
+from src.platform.memory.config_loader import load_memory_config
+from src.platform.memory.scope_resolver import resolve_scopes
+from src.platform.memory.context_builder import build_memory_context
 
 
 class LangGraphRunner:
@@ -31,6 +38,8 @@ class LangGraphRunner:
         thread_id = ctx.get("thread_id") or "default-thread"
         case_id = ctx.get("case_id")
 
+        memory_store = FileMemoryStore()
+
         run_id = start_run(
             agent="chat_agent",
             thread_id=thread_id,
@@ -44,29 +53,40 @@ class LangGraphRunner:
             cfg.app.capability_name,
             cfg.app.active_usecase
         )
+
         ctx["usecase_config"] = usecase_cfg
         ctx["prompts"] = usecase_cfg.get("prompts", {})
         ctx["tool_policy"] = usecase_cfg.get("tool_policy", {})
         ctx["retrieval"] = usecase_cfg.get("retrieval", {})
-        ctx["memory"] = usecase_cfg.get("memory", {})
         ctx["workflow_rules"] = usecase_cfg.get("workflow_rules", {})
-        self._ensure_app()
 
-        thread_history: List[Dict[str, Any]] = memory.get_history(
-            scope="thread",
+        memory_cfg = load_memory_config(usecase_cfg)
+        active_scopes = resolve_scopes(ctx, memory_cfg)
+
+        memory_context = build_memory_context(
+            active_scopes,
+            memory_cfg,
             tenant_id=tenant_id,
-            key=thread_id,
         )
 
-        case_history: List[Dict[str, Any]] = []
-        if case_id:
-            case_history = memory.get_history(
-                scope="case",
-                tenant_id=tenant_id,
-                key=case_id,
-            )
+        ctx["memory"] = memory_cfg
+        ctx["memory_scopes"] = active_scopes
+        ctx["memory_context"] = memory_context
 
-        history = case_history + thread_history
+        self._ensure_app()
+
+        # IMPORTANT:
+        # Use the SAME file-backed source for read history that we use for writes.
+        thread_history: List[Dict[str, Any]] = memory_context.get("recent_turns") or []
+
+        # Optional: keep episodic memories available in ctx, but do NOT mix them into planner chat history
+        # because planner expects conversational turns with role/content.
+        history = thread_history
+
+        print(f"[thread_history_count] {len(thread_history or [])}", flush=True)
+        print(f"[thread_history_raw] {thread_history}", flush=True)
+        print(f"[ctx_assessment] {ctx.get('assessment_id')}", flush=True)
+        print(f"[ctx_member] {ctx.get('member_id')}", flush=True)
 
         initial_state = {
             "prompt": prompt,
@@ -82,6 +102,9 @@ class LangGraphRunner:
 
         out = self._app.invoke(initial_state, config=config)
 
+        out = self._app.invoke(initial_state, config=config)
+
+        # Preserve approval payloads exactly as returned by the graph/executor.
         if isinstance(out, dict) and isinstance(out.get("result"), dict):
             inner = out["result"]
             if isinstance(inner, dict) and inner.get("result") == "APPROVAL_REQUIRED":
@@ -95,30 +118,51 @@ class LangGraphRunner:
             if result is None:
                 result = out
 
-        memory.append(
-            scope="thread",
+        write_raw_turns(
+            store=memory_store,
             tenant_id=tenant_id,
-            key=thread_id,
-            role="user",
-            content=prompt,
+            thread_id=thread_id,
+            user_prompt=prompt,
+            assistant_response=str(result),
+            metadata={
+                "case_id": case_id,
+                "member_id": ctx.get("member_id"),
+                "assessment_id": ctx.get("assessment_id"),
+                "care_plan_id": ctx.get("care_plan_id"),
+            },
         )
 
-        memory.append(
-            scope="thread",
+        maybe_write_conversation_summary(
+            store=memory_store,
             tenant_id=tenant_id,
-            key=thread_id,
-            role="assistant",
-            content=str(result),
+            thread_id=thread_id,
+            memory_cfg=memory_cfg,
         )
 
-        if case_id:
-            memory.append(
-                scope="case",
+        episodic_cfg = ((memory_cfg.get("write_policies") or {}).get("episodic") or {})
+        if episodic_cfg.get("enabled", False):
+            write_episodic_event(
+                store=memory_store,
                 tenant_id=tenant_id,
-                key=case_id,
-                role="assistant",
-                content=str(result),
+                scopes=active_scopes,
+                content=f"User asked: {prompt}\nAssistant answered: {str(result)}",
+                metadata={
+                    "case_id": case_id,
+                    "member_id": ctx.get("member_id"),
+                    "assessment_id": ctx.get("assessment_id"),
+                    "care_plan_id": ctx.get("care_plan_id"),
+                    "source": "invocation",
+                },
             )
+
+        write_semantic_memories(
+            store=memory_store,
+            tenant_id=tenant_id,
+            ctx=ctx,
+            memory_cfg=memory_cfg,
+            prompt=prompt,
+            response=str(result),
+        )
 
         finish_run(run_id)
 

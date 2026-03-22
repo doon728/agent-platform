@@ -1,214 +1,41 @@
 [
   {
-    "capability_name": "care-management",
-    "usecase_name": "cm_assistant",
-    "agent_type": "chat_agent",
-    "app_name": "CM Capability App",
-    "app_repo_name": "cm-capability-app-v1",
-    "agent_name": "CM Chat Agent",
-    "agent_repo_name": "cm-chat-agent-v1",
-    "components": {
-      "planner": true,
-      "responder": true,
-      "workflow": false,
-      "router": false
-    },
-    "prompt_types": [
-      "planner",
-      "responder"
-    ],
-    "features": {
-      "memory": true,
-      "rag": true,
-      "hitl": true
-    },
-    "default_model": "gpt-4o-mini"
-  },
-  {
-    "capability_name": "",
-    "usecase_name": "cm_assistant",
-    "agent_type": "chat_agent",
-    "app_name": "CM-APP-NEW-V1",
-    "app_repo_name": "cm-app-new-v1",
-    "agent_name": "CM-CHAT-AGENT-V1",
-    "agent_repo_name": "cm-chat-agent-v1",
-    "components": {
-      "planner": true,
-      "responder": true,
-      "workflow": false,
-      "router": false
-    },
-    "prompt_types": [
-      "planner",
-      "responder"
-    ],
-    "features": {
-      "memory": true,
-      "rag": true,
-      "hitl": true
-    },
-    "default_model": "gpt-4o-mini"
-  },
-  {
-    "capability_name": "care-management",
-    "usecase_name": "CM Buddy",
-    "agent_type": "chat_agent",
-    "app_name": "CM Capability App",
-    "app_repo_name": "cm-capability-app-v1",
-    "agent_name": "CM PostAssess buddy",
-    "agent_repo_name": "cm-postassess-buddy",
-    "components": {
-      "planner": true,
-      "responder": true,
-      "workflow": false,
-      "router": false
-    },
-    "prompt_types": [
-      "planner",
-      "responder"
-    ],
-    "features": {
-      "memory": true,
-      "rag": true,
-      "hitl": true
-    },
-    "default_model": "gpt-4o-mini"
-  },
-  {
-    "capability_name": "care-management",
-    "usecase_name": "cm_buddy_postAssesment",
-    "agent_type": "chat_agent",
-    "app_name": "CM Capability App",
-    "app_repo_name": "cm-capability-app-v1",
-    "agent_name": "CM PostAssess Chat Agent",
-    "agent_repo_name": "cm-postassess-chat-agent",
-    "components": {
-      "planner": true,
-      "responder": true,
-      "workflow": false,
-      "router": false
-    },
-    "prompt_types": [
-      "planner",
-      "responder"
-    ],
-    "features": {
-      "memory": true,
-      "rag": true,
-      "hitl": true
-    },
-    "default_model": "gpt-4o-mini"
-  },
-  {
-    "capability_name": "care-management",
-    "usecase_name": "CM Like",
-    "agent_type": "chat_agent",
-    "app_name": "CM Capability App",
-    "app_repo_name": "cm-capability-app-v1",
-    "agent_name": "CM Clone Chat",
-    "agent_repo_name": "cm-clone-chat",
-    "components": {
-      "planner": true,
-      "responder": true,
-      "workflow": false,
-      "router": false
-    },
-    "prompt_types": [
-      "planner",
-      "responder"
-    ],
-    "features": {
-      "memory": true,
-      "rag": true,
-      "hitl": true
-    },
-    "default_model": "gpt-4o-mini"
-  },
-  {
-    "capability_name": "care-management",
-    "usecase_name": "cm_overlay_test",
-    "agent_type": "chat_agent",
-    "app_name": "cm-test",
-    "app_repo_name": "cm-test-app-v1",
-    "agent_name": "cm_test_agent",
-    "agent_repo_name": "cm-test-agent-v1",
-    "components": {
-      "planner": false,
-      "responder": false,
-      "workflow": false,
-      "router": false
-    },
+    "capability_name": "care-mangement",
+    "usecase_name": "__capability__",
+    "agent_type": "__app__",
+    "app_name": "CM Hero Fl APP",
+    "app_repo_name": "cm-hero-fl-app",
+    "agent_name": "",
+    "agent_repo_name": "",
+    "components": {},
     "prompt_types": [],
-    "features": {
-      "memory": false,
-      "rag": false,
-      "hitl": false
-    },
-    "default_model": "gpt-4o-mini"
+    "features": {},
+    "default_model": ""
   },
   {
-    "capability_name": "care-management",
-    "usecase_name": "cm_overlay_test_v2",
+    "capability_name": "care-mangement",
+    "usecase_name": "UC_CM_Assess_PreCall",
     "agent_type": "chat_agent",
-    "app_name": "cm-test-v2",
-    "app_repo_name": "cm-test-app-v2",
-    "agent_name": "cm_test_agent_v2",
-    "agent_repo_name": "cm-test-agent-v2",
+    "app_name": "CM Hero Fl APP",
+    "app_repo_name": "cm-hero-fl-app",
+    "agent_name": "CM_Assist_Chat",
+    "agent_repo_name": "cm-assist-chat",
     "components": {
-      "planner": false,
-      "responder": false,
+      "planner": true,
+      "responder": true,
       "workflow": false,
       "router": false
     },
-    "prompt_types": [],
+    "prompt_types": [
+      "planner",
+      "responder"
+    ],
     "features": {
-      "memory": false,
-      "rag": false,
-      "hitl": false
-    },
-    "default_model": "gpt-4o-mini"
-  },
-  {
-    "capability_name": "care-management",
-    "usecase_name": "cm_overlay_test_v3",
-    "agent_type": "chat_agent",
-    "app_name": "cm-test-v3",
-    "app_repo_name": "cm-test-app-v3",
-    "agent_name": "cm_test_agent_v3",
-    "agent_repo_name": "cm-test-agent-v3",
-    "components": {
-      "planner": false,
-      "responder": false,
-      "workflow": false,
-      "router": false
-    },
-    "prompt_types": [],
-    "features": {
-      "memory": false,
-      "rag": false,
-      "hitl": false
-    },
-    "default_model": "gpt-4o-mini"
-  },
-  {
-    "capability_name": "care-management",
-    "usecase_name": "cm_overlay_test_v4",
-    "agent_type": "chat_agent",
-    "app_name": "cm-test-v4",
-    "app_repo_name": "cm-test-app-v4",
-    "agent_name": "cm_test_agent_v4",
-    "agent_repo_name": "cm-test-agent-v4",
-    "components": {
-      "planner": false,
-      "responder": false,
-      "workflow": false,
-      "router": false
-    },
-    "prompt_types": [],
-    "features": {
-      "memory": false,
-      "rag": false,
-      "hitl": false
+      "memory": true,
+      "rag": true,
+      "hitl": true,
+      "observability": true,
+      "prompt_versioning": true
     },
     "default_model": "gpt-4o-mini"
   }

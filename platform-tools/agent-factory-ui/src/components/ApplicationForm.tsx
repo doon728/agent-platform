@@ -131,9 +131,25 @@ export default function ApplicationForm() {
   const [temperature, setTemperature] = useState("0")
 
   const [localHumanReviewEnabled, setLocalHumanReviewEnabled] = useState(true)
-  const [localMemoryEnabled, setLocalMemoryEnabled] = useState(true)
-  const [localThreadMemory, setLocalThreadMemory] = useState(true)
-  const [localCaseMemory, setLocalCaseMemory] = useState(true)
+
+  const [memoryEnabled, setMemoryEnabled] = useState(true)
+
+  const [memoryTypes, setMemoryTypes] = useState({
+    shortTerm: true,
+    episodic: true,
+    semantic: false,
+    summary: true,
+  })
+  
+  const [memoryAdvanced, setMemoryAdvanced] = useState({
+    shortTermWindow: "12",
+    summaryInterval: "10",
+    episodicTopK: "5",
+    semanticTopK: "3",
+  })
+
+
+
   const [localRagEnabled, setLocalRagEnabled] = useState(true)
   const [localRagType, setLocalRagType] = useState("vector_rag")
   const [localTopK, setLocalTopK] = useState("3")
@@ -141,9 +157,9 @@ export default function ApplicationForm() {
 
   const [showAgentCoreProfile, setShowAgentCoreProfile] = useState(false)
   const [agentCoreHumanReviewEnabled] = useState(true)
-  const [agentCoreMemoryEnabled] = useState(true)
-  const [agentCoreThreadMemory] = useState(true)
-  const [agentCoreCaseMemory] = useState(true)
+  
+
+  
   const [agentCoreRagEnabled] = useState(true)
   const [agentCoreRagType] = useState("vector_rag")
   const [agentCoreTopK] = useState("3")
@@ -157,7 +173,7 @@ export default function ApplicationForm() {
   const [selectedTools, setSelectedTools] = useState<string[]>([])
   const [toolsExpanded, setToolsExpanded] = useState(false)
 
-  const [agentBehaviorTab, setAgentBehaviorTab] = useState<"settings" | "prompts">("settings")
+  const [agentBehaviorTab, setAgentBehaviorTab] = useState<"settings" | "memory" | "prompts">("settings")
 
   const [message, setMessage] = useState("")
   const [result, setResult] = useState<any>(null)
@@ -398,6 +414,7 @@ export default function ApplicationForm() {
             const first = agents[0]
             setSelectedGovernAgentRepo((prev) => prev || first.agent_repo_name || "")
             setAgentType(first.agent_type || "chat_agent")
+            applyMemoryDefaults(first.agent_type || "chat_agent")
             setAgentName(first.agent_name || "")
             setAgentRepoName(first.agent_repo_name || "")
           } else {
@@ -427,6 +444,7 @@ export default function ApplicationForm() {
     if (!selected) return
 
     setAgentType(selected.agent_type || "chat_agent")
+    applyMemoryDefaults(selected.agent_type || "chat_agent")
     setAgentName(selected.agent_name || "")
     setAgentRepoName(selected.agent_repo_name || "")
   }, [factoryMode, selectedGovernAgentRepo, registryAgents])
@@ -612,12 +630,7 @@ export default function ApplicationForm() {
                 enabled: localHumanReviewEnabled,
                 write_tools: localHumanReviewEnabled ? writeTools : [],
               },
-              memory: {
-                enabled: localMemoryEnabled,
-                thread: localThreadMemory,
-                case: localCaseMemory,
-                long_term: false,
-              },
+              memory: buildMemoryPayload(),
               embeddings: {
                 provider: "openai",
                 model: "text-embedding-3-small",
@@ -718,6 +731,114 @@ export default function ApplicationForm() {
       setMetadataMessage(`Contract load failed: ${err?.response?.data?.error || err.message}`)
     }
   }
+
+  function buildMemoryPayload() {
+    if (!memoryEnabled) {
+      return { enabled: false }
+    }
+  
+    return {
+      enabled: true,
+      write_policies: {
+        short_term: {
+          enabled: memoryTypes.shortTerm,
+          retain_last_n_turns: Number(memoryAdvanced.shortTermWindow),
+        },
+        episodic: {
+          enabled: memoryTypes.episodic,
+          allowed_scopes: ["case", "assessment"],
+        },
+        semantic: {
+          enabled: memoryTypes.semantic,
+          allowed_scopes: ["member", "user"],
+        },
+        summary: {
+          enabled: memoryTypes.summary,
+          triggers: {
+            every_n_turns: Number(memoryAdvanced.summaryInterval),
+          },
+        },
+      },
+      retrieval_policies: {
+        conversation: {
+          short_term: {
+            include: memoryTypes.shortTerm,
+            max_turns: Number(memoryAdvanced.shortTermWindow),
+          },
+          summary: {
+            include: memoryTypes.summary,
+            max_items: 1,
+          },
+        },
+        case: {
+          episodic: {
+            include: memoryTypes.episodic,
+            top_k: Number(memoryAdvanced.episodicTopK),
+          },
+        },
+        member: {
+          semantic: {
+            include: memoryTypes.semantic,
+            top_k: Number(memoryAdvanced.semanticTopK),
+          },
+        },
+      },
+    }
+  }
+  
+  function applyMemoryDefaults(nextAgentType: string) {
+    if (nextAgentType === "workflow_agent") {
+      setMemoryEnabled(true)
+      setMemoryTypes({
+        shortTerm: false,
+        episodic: true,
+        semantic: false,
+        summary: true,
+      })
+      setMemoryAdvanced({
+        shortTermWindow: "8",
+        summaryInterval: "10",
+        episodicTopK: "5",
+        semanticTopK: "3",
+      })
+      return
+    }
+  
+    if (nextAgentType === "supervisor_agent") {
+      setMemoryEnabled(true)
+      setMemoryTypes({
+        shortTerm: true,
+        episodic: true,
+        semantic: false,
+        summary: true,
+      })
+      setMemoryAdvanced({
+        shortTermWindow: "12",
+        summaryInterval: "10",
+        episodicTopK: "5",
+        semanticTopK: "3",
+      })
+      return
+    }
+  
+    setMemoryEnabled(true)
+    setMemoryTypes({
+      shortTerm: true,
+      episodic: true,
+      semantic: false,
+      summary: true,
+    })
+    setMemoryAdvanced({
+      shortTermWindow: "12",
+      summaryInterval: "10",
+      episodicTopK: "5",
+      semanticTopK: "3",
+    })
+  }
+
+
+
+  
 
   const pageStyle: CSSProperties = {
     minHeight: "100vh",
@@ -1030,7 +1151,11 @@ export default function ApplicationForm() {
                       <select
                         style={inputStyle}
                         value={agentType}
-                        onChange={(e) => setAgentType(e.target.value)}
+                        onChange={(e) => {
+                          const value = e.target.value
+                          setAgentType(value)
+                          applyMemoryDefaults(value)
+                        }}
                       >
                         {BASE_AGENT_TYPE_OPTIONS.map((option) => (
                           <option key={option.value} value={option.value} disabled={!option.enabled}>
@@ -1209,6 +1334,7 @@ export default function ApplicationForm() {
                     }}
                   >
                     <h2 style={{ margin: 0 }}>Agent Behavior</h2>
+                   
                     <div style={{ display: "flex", gap: 8 }}>
                       <button
                         type="button"
@@ -1219,6 +1345,13 @@ export default function ApplicationForm() {
                       </button>
                       <button
                         type="button"
+                        onClick={() => setAgentBehaviorTab("memory")}
+                        style={pillButton(agentBehaviorTab === "memory")}
+                      >
+                        Memory
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => setAgentBehaviorTab("prompts")}
                         style={pillButton(agentBehaviorTab === "prompts")}
                       >
@@ -1226,6 +1359,154 @@ export default function ApplicationForm() {
                       </button>
                     </div>
                   </div>
+
+                  {agentBehaviorTab === "memory" && (
+                    <div style={{ display: "grid", gap: 14 }}>
+                      <div>
+                        <label style={labelStyle}>
+                          <input
+                            type="checkbox"
+                            checked={memoryEnabled}
+                            onChange={(e) => setMemoryEnabled(e.target.checked)}
+                          />{" "}
+                          Enable Memory
+                        </label>
+                      </div>
+
+                      {memoryEnabled && (
+                        <>
+                          <div>
+                            <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>
+                              Memory Types
+                            </div>
+
+                            <div style={{ display: "grid", gap: 10 }}>
+                              <label>
+                                <input
+                                  type="checkbox"
+                                  checked={memoryTypes.shortTerm}
+                                  onChange={(e) =>
+                                    setMemoryTypes((prev) => ({
+                                      ...prev,
+                                      shortTerm: e.target.checked,
+                                    }))
+                                  }
+                                />{" "}
+                                Short-Term Memory
+                              </label>
+
+                              <label>
+                                <input
+                                  type="checkbox"
+                                  checked={memoryTypes.episodic}
+                                  onChange={(e) =>
+                                    setMemoryTypes((prev) => ({
+                                      ...prev,
+                                      episodic: e.target.checked,
+                                    }))
+                                  }
+                                />{" "}
+                                Episodic Memory
+                              </label>
+
+                              <label>
+                                <input
+                                  type="checkbox"
+                                  checked={memoryTypes.semantic}
+                                  onChange={(e) =>
+                                    setMemoryTypes((prev) => ({
+                                      ...prev,
+                                      semantic: e.target.checked,
+                                    }))
+                                  }
+                                />{" "}
+                                Semantic Memory
+                              </label>
+
+                              <label>
+                                <input
+                                  type="checkbox"
+                                  checked={memoryTypes.summary}
+                                  onChange={(e) =>
+                                    setMemoryTypes((prev) => ({
+                                      ...prev,
+                                      summary: e.target.checked,
+                                    }))
+                                  }
+                                />{" "}
+                                Summary Memory
+                              </label>
+                            </div>
+                          </div>
+
+                          <div>
+                            <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>
+                              Advanced
+                            </div>
+
+                            <div style={compactGrid}>
+                              <div>
+                                <label style={labelStyle}>Short-Term Window</label>
+                                <input
+                                  style={inputStyle}
+                                  value={memoryAdvanced.shortTermWindow}
+                                  onChange={(e) =>
+                                    setMemoryAdvanced((prev) => ({
+                                      ...prev,
+                                      shortTermWindow: e.target.value,
+                                    }))
+                                  }
+                                />
+                              </div>
+
+                              <div>
+                                <label style={labelStyle}>Summary Every N Turns</label>
+                                <input
+                                  style={inputStyle}
+                                  value={memoryAdvanced.summaryInterval}
+                                  onChange={(e) =>
+                                    setMemoryAdvanced((prev) => ({
+                                      ...prev,
+                                      summaryInterval: e.target.value,
+                                    }))
+                                  }
+                                />
+                              </div>
+
+                              <div>
+                                <label style={labelStyle}>Episodic Top K</label>
+                                <input
+                                  style={inputStyle}
+                                  value={memoryAdvanced.episodicTopK}
+                                  onChange={(e) =>
+                                    setMemoryAdvanced((prev) => ({
+                                      ...prev,
+                                      episodicTopK: e.target.value,
+                                    }))
+                                  }
+                                />
+                              </div>
+
+                              <div>
+                                <label style={labelStyle}>Semantic Top K</label>
+                                <input
+                                  style={inputStyle}
+                                  value={memoryAdvanced.semanticTopK}
+                                  onChange={(e) =>
+                                    setMemoryAdvanced((prev) => ({
+                                      ...prev,
+                                      semanticTopK: e.target.value,
+                                    }))
+                                  }
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+
 
                   {agentBehaviorTab === "settings" && (
                     <div style={compactGrid}>
@@ -1457,40 +1738,7 @@ export default function ApplicationForm() {
                         </div>
                       </div>
 
-                      <div style={{ marginBottom: 12 }}>
-                        <strong style={{ fontSize: 14 }}>Memory</strong>
-                        <div style={{ marginTop: 8, display: "grid", gap: 8 }}>
-                          <label>
-                            <input
-                              type="checkbox"
-                              checked={localMemoryEnabled}
-                              onChange={(e) => setLocalMemoryEnabled(e.target.checked)}
-                            />{" "}
-                            Enable Memory
-                          </label>
-
-                          {localMemoryEnabled && (
-                            <div style={{ paddingLeft: 18, display: "grid", gap: 8 }}>
-                              <label>
-                                <input
-                                  type="checkbox"
-                                  checked={localThreadMemory}
-                                  onChange={(e) => setLocalThreadMemory(e.target.checked)}
-                                />{" "}
-                                Memory Scope: Thread
-                              </label>
-                              <label>
-                                <input
-                                  type="checkbox"
-                                  checked={localCaseMemory}
-                                  onChange={(e) => setLocalCaseMemory(e.target.checked)}
-                                />{" "}
-                                Memory Scope: Case
-                              </label>
-                            </div>
-                          )}
-                        </div>
-                      </div>
+                      
 
                       <div>
                         <strong style={{ fontSize: 14 }}>RAG</strong>
@@ -1563,26 +1811,7 @@ export default function ApplicationForm() {
                           </div>
                         </div>
 
-                        <div style={{ marginBottom: 12 }}>
-                          <strong style={{ fontSize: 14 }}>Memory</strong>
-                          <div style={{ marginTop: 8, display: "grid", gap: 8 }}>
-                            <label>
-                              <input type="checkbox" checked={agentCoreMemoryEnabled} readOnly /> Enable Memory
-                            </label>
-
-                            {agentCoreMemoryEnabled && (
-                              <div style={{ paddingLeft: 18, display: "grid", gap: 8 }}>
-                                <label>
-                                  <input type="checkbox" checked={agentCoreThreadMemory} readOnly /> Memory Scope: Thread
-                                </label>
-                                <label>
-                                  <input type="checkbox" checked={agentCoreCaseMemory} readOnly /> Memory Scope: Case
-                                </label>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
+  
                         <div>
                           <strong style={{ fontSize: 14 }}>RAG</strong>
                           <div style={{ marginTop: 8, display: "grid", gap: 8 }}>

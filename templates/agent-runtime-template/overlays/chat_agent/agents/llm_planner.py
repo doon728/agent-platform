@@ -156,12 +156,19 @@ def plan(prompt: str, history: List[Dict[str, Any]], ctx: Dict[str, Any]) -> Lis
     planner_prompt = _get_planner_prompt(ctx)
     allowed_tools = _get_allowed_tools(ctx)
 
-
     explicit_assessment_id = _extract_assessment_id(p)
     latest_assessment_id = _extract_latest_assessment_id(history)
     active_assessment_id = explicit_assessment_id or latest_assessment_id
+
     print(f"[planner] allowed_tools={allowed_tools} explicit_assessment_id={explicit_assessment_id} prompt={p}", flush=True)
+
     history_text = _history_text(history)
+
+    print(f"[planner_history_count] {len(history or [])}", flush=True)
+    print(f"[planner_history_text] {history_text}", flush=True)
+    print(f"[planner_latest_assessment_id] {latest_assessment_id}", flush=True)
+    print(f"[planner_active_assessment_id] {active_assessment_id}", flush=True)
+
     prompt_member_id = _extract_member_id(p)
 
     # --------------------------------------------------
@@ -175,10 +182,47 @@ def plan(prompt: str, history: List[Dict[str, Any]], ctx: Dict[str, Any]) -> Lis
         "last note",
     ]
 
+    patient_phrases = [
+        "patient name",
+        "member name",
+        "last name",
+        "first name",
+        "full name",
+        "name",
+        "latest note",
+        "last note",
+        "summarize status",
+        "assessment summary",
+    ]
+
+    note_write_phrases = [
+        "update note",
+        "write note",
+        "add note",
+        "write a case note",
+        "case note",
+        "note:",
+    ]
+
+    # 1) Explicit assessment summary
     if explicit_assessment_id and any(x in lower_p for x in clinical_summary_phrases):
         if "get_assessment_summary" in allowed_tools:
             print("[planner] HARD ROUTE -> get_assessment_summary", flush=True)
             return [f"get_assessment_summary: {explicit_assessment_id}"]
+
+    # 2) Active assessment follow-up reads
+    if active_assessment_id and any(x in lower_p for x in patient_phrases):
+        if "get_assessment_summary" in allowed_tools:
+            print("[planner] HARD ROUTE -> get_assessment_summary (active assessment)", flush=True)
+            return [f"get_assessment_summary: {active_assessment_id}"]
+
+    # 3) Deterministic note writing 
+    if active_assessment_id and any(x in lower_p for x in note_write_phrases):
+        target_assessment = explicit_assessment_id or active_assessment_id
+        
+        if target_assessment and "write_case_note" in allowed_tools:
+            print("[planner] HARD ROUTE  -> write_case_note" , flush = True)
+            return [f"write_case_note:{target_assessment} | {p}"]
 
     model_name = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
     api_key = os.getenv("OPENAI_API_KEY", "")
@@ -202,6 +246,8 @@ Rules:
 - Never invent a member_id or assessment_id.
 - If the current user message explicitly contains an assessment_id, use that instead of history.
 - If there is an active assessment and the user asks about patient/member name, status, latest note, or summary, use get_assessment_summary with that assessment_id.
+- If there is an active assessment and the user is trying to write/update/add a note, use:
+  write_case_note: <assessment_id> | <note text>
 - Only choose from the tools listed above.
 """
     )
@@ -232,6 +278,14 @@ Rules:
         if "get_assessment_summary" in allowed_tools:
             return [f"get_assessment_summary: {explicit_assessment_id}"]
 
+    if active_assessment_id and any(x in lower_p for x in patient_phrases):
+        if "get_assessment_summary" in allowed_tools:
+            return [f"get_assessment_summary: {active_assessment_id}"]
+
+    if active_assessment_id and any(x in lower_p for x in note_write_phrases):
+        if "write_case_note" in allowed_tools:
+            return [f"write_case_note: {active_assessment_id} | {p}"]
+
     if ":" not in line:
         if default_retrieval_tool in allowed_tools:
             return [f"{default_retrieval_tool}: {p}"]
@@ -245,15 +299,6 @@ Rules:
     history_member_id = _extract_member_id(history_text)
     arg_member_id = _extract_member_id(arg)
     arg_assessment_id = _extract_assessment_id(arg)
-
-    patient_phrases = [
-        "patient name",
-        "member name",
-        "latest note",
-        "last note",
-        "summarize status",
-        "assessment summary",
-    ]
 
     if explicit_assessment_id and any(x in lower_p for x in patient_phrases):
         if "get_assessment_summary" in allowed_tools:
@@ -279,9 +324,11 @@ Rules:
 
         return [f"{default_retrieval_tool}: {p}"]
 
-    if active_assessment_id and any(x in lower_p for x in patient_phrases):
-        if "get_assessment_summary" in allowed_tools:
-            return [f"get_assessment_summary: {active_assessment_id}"]
+    if tool == "write_case_note":
+        resolved_assessment_id = arg_assessment_id or explicit_assessment_id or latest_assessment_id
+        if resolved_assessment_id and "write_case_note" in allowed_tools:
+            return [f"write_case_note: {resolved_assessment_id} | {p}"]
+        return [f"{default_retrieval_tool}: {p}"]
 
     if tool in allowed_tools:
         return [f"{tool}: {arg}"]
