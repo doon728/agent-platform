@@ -34,6 +34,7 @@ class AppConfig:
     contract_version: str
     active_usecase: str
     capability_name: str
+    graph_builder_path: str
 
 
 @dataclass(frozen=True)
@@ -88,8 +89,9 @@ def load_config() -> Config:
                 "contract_version": os.getenv("CONTRACT_VERSION") or app.get("contract_version"),
                 "capability_name": os.getenv("CAPABILITY_NAME") or app.get("capability_name"),
                 "active_usecase": os.getenv("ACTIVE_USECASE") or app.get("active_usecase"),
+                "graph_builder_path": os.getenv("GRAPH_BUILDER_PATH") or app.get("graph_builder_path"),
             },
-            "tool_gateway": {
+                        "tool_gateway": {
                 "url": os.getenv("TOOL_GATEWAY_URL") or merged.get("tool_gateway", {}).get("url"),
             },
             "prompt_service": {
@@ -113,6 +115,7 @@ def load_config() -> Config:
             contract_version=str(app.get("contract_version", "v1")),
             active_usecase=str(app.get("active_usecase", "usecase")),
             capability_name=str(app.get("capability_name", "capability")),
+            graph_builder_path=str(app.get("graph_builder_path", "src.graph.build_graph:build_graph")),
         ),
         tool_gateway=ToolGatewayConfig(
             url=str(tg.get("url", "http://host.docker.internal:8080"))

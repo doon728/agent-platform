@@ -100,7 +100,7 @@ export default function Nurse() {
 
   const [traces, setTraces] = useState<TraceRun[]>([]);
   const [showTrace, setShowTrace] = useState(true);
-
+  const [memoryDebug, setMemoryDebug] = useState<any | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -195,7 +195,9 @@ export default function Nurse() {
         return;
       }
 
+      setMemoryDebug(data.output);
       const assistantText = extractAssistantText(data.output);
+
 
       setMessages((m) => [
         ...m,
@@ -354,6 +356,27 @@ export default function Nurse() {
         </div>
       </div>
 
+    
+      {memoryDebug && (
+        <div
+          style={{
+            marginBottom: 12,
+            padding: 10,
+            background: "#020617",
+            border: "1px solid #334155",
+            borderRadius: 8,
+            fontSize: 12,
+            overflow: "auto",
+            maxHeight: 200,
+          }}
+        >
+          <div style={{ fontWeight: 600, marginBottom: 6 }}>
+            Memory Debug Payload
+          </div>
+          <pre>{JSON.stringify(memoryDebug, null, 2)}</pre>
+        </div>
+      )}
+    
       {/* TRACE PANEL */}
 
       {showTrace && (

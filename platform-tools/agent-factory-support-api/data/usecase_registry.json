@@ -1,9 +1,9 @@
 [
   {
-    "capability_name": "care-mangement",
+    "capability_name": "care-management",
     "usecase_name": "__capability__",
     "agent_type": "__app__",
-    "app_name": "CM Hero Fl APP",
+    "app_name": "CM hero Fl APP",
     "app_repo_name": "cm-hero-fl-app",
     "agent_name": "",
     "agent_repo_name": "",
@@ -13,13 +13,13 @@
     "default_model": ""
   },
   {
-    "capability_name": "care-mangement",
-    "usecase_name": "UC_CM_Assess_PreCall",
+    "capability_name": "care-management",
+    "usecase_name": "UC_PreCall_Assess",
     "agent_type": "chat_agent",
-    "app_name": "CM Hero Fl APP",
+    "app_name": "CM hero Fl APP",
     "app_repo_name": "cm-hero-fl-app",
-    "agent_name": "CM_Assist_Chat",
-    "agent_repo_name": "cm-assist-chat",
+    "agent_name": "CM-chat-buddy-Assess",
+    "agent_repo_name": "cm-chat-buddy-assess",
     "components": {
       "planner": true,
       "responder": true,

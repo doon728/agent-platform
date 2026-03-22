@@ -973,6 +973,19 @@ def runtime_start(repo_name: str, port: int = 8081):
             }
 
         env = os.environ.copy()
+        env.pop("VIRTUAL_ENV", None)
+        env.pop("PYTHONHOME", None)
+        env.pop("PYTHONPATH", None)
+
+        path_parts = [
+            "/Applications/Docker.app/Contents/Resources/bin",
+            str(Path.home() / ".local" / "bin"),
+            "/opt/homebrew/bin",
+            "/opt/homebrew/opt/python@3.11/Frameworks/Python.framework/Versions/3.11/bin",
+            env.get("PATH", ""),
+        ]
+        env["PATH"] = ":".join([p for p in path_parts if p])
+
         env["AGENT_RUNTIME_PORT"] = str(port)
 
         if "OPENAI_API_KEY" not in env:
@@ -1024,6 +1037,19 @@ def app_start(repo_name: str, port: int = 3000, runtime_url: str = "http://local
         runtime_port = runtime_url.rsplit(":", 1)[-1]
 
         env = os.environ.copy()
+        env.pop("VIRTUAL_ENV", None)
+        env.pop("PYTHONHOME", None)
+        env.pop("PYTHONPATH", None)
+
+        path_parts = [
+            "/Applications/Docker.app/Contents/Resources/bin",
+            str(Path.home() / ".local" / "bin"),
+            "/opt/homebrew/bin",
+            "/opt/homebrew/opt/python@3.11/Frameworks/Python.framework/Versions/3.11/bin",
+            env.get("PATH", ""),
+        ]
+        env["PATH"] = ":".join([p for p in path_parts if p])
+
         env["APP_UI_PORT"] = str(port)
         env["VITE_API_PROXY_TARGET"] = f"http://host.docker.internal:{runtime_port}"
 
