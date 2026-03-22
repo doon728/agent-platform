@@ -16,7 +16,7 @@ def _resolve_graph_module(manifest: Dict[str, Any]) -> Tuple[str, str]:
         raise ValueError("agent_manifest.yaml missing entrypoint.orchestration_graph")
 
     module_path = graph_path.replace("/", ".").replace(".py", "")
-    module_name = f"src.overlays.{agent_type}.{module_path}"
+    module_name = f"overlays.{agent_type}.{module_path}"
     return module_name, "build_graph"
 
 
