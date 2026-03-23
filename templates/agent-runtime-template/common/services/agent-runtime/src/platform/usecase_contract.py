@@ -36,9 +36,6 @@ def execute(prompt: str, ctx: Dict[str, Any]) -> Any:
     if isinstance(out, dict) and out.get("result") == "APPROVAL_REQUIRED":
         return out
 
-    if isinstance(out, dict) and "answer" in out:
-        return {"answer": out["answer"]}
-
     if isinstance(out, str):
         return {"answer": out}
 

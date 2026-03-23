@@ -185,12 +185,7 @@ async def invocations(request: Request) -> JSONResponse:
         )
 
     if isinstance(result, dict):
-        if "answer" in result:
-            out = {"answer": result["answer"]}
-        elif "nurse_summary" in result:
-            out = {"answer": result["nurse_summary"]}
-        else:
-            out = result
+        out = result
     else:
         out = {"answer": str(result)}
 
