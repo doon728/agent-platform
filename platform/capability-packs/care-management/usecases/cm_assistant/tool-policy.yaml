@@ -1,0 +1,6 @@
+mode: selected
+allowed_tools:
+  - search_kb
+  - get_member_summary
+  - get_assessment_summary
+  - write_case_note

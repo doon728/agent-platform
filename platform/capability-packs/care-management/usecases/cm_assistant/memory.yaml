@@ -1,0 +1,18 @@
+enabled: true
+
+scopes:
+  thread:
+    enabled: true
+    max_messages: 20
+
+  case:
+    enabled: true
+    enabled_when_case_id_present: true
+    max_messages: 50
+
+  longitudinal_member:
+    enabled: false
+
+summarization:
+  enabled: false
+  trigger_message_count: 30

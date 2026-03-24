@@ -1,0 +1,28 @@
+{
+  "care-management::UC_PreCall_Assess::chat_agent": {
+    "capability_name": "care-management",
+    "usecase_name": "UC_PreCall_Assess",
+    "agent_type": "chat_agent",
+    "app_name": "CM hero Fl APP",
+    "app_repo_name": "cm-hero-fl-app",
+    "agent_repo_name": "cm-chat-buddy-assess",
+    "components": {
+      "planner": true,
+      "responder": true,
+      "workflow": false,
+      "router": false
+    },
+    "prompt_types": [
+      "planner",
+      "responder"
+    ],
+    "features": {
+      "memory": true,
+      "rag": true,
+      "hitl": true,
+      "observability": true,
+      "prompt_versioning": true
+    },
+    "default_model": "gpt-4o-mini"
+  }
+}

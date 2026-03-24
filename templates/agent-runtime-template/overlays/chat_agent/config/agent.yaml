@@ -1,0 +1,23 @@
+agent:
+  type: chat_agent
+  planner_mode: llm
+tools:
+  mode: selected
+  allowed:
+    - search_kb
+retrieval:
+  enabled: true
+  default_tool: search_kb
+  strategy: semantic
+  top_k: 5
+  similarity_threshold: 0.35
+  fallback:
+    allow_no_results_response: true
+risk:
+  approval_required: false
+features:
+  memory: true
+  rag: true
+  hitl: false
+  observability: true
+  prompt_versioning: false

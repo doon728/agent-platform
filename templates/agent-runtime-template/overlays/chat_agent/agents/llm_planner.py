@@ -1,0 +1,324 @@
+from __future__ import annotations
+
+import os
+import re
+from typing import List, Dict, Any
+from src.platform.config import load_config
+from src.platform.prompt.prompt_client import PromptServiceClient
+
+from langchain_openai import ChatOpenAI
+from langchain_core.messages import SystemMessage, HumanMessage
+
+from src.platform.tools.registry import registry
+
+
+def _get_planner_prompt(ctx: Dict[str, Any]) -> str:
+    prompts_cfg = ctx.get("prompts") or {}
+    local_prompt = prompts_cfg.get("planner_system_prompt")
+
+    prompt_client = PromptServiceClient()
+    cfg = load_config()
+
+    resolved_prompt = prompt_client.resolve_prompt(
+        capability_name=cfg.prompt_service.capability_name,
+        agent_type=cfg.prompt_service.agent_type,
+        usecase_name=cfg.prompt_service.usecase_name,
+        prompt_type="planner",
+        environment=cfg.prompt_service.environment,
+    )
+
+    if resolved_prompt:
+        print("[planner] using prompt from prompt service")
+        return resolved_prompt
+    if local_prompt:
+        return local_prompt
+
+    return """
+You are an AI planning agent.
+
+Your job is to decide which tool should be used next.
+
+Rules:
+- Choose the best tool from the available tools.
+- Use conversation context when selecting tool arguments.
+- Never invent IDs such as assessment_id or member_id.
+- If the current user message explicitly contains an assessment_id or member_id, that explicit ID takes priority over history.
+- Only use IDs that appear in:
+  1) current user message
+  2) conversation history
+  3) current assessment context
+- Return exactly one tool call.
+
+Format:
+tool_name: argument
+""".strip()
+
+
+def _extract_latest_assessment_id(history: List[Dict[str, Any]]) -> str | None:
+    for item in reversed(history or []):
+        content = str(item.get("content") or "")
+        m = re.search(r"\b(asmt-\d+)\b", content, re.IGNORECASE)
+        if m:
+            return m.group(1)
+    return None
+
+
+def _extract_assessment_id(text: str) -> str | None:
+    m = re.search(r"\b(asmt-\d+)\b", text or "", re.IGNORECASE)
+    if m:
+        return m.group(1)
+    return None
+
+
+def _extract_member_id(text: str) -> str | None:
+    m = re.search(r"\b(m-\d+)\b", text or "", re.IGNORECASE)
+    if m:
+        return m.group(1)
+    return None
+
+
+def _history_text(history: List[Dict[str, Any]]) -> str:
+    out = ""
+    for m in history[-8:]:
+        role = m.get("role", "user")
+        content = m.get("content", "")
+        if content:
+            out += f"{role.upper()}: {content}\n"
+    return out
+
+
+def _get_allowed_tools(ctx: Dict[str, Any]) -> List[str]:
+
+
+    tool_policy = ctx.get("tool_policy") or {}
+    retrieval_cfg = ctx.get("retrieval") or {}
+
+    mode = tool_policy.get("mode", "selected")
+
+    if mode == "selected":
+        tools = tool_policy.get("allowed_tools") or []
+        return tools
+
+    if mode == "auto":
+        allowed_tags = set(tool_policy.get("allowed_tags") or [])
+        specs = registry.list_specs()
+
+        matched = []
+        for spec in specs:
+            if not allowed_tags:
+                matched.append(spec.name)
+            elif allowed_tags.intersection(set(spec.tags or [])):
+                matched.append(spec.name)
+
+        if retrieval_cfg.get("enabled"):
+            default_tool = retrieval_cfg.get("default_tool", "search_kb")
+            if default_tool not in matched:
+                matched.append(default_tool)
+
+        return matched
+
+    return []
+
+
+def _get_tool_descriptions(allowed_tools: List[str]) -> str:
+    specs = registry.list_specs()
+    spec_map = {s.name: s for s in specs}
+
+    desc_lines = []
+
+    for tool_name in allowed_tools:
+        spec = spec_map.get(tool_name)
+
+        if not spec:
+            desc_lines.append(tool_name)
+            continue
+
+        description = spec.description or ""
+        tags = ", ".join(spec.tags or [])
+        primary_arg = spec.primary_arg or "query"
+
+        desc_lines.append(
+            f"""
+tool: {tool_name}
+purpose: {description}
+argument: {primary_arg}
+tags: {tags}
+""".strip()
+        )
+
+    return "\n\n".join(desc_lines)
+
+
+def plan(prompt: str, history: List[Dict[str, Any]], ctx: Dict[str, Any]) -> List[str]:
+    p = (prompt or "").strip()
+    lower_p = p.lower()
+
+    planner_prompt = _get_planner_prompt(ctx)
+    allowed_tools = _get_allowed_tools(ctx)
+
+    explicit_assessment_id = _extract_assessment_id(p)
+    ctx_assessment_id = str(ctx.get("assessment_id") or "").strip() or None
+    latest_assessment_id = _extract_latest_assessment_id(history)
+    active_assessment_id = explicit_assessment_id or ctx_assessment_id or latest_assessment_id
+
+    print(f"[planner] allowed_tools={allowed_tools} explicit_assessment_id={explicit_assessment_id} prompt={p}", flush=True)
+
+    history_text = _history_text(history)
+
+    print(f"[planner_history_count] {len(history or [])}", flush=True)
+    print(f"[planner_history_text] {history_text}", flush=True)
+    print(f"[planner_latest_assessment_id] {latest_assessment_id}", flush=True)
+    print(f"[planner_active_assessment_id] {active_assessment_id}", flush=True)
+
+    prompt_member_id = _extract_member_id(p)
+
+    # --------------------------------------------------
+    # HARD ROUTING — deterministic routing before LLM
+    # --------------------------------------------------
+    clinical_summary_phrases = [
+        "summarize",
+        "summary",
+        "status",
+        "latest note",
+        "last note",
+    ]
+
+    patient_phrases = [
+        "patient name",
+        "member name",
+        "last name",
+        "first name",
+        "full name",
+        "name",
+        "latest note",
+        "last note",
+        "summarize status",
+        "assessment summary",
+    ]
+
+    tasks_phrases = [
+        "open tasks",
+        "my tasks",
+        "tasks",
+        "what tasks",
+        "pending tasks",
+        "task list",
+        "what do i need to do",
+        "pre call tasks",
+        "during call tasks",
+        "post call tasks",
+    ]
+
+    note_write_phrases = [
+        "update note",
+        "update last note",
+        "write note",
+        "add note",
+        "write a case note",
+        "case note",
+        "last note:",
+        "note:",
+    ]
+
+    # 1) Explicit assessment summary
+    if explicit_assessment_id and any(x in lower_p for x in clinical_summary_phrases):
+        if "get_assessment_summary" in allowed_tools:
+            print("[planner] HARD ROUTE -> get_assessment_summary", flush=True)
+            return (
+                [f"get_assessment_summary: {explicit_assessment_id}"],
+                {"route_type": "HARD_ROUTE", "tool": "get_assessment_summary", "reason": "assessment_id + summary phrase", "active_assessment_id": explicit_assessment_id},
+            )
+
+    # 2) Active assessment follow-up reads
+    if active_assessment_id and any(x in lower_p for x in patient_phrases):
+        if "get_assessment_summary" in allowed_tools:
+            print("[planner] HARD ROUTE -> get_assessment_summary (active assessment)", flush=True)
+            return (
+                [f"get_assessment_summary: {active_assessment_id}"],
+                {"route_type": "HARD_ROUTE", "tool": "get_assessment_summary", "reason": "active_assessment + patient phrase", "active_assessment_id": active_assessment_id},
+            )
+
+    # 3) Tasks lookup
+    if active_assessment_id and any(x in lower_p for x in tasks_phrases):
+        if "get_assessment_tasks" in allowed_tools:
+            print("[planner] HARD ROUTE -> get_assessment_tasks", flush=True)
+            return (
+                [f"get_assessment_tasks: {active_assessment_id}"],
+                {"route_type": "HARD_ROUTE", "tool": "get_assessment_tasks", "reason": "active_assessment + tasks phrase", "active_assessment_id": active_assessment_id},
+            )
+
+    # 4) Deterministic note writing
+    if active_assessment_id and any(x in lower_p for x in note_write_phrases):
+        target_assessment = explicit_assessment_id or active_assessment_id
+
+        if target_assessment and "write_case_note" in allowed_tools:
+            print("[planner] HARD ROUTE -> write_case_note", flush=True)
+            return (
+                [f"write_case_note:{target_assessment} | {p}"],
+                {"route_type": "HARD_ROUTE", "tool": "write_case_note", "reason": "active_assessment + note write phrase", "active_assessment_id": target_assessment},
+            )
+
+    model_name = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+    api_key = os.getenv("OPENAI_API_KEY", "")
+    llm = ChatOpenAI(model=model_name, temperature=0, api_key=api_key)
+
+    tools_text = _get_tool_descriptions(allowed_tools)
+
+    system = SystemMessage(
+        content=f"""
+{planner_prompt}
+
+Conversation context:
+Explicit assessment in current prompt: {explicit_assessment_id or "(none)"}
+Current assessment from history: {latest_assessment_id or "(none)"}
+Active assessment to prefer: {active_assessment_id or "(none)"}
+
+Available tools:
+{tools_text}
+
+Rules:
+- Never invent a member_id or assessment_id.
+- If the current user message explicitly contains an assessment_id, use that instead of history.
+- If there is an active assessment and the user asks about patient/member name, status, latest note, or summary, use get_assessment_summary with that assessment_id.
+- If there is an active assessment and the user is trying to write/update/add a note, use:
+  write_case_note: <assessment_id> | <note text>
+- Only choose from the tools listed above.
+"""
+    )
+
+    human = HumanMessage(
+        content=(
+            f"Conversation history:\n{history_text or '(none)'}\n\n"
+            f"User message:\n{p}\n\n"
+            "Return the next tool call."
+        )
+    )
+
+    resp = llm.invoke([system, human]).content.strip()
+
+    line = resp.splitlines()[0].strip()
+    line = line.replace("Tool:", "").replace("tool:", "").strip()
+
+    retrieval_cfg = ctx.get("retrieval") or {}
+    default_retrieval_tool = retrieval_cfg.get("default_tool", "search_kb")
+
+    if ":" not in line:
+        return (
+            [f"{default_retrieval_tool}: {p}"],
+            {"route_type": "LLM_ROUTE", "tool": default_retrieval_tool, "reason": "LLM returned no colon — fallback", "llm_raw": resp},
+        )
+
+    tool, arg = line.split(":", 1)
+    tool = tool.strip()
+    arg = arg.strip()
+
+    if tool in allowed_tools:
+        return (
+            [f"{tool}: {arg}"],
+            {"route_type": "LLM_ROUTE", "tool": tool, "reason": "LLM decision", "llm_raw": resp},
+        )
+
+    return (
+        [f"{default_retrieval_tool}: {p}"],
+        {"route_type": "LLM_ROUTE", "tool": default_retrieval_tool, "reason": f"LLM chose disallowed tool '{tool}' — fallback", "llm_raw": resp},
+    )

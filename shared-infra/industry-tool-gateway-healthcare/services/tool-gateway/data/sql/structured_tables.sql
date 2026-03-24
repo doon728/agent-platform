@@ -31,9 +31,21 @@ CREATE TABLE IF NOT EXISTS care_plans (
   goals text
 );
 
+CREATE TABLE IF NOT EXISTS cases (
+  case_id text PRIMARY KEY,
+  member_id text,
+  title text,
+  status text,
+  open_date date,
+  close_date date,
+  assigned_nurse text,
+  program text
+);
+
 CREATE TABLE IF NOT EXISTS assessments (
   assessment_id text PRIMARY KEY,
   member_id text,
+  case_id text,
   care_plan_id text,
   assessment_type text,
   status text,
@@ -42,6 +54,17 @@ CREATE TABLE IF NOT EXISTS assessments (
   completed_at date,
   overall_risk_level text,
   summary text
+);
+
+CREATE TABLE IF NOT EXISTS tasks (
+  task_id text PRIMARY KEY,
+  assessment_id text,
+  case_id text,
+  member_id text,
+  phase text,
+  title text,
+  status text,
+  due_date date
 );
 
 CREATE TABLE IF NOT EXISTS assessment_questions (
@@ -95,6 +118,10 @@ CREATE TABLE IF NOT EXISTS case_notes (
   note_text text
 );
 
+CREATE INDEX IF NOT EXISTS idx_cases_member_id ON cases(member_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_assessment_id ON tasks(assessment_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_case_id ON tasks(case_id);
+CREATE INDEX IF NOT EXISTS idx_assessments_case_id ON assessments(case_id);
 CREATE INDEX IF NOT EXISTS idx_care_plans_member_id ON care_plans(member_id);
 CREATE INDEX IF NOT EXISTS idx_assessments_member_id ON assessments(member_id);
 CREATE INDEX IF NOT EXISTS idx_assessments_care_plan_id ON assessments(care_plan_id);

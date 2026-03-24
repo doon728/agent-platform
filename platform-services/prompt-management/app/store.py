@@ -1,146 +1,256 @@
 from typing import List, Optional
 from uuid import uuid4
+import json
+
 from app.db import get_conn
+
 
 def get_prompt_by_id(prompt_id: str) -> Optional[dict]:
     with get_conn() as conn, conn.cursor() as cur:
-        cur.execute("SELECT * FROM prompts WHERE prompt_id = %s", (prompt_id,))
+        cur.execute(
+            """
+            SELECT
+              p.prompt_id,
+              p.prompt_name,
+              p.capability_name,
+              p.usecase_name,
+              p.agent_type,
+              p.prompt_type,
+              p.environment,
+              p.lifecycle_status,
+              p.created_at,
+              p.updated_at,
+              pv.version_id,
+              pv.version_number AS version,
+              pv.template_text,
+              pv.model_provider,
+              pv.model_name,
+              pv.temperature,
+              pv.version_status,
+              COALESCE(pa.is_active, FALSE) AS is_active
+            FROM prompts p
+            LEFT JOIN prompt_activations pa
+              ON pa.prompt_id = p.prompt_id
+             AND pa.is_active = TRUE
+            LEFT JOIN prompt_versions pv
+              ON pv.version_id = pa.version_id
+            WHERE p.prompt_id = %s
+            """,
+            (prompt_id,),
+        )
         return cur.fetchone()
+
 
 def list_prompts() -> List[dict]:
     with get_conn() as conn, conn.cursor() as cur:
-        cur.execute("""
-            SELECT p.*, pa.version_id AS active_version_id
+        cur.execute(
+            """
+            SELECT
+              p.prompt_id,
+              p.prompt_name,
+              p.capability_name,
+              p.usecase_name,
+              p.agent_type,
+              p.prompt_type,
+              p.environment,
+              p.lifecycle_status,
+              p.created_at,
+              p.updated_at,
+              pa.version_id AS active_version_id
             FROM prompts p
             LEFT JOIN prompt_activations pa
-              ON pa.prompt_id = p.prompt_id AND pa.is_active = TRUE
+              ON pa.prompt_id = p.prompt_id
+             AND pa.is_active = TRUE
             ORDER BY p.created_at DESC
-        """)
+            """
+        )
         return cur.fetchall()
+
 
 def create_prompt_with_version(record: dict) -> dict:
     prompt_id = record["prompt_id"]
     version_id = f"ver-{uuid4().hex[:10]}"
 
     with get_conn() as conn, conn.cursor() as cur:
-        cur.execute("""
+        cur.execute(
+            """
             INSERT INTO prompts (
-              prompt_id, prompt_name, prompt_type, app_name, agent_type,
-              usecase_name, environment, lifecycle_status, created_by, created_at, updated_at
+              prompt_id,
+              prompt_name,
+              capability_name,
+              usecase_name,
+              agent_type,
+              prompt_type,
+              environment,
+              lifecycle_status,
+              created_by,
+              created_at,
+              updated_at
             ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-        """, (
-            prompt_id,
-            record["prompt_name"],
-            record["prompt_type"],
-            record["app_name"],
-            record["agent_type"],
-            record["usecase_name"],
-            record["environment"],
-            record["status"],
-            "platform_user",
-            record["created_at"],
-            record["updated_at"],
-        ))
+            """,
+            (
+                prompt_id,
+                record["prompt_name"],
+                record["capability_name"],
+                record["usecase_name"],
+                record["agent_type"],
+                record["prompt_type"],
+                record["environment"],
+                record["lifecycle_status"],
+                "platform_user",
+                record["created_at"],
+                record["updated_at"],
+            ),
+        )
 
-        cur.execute("""
+        cur.execute(
+            """
             INSERT INTO prompt_versions (
-              version_id, prompt_id, version_number, template_text,
-              model_provider, model_name, temperature, version_status, created_by
-            ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
-        """, (
-            version_id,
-            prompt_id,
-            record["version"],
-            record["template_text"],
-            "openai",
-            "gpt-4o-mini",
-            0,
-            record["approval_status"],
-            "platform_user",
-        ))
+              version_id,
+              prompt_id,
+              version_number,
+              template_text,
+              model_provider,
+              model_name,
+              temperature,
+              version_status,
+              created_at
+            ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,NOW())
+            """,
+            (
+                version_id,
+                prompt_id,
+                record["version"],
+                record["template_text"],
+                record.get("model_provider"),
+                record.get("model_name"),
+                record.get("temperature"),
+                record["version_status"],
+            ),
+        )
 
-        if record["is_active"] and record["approval_status"] == "approved" and record["status"] == "active":
-            cur.execute("UPDATE prompt_activations SET is_active = FALSE WHERE prompt_id = %s", (prompt_id,))
-            cur.execute("""
+        if (
+            record["is_active"]
+            and record["version_status"] == "approved"
+            and record["lifecycle_status"] == "active"
+        ):
+            cur.execute(
+                "UPDATE prompt_activations SET is_active = FALSE WHERE prompt_id = %s",
+                (prompt_id,),
+            )
+            cur.execute(
+                """
                 INSERT INTO prompt_activations (
-                  activation_id, prompt_id, version_id, is_active, activated_by
+                  activation_id,
+                  prompt_id,
+                  version_id,
+                  is_active,
+                  activated_by
                 ) VALUES (%s,%s,%s,TRUE,%s)
-            """, (f"act-{uuid4().hex[:10]}", prompt_id, version_id, "platform_user"))
+                """,
+                (f"act-{uuid4().hex[:10]}", prompt_id, version_id, "platform_user"),
+            )
 
         conn.commit()
 
     return {**record, "version_id": version_id}
 
+
 def resolve_active_prompt(
-    app_name: str,
-    agent_type: str,
+    capability_name: str,
     usecase_name: str,
+    agent_type: str,
     prompt_type: str,
     environment: str,
 ) -> Optional[dict]:
     with get_conn() as conn, conn.cursor() as cur:
-        cur.execute("""
+        cur.execute(
+            """
             SELECT
               p.prompt_id,
               p.prompt_name,
-              p.prompt_type,
-              p.app_name,
-              p.agent_type,
+              p.capability_name,
               p.usecase_name,
+              p.agent_type,
+              p.prompt_type,
               p.environment,
-              p.lifecycle_status AS status,
+              p.lifecycle_status,
               pv.version_id,
               pv.version_number AS version,
               pv.template_text,
-              pv.version_status AS approval_status,
+              pv.model_provider,
+              pv.model_name,
+              pv.temperature,
+              pv.version_status,
               TRUE AS is_active
             FROM prompts p
             JOIN prompt_activations pa
-              ON pa.prompt_id = p.prompt_id AND pa.is_active = TRUE
+              ON pa.prompt_id = p.prompt_id
+             AND pa.is_active = TRUE
             JOIN prompt_versions pv
               ON pv.version_id = pa.version_id
-            WHERE p.app_name = %s
-              AND p.agent_type = %s
+            WHERE p.capability_name = %s
               AND p.usecase_name = %s
+              AND p.agent_type = %s
               AND p.prompt_type = %s
               AND p.environment = %s
               AND p.lifecycle_status = 'active'
               AND pv.version_status = 'approved'
             ORDER BY pv.version_number DESC
             LIMIT 1
-        """, (app_name, agent_type, usecase_name, prompt_type, environment))
+            """,
+            (capability_name, usecase_name, agent_type, prompt_type, environment),
+        )
         return cur.fetchone()
+
 
 def append_eval(record: dict) -> None:
     with get_conn() as conn, conn.cursor() as cur:
-        cur.execute("""
+        cur.execute(
+            """
             INSERT INTO prompt_evaluations (
-              eval_id, prompt_id, version_id, dataset_name, input_query, expected_tool,
-              expected_keywords, actual_output, pass_fail, score, latency_ms
+              eval_id,
+              prompt_id,
+              version_id,
+              dataset_name,
+              input_query,
+              expected_tool,
+              expected_keywords,
+              actual_output,
+              pass_fail,
+              score,
+              latency_ms
             ) VALUES (%s,%s,%s,%s,%s,%s,%s::jsonb,%s,%s,%s,%s)
-        """, (
-            record["eval_id"],
-            record["prompt_id"],
-            record.get("version_id"),
-            "manual_eval",
-            record["input_query"],
-            record.get("expected_tool"),
-            str(record.get("expected_keywords", [])).replace("'", '"'),
-            record["actual_output"],
-            record["pass_fail"],
-            record["score"],
-            None,
-        ))
+            """,
+            (
+                record["eval_id"],
+                record["prompt_id"],
+                record.get("version_id"),
+                "manual_eval",
+                record["input_query"],
+                record.get("expected_tool"),
+                json.dumps(record.get("expected_keywords", [])),
+                record["actual_output"],
+                record["pass_fail"],
+                record["score"],
+                None,
+            ),
+        )
         conn.commit()
+
+
 def approve_prompt_version(prompt_id: str, version_number: int) -> Optional[dict]:
     with get_conn() as conn, conn.cursor() as cur:
-        cur.execute("""
+        cur.execute(
+            """
             UPDATE prompt_versions
                SET version_status = 'approved'
              WHERE prompt_id = %s
                AND version_number = %s
          RETURNING *
-        """, (prompt_id, version_number))
+            """,
+            (prompt_id, version_number),
+        )
         row = cur.fetchone()
         if not row:
             return None
@@ -150,12 +260,15 @@ def approve_prompt_version(prompt_id: str, version_number: int) -> Optional[dict
 
 def activate_prompt_version(prompt_id: str, version_number: int) -> Optional[dict]:
     with get_conn() as conn, conn.cursor() as cur:
-        cur.execute("""
+        cur.execute(
+            """
             SELECT version_id, version_status
               FROM prompt_versions
              WHERE prompt_id = %s
                AND version_number = %s
-        """, (prompt_id, version_number))
+            """,
+            (prompt_id, version_number),
+        )
         version_row = cur.fetchone()
         if not version_row:
             return None
@@ -165,27 +278,40 @@ def activate_prompt_version(prompt_id: str, version_number: int) -> Optional[dic
 
         version_id = version_row["version_id"]
 
-        cur.execute("""
+        cur.execute(
+            """
             UPDATE prompt_activations
                SET is_active = FALSE
              WHERE prompt_id = %s
                AND is_active = TRUE
-        """, (prompt_id,))
+            """,
+            (prompt_id,),
+        )
 
-        cur.execute("""
+        cur.execute(
+            """
             INSERT INTO prompt_activations (
-              activation_id, prompt_id, version_id, is_active, activated_by
+              activation_id,
+              prompt_id,
+              version_id,
+              is_active,
+              activated_by
             ) VALUES (%s, %s, %s, TRUE, %s)
             RETURNING *
-        """, (f"act-{uuid4().hex[:10]}", prompt_id, version_id, "platform_user"))
+            """,
+            (f"act-{uuid4().hex[:10]}", prompt_id, version_id, "platform_user"),
+        )
         activation_row = cur.fetchone()
 
-        cur.execute("""
+        cur.execute(
+            """
             UPDATE prompts
                SET lifecycle_status = 'active',
                    updated_at = NOW()
              WHERE prompt_id = %s
-        """, (prompt_id,))
+            """,
+            (prompt_id,),
+        )
 
         conn.commit()
         return activation_row
