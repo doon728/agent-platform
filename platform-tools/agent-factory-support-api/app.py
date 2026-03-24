@@ -603,6 +603,8 @@ def docker_compose_down(repo_root: Path):
     }
 
 
+
+
 @app.get("/health")
 def health():
     return {"ok": True, "service": "agent-factory-support-api"}

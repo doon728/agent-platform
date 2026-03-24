@@ -195,7 +195,7 @@ class PGStore:
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    SELECT assessment_id, member_id, care_plan_id, assessment_type, status, priority,
+                    SELECT assessment_id, member_id, case_id, care_plan_id, assessment_type, status, priority,
                            created_at::text, completed_at::text, overall_risk_level, summary
                     FROM assessments
                     WHERE assessment_id = %s
@@ -210,14 +210,15 @@ class PGStore:
                 assessment = {
                     "assessment_id": a[0],
                     "member_id": a[1],
-                    "care_plan_id": a[2],
-                    "assessment_type": a[3],
-                    "status": a[4],
-                    "priority": a[5],
-                    "created_at": a[6],
-                    "completed_at": a[7],
-                    "overall_risk_level": a[8],
-                    "summary": a[9],
+                    "case_id": a[2],
+                    "care_plan_id": a[3],
+                    "assessment_type": a[4],
+                    "status": a[5],
+                    "priority": a[6],
+                    "created_at": a[7],
+                    "completed_at": a[8],
+                    "overall_risk_level": a[9],
+                    "summary": a[10],
                 }
 
                 member_id = assessment["member_id"]
@@ -325,6 +326,104 @@ class PGStore:
                     "flagged_responses": flagged,
                     "recent_case_notes": recent_case_notes,
                 }
+
+    def search_members(self, query: str, limit: int = 20) -> List[Dict[str, Any]]:
+        with _conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT m.member_id, m.first_name, m.last_name, m.dob::text, m.gender, m.plan_id,
+                           m.risk_score::text, m.chronic_conditions,
+                           COUNT(c.case_id) AS case_count
+                    FROM members m
+                    LEFT JOIN cases c ON c.member_id = m.member_id
+                    WHERE m.member_id ILIKE %s OR m.first_name ILIKE %s OR m.last_name ILIKE %s
+                       OR CONCAT(m.first_name, ' ', m.last_name) ILIKE %s
+                    GROUP BY m.member_id, m.first_name, m.last_name, m.dob, m.gender, m.plan_id,
+                             m.risk_score, m.chronic_conditions
+                    ORDER BY m.risk_score DESC NULLS LAST, m.last_name, m.first_name
+                    LIMIT %s
+                    """,
+                    (f"%{query}%", f"%{query}%", f"%{query}%", f"%{query}%", limit),
+                )
+                return [
+                    {"member_id": r[0], "first_name": r[1], "last_name": r[2],
+                     "dob": r[3], "gender": r[4], "plan_id": r[5],
+                     "risk_score": r[6], "chronic_conditions": r[7], "case_count": r[8]}
+                    for r in cur.fetchall()
+                ]
+
+    def get_member_cases(self, member_id: str) -> List[Dict[str, Any]]:
+        with _conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT case_id, member_id, title, status, open_date::text, close_date::text, assigned_nurse, program
+                    FROM cases
+                    WHERE member_id = %s
+                    ORDER BY open_date DESC NULLS LAST
+                    """,
+                    (member_id,),
+                )
+                return [
+                    {"case_id": r[0], "member_id": r[1], "title": r[2], "status": r[3],
+                     "open_date": r[4], "close_date": r[5], "assigned_nurse": r[6], "program": r[7]}
+                    for r in cur.fetchall()
+                ]
+
+    def get_case(self, case_id: str) -> Optional[Dict[str, Any]]:
+        with _conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT case_id, member_id, title, status, open_date::text, close_date::text, assigned_nurse, program
+                    FROM cases WHERE case_id = %s
+                    """,
+                    (case_id,),
+                )
+                r = cur.fetchone()
+                if not r:
+                    return None
+                return {"case_id": r[0], "member_id": r[1], "title": r[2], "status": r[3],
+                        "open_date": r[4], "close_date": r[5], "assigned_nurse": r[6], "program": r[7]}
+
+    def get_case_assessments(self, case_id: str) -> List[Dict[str, Any]]:
+        with _conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT assessment_id, member_id, case_id, care_plan_id, assessment_type,
+                           status, priority, created_at::text, completed_at::text, overall_risk_level, summary
+                    FROM assessments
+                    WHERE case_id = %s
+                    ORDER BY created_at DESC NULLS LAST
+                    """,
+                    (case_id,),
+                )
+                return [
+                    {"assessment_id": r[0], "member_id": r[1], "case_id": r[2], "care_plan_id": r[3],
+                     "assessment_type": r[4], "status": r[5], "priority": r[6],
+                     "created_at": r[7], "completed_at": r[8], "overall_risk_level": r[9], "summary": r[10]}
+                    for r in cur.fetchall()
+                ]
+
+    def get_assessment_tasks(self, assessment_id: str) -> List[Dict[str, Any]]:
+        with _conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT task_id, assessment_id, case_id, member_id, phase, title, status, due_date::text
+                    FROM tasks
+                    WHERE assessment_id = %s
+                    ORDER BY phase, task_id
+                    """,
+                    (assessment_id,),
+                )
+                return [
+                    {"task_id": r[0], "assessment_id": r[1], "case_id": r[2], "member_id": r[3],
+                     "phase": r[4], "title": r[5], "status": r[6], "due_date": r[7]}
+                    for r in cur.fetchall()
+                ]
 
     def get_assessment_member_id(self, assessment_id: str) -> str:
         with _conn() as conn:

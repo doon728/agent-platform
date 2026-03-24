@@ -279,6 +279,13 @@ class LangGraphRunner:
                         "tool": _tool_used,
                     },
                 )
+                # Register scope relationships for rollup
+                _assessment_id = ctx.get("assessment_id")
+                _member_id = ctx.get("member_id")
+                if _assessment_id and case_id:
+                    memory_store.register_child_scope(tenant_id, "case", case_id, "assessment", _assessment_id)
+                if case_id and _member_id:
+                    memory_store.register_child_scope(tenant_id, "member", _member_id, "case", case_id)
                 memory_trace["written"]["episodic"] = {
                     "status": "written",
                     "scope": "case_or_assessment",

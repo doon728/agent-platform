@@ -1,0 +1,7 @@
+case_id,member_id,title,status,open_date,close_date,assigned_nurse,program
+case-001,m-001715,Asthma Management,OPEN,2026-01-10,,nurse-001,Asthma
+case-002,m-001715,Post-Discharge Follow-up,CLOSED,2025-11-01,2025-12-15,nurse-001,PostDischarge
+case-003,m-001715,Behavioral Health Support,OPEN,2026-02-20,,nurse-002,BehavioralHealth
+case-004,m-001234,Diabetes Management,OPEN,2026-01-15,,nurse-001,Diabetes
+case-005,m-001234,Hypertension Management,OPEN,2026-02-01,,nurse-003,Hypertension
+case-006,m-000891,CHF Management,OPEN,2026-01-20,,nurse-002,CHF

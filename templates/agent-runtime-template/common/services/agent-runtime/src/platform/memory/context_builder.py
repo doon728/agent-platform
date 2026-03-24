@@ -54,6 +54,7 @@ def build_memory_context(
 
         if scope["scope_type"] == "case":
             top_k = ((case_cfg.get("episodic") or {}).get("top_k", 5))
+            # Read case-level episodic
             episodic_memories.extend(
                 store.list_memories(
                     tenant_id=tenant_id,
@@ -63,6 +64,23 @@ def build_memory_context(
                     top_k=top_k,
                 )
             )
+            # Roll up episodic from all assessments under this case
+            child_assessment_ids = store.list_child_scope_ids(
+                tenant_id=tenant_id,
+                parent_type="case",
+                parent_id=scope["scope_id"],
+                child_type="assessment",
+            )
+            for asmt_id in child_assessment_ids:
+                episodic_memories.extend(
+                    store.list_memories(
+                        tenant_id=tenant_id,
+                        scope_type="assessment",
+                        scope_id=asmt_id,
+                        memory_type="episodic",
+                        top_k=top_k,
+                    )
+                )
 
         if scope["scope_type"] == "assessment":
             top_k = ((case_cfg.get("episodic") or {}).get("top_k", 5))
@@ -77,16 +95,52 @@ def build_memory_context(
             )
 
         if scope["scope_type"] == "member":
-            top_k = ((member_cfg.get("semantic") or {}).get("top_k", 3))
+            top_k_semantic = ((member_cfg.get("semantic") or {}).get("top_k", 3))
+            top_k_episodic = ((case_cfg.get("episodic") or {}).get("top_k", 5))
+            # Member-level semantic
             semantic_memories.extend(
                 store.list_memories(
                     tenant_id=tenant_id,
                     scope_type="member",
                     scope_id=scope["scope_id"],
                     memory_type="semantic",
-                    top_k=top_k,
+                    top_k=top_k_semantic,
                 )
             )
+            # Roll up episodic from all cases under this member
+            child_case_ids = store.list_child_scope_ids(
+                tenant_id=tenant_id,
+                parent_type="member",
+                parent_id=scope["scope_id"],
+                child_type="case",
+            )
+            for case_id in child_case_ids:
+                episodic_memories.extend(
+                    store.list_memories(
+                        tenant_id=tenant_id,
+                        scope_type="case",
+                        scope_id=case_id,
+                        memory_type="episodic",
+                        top_k=top_k_episodic,
+                    )
+                )
+                # Roll up episodic from all assessments under each case
+                child_assessment_ids = store.list_child_scope_ids(
+                    tenant_id=tenant_id,
+                    parent_type="case",
+                    parent_id=case_id,
+                    child_type="assessment",
+                )
+                for asmt_id in child_assessment_ids:
+                    episodic_memories.extend(
+                        store.list_memories(
+                            tenant_id=tenant_id,
+                            scope_type="assessment",
+                            scope_id=asmt_id,
+                            memory_type="episodic",
+                            top_k=top_k_episodic,
+                        )
+                    )
 
     return {
         "enabled": True,

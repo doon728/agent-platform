@@ -2,6 +2,10 @@ import React from "react";
 import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import Nurse from "./pages/Nurse";
 import Supervisor from "./pages/Supervisor";
+import Members from "./pages/Members";
+import MemberProfile from "./pages/MemberProfile";
+import CaseView from "./pages/CaseView";
+import AssessmentView from "./pages/AssessmentView";
 
 function NavLink({ to, label }: { to: string; label: string }) {
   const location = useLocation();
@@ -34,6 +38,7 @@ export default function App() {
         <div className="h1">Agent Platform MVP UI</div>
         <div style={{ display: "flex", gap: 12 }}>
           <NavLink to="/nurse" label="Nurse" />
+          <NavLink to="/members" label="Members" />
           <NavLink to="/supervisor" label="Approval Console" />
         </div>
       </div>
@@ -42,6 +47,10 @@ export default function App() {
         <Route path="/" element={<Navigate to="/nurse" replace />} />
         <Route path="/nurse" element={<Nurse />} />
         <Route path="/supervisor" element={<Supervisor />} />
+        <Route path="/members" element={<Members />} />
+        <Route path="/members/:memberId" element={<MemberProfile />} />
+        <Route path="/cases/:caseId" element={<CaseView />} />
+        <Route path="/assessments/:assessmentId" element={<AssessmentView />} />
       </Routes>
     </div>
   );

@@ -141,3 +141,47 @@ class FileMemoryStore:
         if memory_type:
             records = [r for r in records if r.get("memory_type") == memory_type]
         return records[-top_k:]
+
+    # ── Scope index (parent → children) ────────────────────────────────────────
+
+    def _index_file(self, tenant_id: str, parent_type: str, parent_id: str) -> Path:
+        idx_dir = self.base_dir / tenant_id / "_index" / parent_type
+        idx_dir.mkdir(parents=True, exist_ok=True)
+        return idx_dir / f"{parent_id.replace('/', '_')}.json"
+
+    def register_child_scope(
+        self,
+        tenant_id: str,
+        parent_type: str,
+        parent_id: str,
+        child_type: str,
+        child_id: str,
+    ) -> None:
+        """Register a child scope under a parent (e.g. assessment under case)."""
+        path = self._index_file(tenant_id, parent_type, parent_id)
+        try:
+            index: Dict[str, List[str]] = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+        except Exception:
+            index = {}
+        children = index.get(child_type, [])
+        if child_id not in children:
+            children.append(child_id)
+            index[child_type] = children
+            path.write_text(json.dumps(index, indent=2), encoding="utf-8")
+
+    def list_child_scope_ids(
+        self,
+        tenant_id: str,
+        parent_type: str,
+        parent_id: str,
+        child_type: str,
+    ) -> List[str]:
+        """Return all child scope IDs of given type under a parent."""
+        path = self._index_file(tenant_id, parent_type, parent_id)
+        if not path.exists():
+            return []
+        try:
+            index: Dict[str, List[str]] = json.loads(path.read_text(encoding="utf-8"))
+            return index.get(child_type, [])
+        except Exception:
+            return []

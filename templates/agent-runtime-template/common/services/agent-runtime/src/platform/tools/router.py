@@ -61,13 +61,18 @@ def _resolve_primary_arg(primary_arg: str, tool_value: str, raw_prompt: str, ctx
             _extract_assessment_id(tool_value)
             or _extract_assessment_id(raw_prompt)
             or _extract_assessment_id_from_history(history)
+            or ctx.get("assessment_id")
         )
         if not value:
             raise RuntimeError("Missing assessment_id for tool call")
         return value
 
     if primary_arg == "member_id":
-        value = _extract_member_id(tool_value) or _extract_member_id(raw_prompt)
+        value = (
+            _extract_member_id(tool_value)
+            or _extract_member_id(raw_prompt)
+            or ctx.get("member_id")
+        )
         if not value:
             raise RuntimeError("Missing member_id for tool call")
         return value

@@ -205,6 +205,25 @@ def write_case_note_handler(inp: WriteCaseNoteInput) -> WriteCaseNoteOutput:
     return WriteCaseNoteOutput(written=True, note_id=note_id)
 
 
+class GetAssessmentTasksInput(BaseModel):
+    assessment_id: str = Field(..., description="Assessment ID like asmt-000001")
+
+
+class GetAssessmentTasksOutput(BaseModel):
+    found: bool
+    assessment_id: str
+    tasks: list[dict[str, Any]] = Field(default_factory=list)
+
+
+def get_assessment_tasks_handler(inp: GetAssessmentTasksInput) -> GetAssessmentTasksOutput:
+    tasks = store().get_assessment_tasks(inp.assessment_id)
+    return GetAssessmentTasksOutput(
+        found=True,
+        assessment_id=inp.assessment_id,
+        tasks=tasks,
+    )
+
+
 # -----------------------
 # Registry
 # -----------------------
@@ -264,5 +283,16 @@ TOOL_REGISTRY: Dict[str, ToolSpec] = {
         primary_arg="assessment_id",
         mode="read",
         tags=["assessment", "summary", "case", "care_management"],
+    ),
+
+    "get_assessment_tasks": ToolSpec(
+        name="get_assessment_tasks",
+        description="Return all tasks (pre_call, during_call, post_call) for an assessment with their status.",
+        input_model=GetAssessmentTasksInput,
+        output_model=GetAssessmentTasksOutput,
+        handler=get_assessment_tasks_handler,
+        primary_arg="assessment_id",
+        mode="read",
+        tags=["assessment", "tasks", "care_management"],
     ),
 }

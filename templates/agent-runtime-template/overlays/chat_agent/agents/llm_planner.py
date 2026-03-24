@@ -196,6 +196,19 @@ def plan(prompt: str, history: List[Dict[str, Any]], ctx: Dict[str, Any]) -> Lis
         "assessment summary",
     ]
 
+    tasks_phrases = [
+        "open tasks",
+        "my tasks",
+        "tasks",
+        "what tasks",
+        "pending tasks",
+        "task list",
+        "what do i need to do",
+        "pre call tasks",
+        "during call tasks",
+        "post call tasks",
+    ]
+
     note_write_phrases = [
         "update note",
         "update last note",
@@ -225,7 +238,16 @@ def plan(prompt: str, history: List[Dict[str, Any]], ctx: Dict[str, Any]) -> Lis
                 {"route_type": "HARD_ROUTE", "tool": "get_assessment_summary", "reason": "active_assessment + patient phrase", "active_assessment_id": active_assessment_id},
             )
 
-    # 3) Deterministic note writing
+    # 3) Tasks lookup
+    if active_assessment_id and any(x in lower_p for x in tasks_phrases):
+        if "get_assessment_tasks" in allowed_tools:
+            print("[planner] HARD ROUTE -> get_assessment_tasks", flush=True)
+            return (
+                [f"get_assessment_tasks: {active_assessment_id}"],
+                {"route_type": "HARD_ROUTE", "tool": "get_assessment_tasks", "reason": "active_assessment + tasks phrase", "active_assessment_id": active_assessment_id},
+            )
+
+    # 4) Deterministic note writing
     if active_assessment_id and any(x in lower_p for x in note_write_phrases):
         target_assessment = explicit_assessment_id or active_assessment_id
 

@@ -33,6 +33,7 @@ def run() -> None:
 
     schema_sql = SQL_DIR / "structured_tables.sql"
     load_sql = SQL_DIR / "load_structured_data.sql"
+    demo_seed_sql = SQL_DIR / "demo_seed.sql"
 
     if not schema_sql.exists():
         raise RuntimeError(f"Missing schema file: {schema_sql}")
@@ -68,6 +69,7 @@ def run() -> None:
         "claims.csv",
         "members.csv",
         "providers.csv",
+        "cases.csv",
     ]
 
     for name in copy_targets:
@@ -100,6 +102,18 @@ def run() -> None:
         ],
         check=True,
     )
+
+    # Run demo seed (cases, assessments, tasks, care plans for demo members)
+    if demo_seed_sql.exists():
+        subprocess.run(
+            [
+                "docker", "exec", "-i", postgres_container,
+                "psql", "-U", DB_USER, "-d", DB_NAME,
+            ],
+            input=demo_seed_sql.read_text(encoding="utf-8"),
+            text=True,
+            check=True,
+        )
 
 
 if __name__ == "__main__":
