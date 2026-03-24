@@ -48,7 +48,7 @@ def maybe_write_conversation_summary(
     if not summary_text:
         return
 
-    store.write_memory(
+    store.replace_memory(
         tenant_id=tenant_id,
         memory_type="summary",
         scope_type="conversation",

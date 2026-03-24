@@ -157,8 +157,9 @@ def plan(prompt: str, history: List[Dict[str, Any]], ctx: Dict[str, Any]) -> Lis
     allowed_tools = _get_allowed_tools(ctx)
 
     explicit_assessment_id = _extract_assessment_id(p)
+    ctx_assessment_id = str(ctx.get("assessment_id") or "").strip() or None
     latest_assessment_id = _extract_latest_assessment_id(history)
-    active_assessment_id = explicit_assessment_id or latest_assessment_id
+    active_assessment_id = explicit_assessment_id or ctx_assessment_id or latest_assessment_id
 
     print(f"[planner] allowed_tools={allowed_tools} explicit_assessment_id={explicit_assessment_id} prompt={p}", flush=True)
 
@@ -197,10 +198,12 @@ def plan(prompt: str, history: List[Dict[str, Any]], ctx: Dict[str, Any]) -> Lis
 
     note_write_phrases = [
         "update note",
+        "update last note",
         "write note",
         "add note",
         "write a case note",
         "case note",
+        "last note:",
         "note:",
     ]
 
@@ -208,21 +211,30 @@ def plan(prompt: str, history: List[Dict[str, Any]], ctx: Dict[str, Any]) -> Lis
     if explicit_assessment_id and any(x in lower_p for x in clinical_summary_phrases):
         if "get_assessment_summary" in allowed_tools:
             print("[planner] HARD ROUTE -> get_assessment_summary", flush=True)
-            return [f"get_assessment_summary: {explicit_assessment_id}"]
+            return (
+                [f"get_assessment_summary: {explicit_assessment_id}"],
+                {"route_type": "HARD_ROUTE", "tool": "get_assessment_summary", "reason": "assessment_id + summary phrase", "active_assessment_id": explicit_assessment_id},
+            )
 
     # 2) Active assessment follow-up reads
     if active_assessment_id and any(x in lower_p for x in patient_phrases):
         if "get_assessment_summary" in allowed_tools:
             print("[planner] HARD ROUTE -> get_assessment_summary (active assessment)", flush=True)
-            return [f"get_assessment_summary: {active_assessment_id}"]
+            return (
+                [f"get_assessment_summary: {active_assessment_id}"],
+                {"route_type": "HARD_ROUTE", "tool": "get_assessment_summary", "reason": "active_assessment + patient phrase", "active_assessment_id": active_assessment_id},
+            )
 
-    # 3) Deterministic note writing 
+    # 3) Deterministic note writing
     if active_assessment_id and any(x in lower_p for x in note_write_phrases):
         target_assessment = explicit_assessment_id or active_assessment_id
-        
+
         if target_assessment and "write_case_note" in allowed_tools:
-            print("[planner] HARD ROUTE  -> write_case_note" , flush = True)
-            return [f"write_case_note:{target_assessment} | {p}"]
+            print("[planner] HARD ROUTE -> write_case_note", flush=True)
+            return (
+                [f"write_case_note:{target_assessment} | {p}"],
+                {"route_type": "HARD_ROUTE", "tool": "write_case_note", "reason": "active_assessment + note write phrase", "active_assessment_id": target_assessment},
+            )
 
     model_name = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
     api_key = os.getenv("OPENAI_API_KEY", "")
@@ -268,69 +280,23 @@ Rules:
     retrieval_cfg = ctx.get("retrieval") or {}
     default_retrieval_tool = retrieval_cfg.get("default_tool", "search_kb")
 
-    if prompt_member_id and (
-        "summary" in lower_p or "summarize" in lower_p or "member" in lower_p or "show" in lower_p
-    ):
-        if "get_member_summary" in allowed_tools:
-            return [f"get_member_summary: {prompt_member_id}"]
-
-    if explicit_assessment_id and any(x in lower_p for x in clinical_summary_phrases):
-        if "get_assessment_summary" in allowed_tools:
-            return [f"get_assessment_summary: {explicit_assessment_id}"]
-
-    if active_assessment_id and any(x in lower_p for x in patient_phrases):
-        if "get_assessment_summary" in allowed_tools:
-            return [f"get_assessment_summary: {active_assessment_id}"]
-
-    if active_assessment_id and any(x in lower_p for x in note_write_phrases):
-        if "write_case_note" in allowed_tools:
-            return [f"write_case_note: {active_assessment_id} | {p}"]
-
     if ":" not in line:
-        if default_retrieval_tool in allowed_tools:
-            return [f"{default_retrieval_tool}: {p}"]
-        return [f"{default_retrieval_tool}: {p}"]
+        return (
+            [f"{default_retrieval_tool}: {p}"],
+            {"route_type": "LLM_ROUTE", "tool": default_retrieval_tool, "reason": "LLM returned no colon — fallback", "llm_raw": resp},
+        )
 
     tool, arg = line.split(":", 1)
     tool = tool.strip()
     arg = arg.strip()
 
-    prompt_member_id = _extract_member_id(p)
-    history_member_id = _extract_member_id(history_text)
-    arg_member_id = _extract_member_id(arg)
-    arg_assessment_id = _extract_assessment_id(arg)
-
-    if explicit_assessment_id and any(x in lower_p for x in patient_phrases):
-        if "get_assessment_summary" in allowed_tools:
-            return [f"get_assessment_summary: {explicit_assessment_id}"]
-        return [f"{default_retrieval_tool}: {p}"]
-
-    if tool == "get_member_summary":
-        if not arg_member_id and active_assessment_id and "get_assessment_summary" in allowed_tools:
-            return [f"get_assessment_summary: {active_assessment_id}"]
-
-        if arg_member_id and arg_member_id not in {prompt_member_id, history_member_id}:
-            if active_assessment_id and "get_assessment_summary" in allowed_tools:
-                return [f"get_assessment_summary: {active_assessment_id}"]
-            return [f"{default_retrieval_tool}: {p}"]
-
-    if tool == "get_assessment_summary":
-        resolved_assessment_id = arg_assessment_id or explicit_assessment_id or latest_assessment_id
-        if resolved_assessment_id and "get_assessment_summary" in allowed_tools:
-            return [f"get_assessment_summary: {resolved_assessment_id}"]
-
-        if prompt_member_id and "get_member_summary" in allowed_tools:
-            return [f"get_member_summary: {prompt_member_id}"]
-
-        return [f"{default_retrieval_tool}: {p}"]
-
-    if tool == "write_case_note":
-        resolved_assessment_id = arg_assessment_id or explicit_assessment_id or latest_assessment_id
-        if resolved_assessment_id and "write_case_note" in allowed_tools:
-            return [f"write_case_note: {resolved_assessment_id} | {p}"]
-        return [f"{default_retrieval_tool}: {p}"]
-
     if tool in allowed_tools:
-        return [f"{tool}: {arg}"]
+        return (
+            [f"{tool}: {arg}"],
+            {"route_type": "LLM_ROUTE", "tool": tool, "reason": "LLM decision", "llm_raw": resp},
+        )
 
-    return [f"{default_retrieval_tool}: {p}"]
+    return (
+        [f"{default_retrieval_tool}: {p}"],
+        {"route_type": "LLM_ROUTE", "tool": default_retrieval_tool, "reason": f"LLM chose disallowed tool '{tool}' — fallback", "llm_raw": resp},
+    )

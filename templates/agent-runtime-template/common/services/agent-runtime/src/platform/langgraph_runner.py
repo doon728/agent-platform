@@ -93,14 +93,40 @@ class LangGraphRunner:
             "semantic": bool(((memory_cfg.get("write_policies") or {}).get("semantic") or {}).get("enabled", False)),
         }
 
+        # Apply UI toggle overrides — each key can be forced ON or OFF from the request payload
+        override = ctx.get("memory_policy_override") or {}
+        for key in ("short_term", "episodic", "summary", "semantic"):
+            if key in override:
+                memory_policy_state[key] = bool(override[key])
+
+        # If short_term is overridden OFF, clear retrieved history so planner sees no prior turns
+        if not memory_policy_state["short_term"]:
+            memory_context["recent_turns"] = []
+
+        def _snippet(text: str, max_len: int = 80) -> str:
+            text = (text or "").strip().replace("\n", " ")
+            return text[:max_len] + "…" if len(text) > max_len else text
+
+        recent_turns = memory_context.get("recent_turns") or []
+        episodic_memories = memory_context.get("episodic_memories") or []
+        semantic_memories = memory_context.get("semantic_memories") or []
+        conversation_summary = memory_context.get("conversation_summary")
+
         memory_trace = {
             "policy_state": memory_policy_state,
             "scopes": active_scopes,
             "retrieved": {
-                "short_term_count": len(memory_context.get("recent_turns") or []),
-                "summary_count": 1 if memory_context.get("conversation_summary") else 0,
-                "episodic_count": len(memory_context.get("episodic_memories") or []),
-                "semantic_count": len(memory_context.get("semantic_memories") or []),
+                "short_term_count": len(recent_turns),
+                "summary_count": 1 if conversation_summary else 0,
+                "episodic_count": len(episodic_memories),
+                "semantic_count": len(semantic_memories),
+                "short_term_snippets": [
+                    {"role": t.get("role", ""), "text": _snippet(t.get("content", ""))}
+                    for t in recent_turns[-4:]
+                ],
+                "summary_snippet": _snippet(conversation_summary) if conversation_summary else None,
+                "episodic_snippets": [_snippet(m.get("content", "")) for m in episodic_memories[:3]],
+                "semantic_snippets": [_snippet(m.get("content", "")) for m in semantic_memories[:3]],
             },
             "written": {},
             "skipped": {},
@@ -146,6 +172,10 @@ class LangGraphRunner:
 
         out = self._app.invoke(initial_state, config=config)
 
+        planner_trace = out.get("planner_trace") if isinstance(out, dict) else None
+        router_trace = out.get("router_trace") if isinstance(out, dict) else None
+        executor_trace = out.get("executor_trace") if isinstance(out, dict) else None
+
 
 
         # Preserve approval payloads exactly as returned by the graph/executor.
@@ -162,19 +192,42 @@ class LangGraphRunner:
             if result is None:
                 result = out
 
-        write_raw_turns(
-            store=memory_store,
-            tenant_id=tenant_id,
-            thread_id=thread_id,
-            user_prompt=prompt,
-            assistant_response=str(result),
-            metadata={
-                "case_id": case_id,
-                "member_id": ctx.get("member_id"),
-                "assessment_id": ctx.get("assessment_id"),
-                "care_plan_id": ctx.get("care_plan_id"),
-            },
-        )
+        # When result is APPROVAL_REQUIRED, store a slim placeholder to avoid
+        # writing the full 200KB+ approval object into short_term memory which
+        # causes subsequent LLM calls to crash from oversized context.
+        def _is_approval_required(r) -> bool:
+            if isinstance(r, dict):
+                if r.get("result") == "APPROVAL_REQUIRED":
+                    return True
+                if isinstance(r.get("result"), dict) and r["result"].get("result") == "APPROVAL_REQUIRED":
+                    return True
+            return False
+
+        if _is_approval_required(result):
+            tool_name = ""
+            try:
+                inner = result if result.get("result") == "APPROVAL_REQUIRED" else result.get("result", {})
+                tool_name = inner.get("approval", {}).get("tool_name", "") or inner.get("tool_name", "")
+            except Exception:
+                pass
+            memory_response = f"[APPROVAL_REQUIRED] Awaiting human approval for tool: {tool_name}"
+        else:
+            memory_response = str(result)
+
+        if memory_policy_state["short_term"]:
+            write_raw_turns(
+                store=memory_store,
+                tenant_id=tenant_id,
+                thread_id=thread_id,
+                user_prompt=prompt,
+                assistant_response=memory_response,
+                metadata={
+                    "case_id": case_id,
+                    "member_id": ctx.get("member_id"),
+                    "assessment_id": ctx.get("assessment_id"),
+                    "care_plan_id": ctx.get("care_plan_id"),
+                },
+            )
 
         memory_trace["written"]["short_term"] = {
             "status": "written" if memory_policy_state["short_term"] else "skipped",
@@ -202,31 +255,46 @@ class LangGraphRunner:
             }
 
         episodic_cfg = ((memory_cfg.get("write_policies") or {}).get("episodic") or {})
-        if episodic_cfg.get("enabled", False):
-            write_episodic_event(
-                store=memory_store,
-                tenant_id=tenant_id,
-                scopes=active_scopes,
-                content=f"User asked: {prompt}\nAssistant answered: {str(result)}",
-                metadata={
-                    "case_id": case_id,
-                    "member_id": ctx.get("member_id"),
-                    "assessment_id": ctx.get("assessment_id"),
-                    "care_plan_id": ctx.get("care_plan_id"),
-                    "source": "invocation",
-                },
+        if episodic_cfg.get("enabled", False) and memory_policy_state["episodic"]:
+            # Only write episodic on clinical tool execution (tool_success trigger),
+            # not on every read/search query. Check which tool the planner chose.
+            _episodic_write_tools = {"write_case_note", "complete_assessment", "update_care_plan"}
+            _tool_used = (planner_trace or {}).get("tool", "")
+            _is_tool_success = (
+                _tool_used in _episodic_write_tools
+                and not _is_approval_required(result)
             )
-            memory_trace["written"]["episodic"] = {
-                "status": "written",
-                "scope": "case_or_assessment",
-                "trigger": episodic_cfg.get("triggers") or [],
-            }
+            if _is_tool_success:
+                write_episodic_event(
+                    store=memory_store,
+                    tenant_id=tenant_id,
+                    scopes=active_scopes,
+                    content=f"User asked: {prompt}\nAssistant answered: {str(result)}",
+                    metadata={
+                        "case_id": case_id,
+                        "member_id": ctx.get("member_id"),
+                        "assessment_id": ctx.get("assessment_id"),
+                        "care_plan_id": ctx.get("care_plan_id"),
+                        "source": "tool_success",
+                        "tool": _tool_used,
+                    },
+                )
+                memory_trace["written"]["episodic"] = {
+                    "status": "written",
+                    "scope": "case_or_assessment",
+                    "trigger": "tool_success",
+                    "tool": _tool_used,
+                }
+            else:
+                memory_trace["skipped"]["episodic"] = {
+                    "reason": f"trigger not met (tool={_tool_used or 'none'})",
+                }
         else:
             memory_trace["skipped"]["episodic"] = {
                 "reason": "policy_disabled"
             }
         semantic_cfg = ((memory_cfg.get("write_policies") or {}).get("semantic") or {})
-        if semantic_cfg.get("enabled", False):
+        if semantic_cfg.get("enabled", False) and memory_policy_state["semantic"]:
             write_semantic_memories(
                 store=memory_store,
                 tenant_id=tenant_id,
@@ -246,16 +314,20 @@ class LangGraphRunner:
             }
         finish_run(run_id)
 
+        memory_trace["planner"] = planner_trace or {}
+        memory_trace["router"] = router_trace or {}
+        memory_trace["executor"] = executor_trace or {}
+
         return {
-        "answer": result,
-        "ctx": {
-            "tenant_id": ctx.get("tenant_id"),
-            "thread_id": ctx.get("thread_id"),
-            "member_id": ctx.get("member_id"),
-            "case_id": ctx.get("case_id"),
-            "assessment_id": ctx.get("assessment_id"),
-            "care_plan_id": ctx.get("care_plan_id"),
-        },
-        "memory_policy": memory_policy_state,
-        "memory_trace": memory_trace,
-    }
+            "answer": result,
+            "ctx": {
+                "tenant_id": ctx.get("tenant_id"),
+                "thread_id": ctx.get("thread_id"),
+                "member_id": ctx.get("member_id"),
+                "case_id": ctx.get("case_id"),
+                "assessment_id": ctx.get("assessment_id"),
+                "care_plan_id": ctx.get("care_plan_id"),
+            },
+            "memory_policy": memory_policy_state,
+            "memory_trace": memory_trace,
+        }

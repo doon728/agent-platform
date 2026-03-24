@@ -33,6 +33,8 @@ def build_context(request: Request, payload: Dict[str, Any]) -> Dict[str, str]:
         or f"corr-{uuid.uuid4()}"
     )
 
+    memory_policy_override = payload.get("memory_policy_override") or {}
+
     return {
         "tenant_id": tenant_id,
         "user_id": user_id,
@@ -42,4 +44,5 @@ def build_context(request: Request, payload: Dict[str, Any]) -> Dict[str, str]:
         "assessment_id": assessment_id,
         "care_plan_id": care_plan_id,
         "correlation_id": correlation_id,
+        "memory_policy_override": memory_policy_override,
     }

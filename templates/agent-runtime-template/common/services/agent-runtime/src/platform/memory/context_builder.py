@@ -64,6 +64,18 @@ def build_memory_context(
                 )
             )
 
+        if scope["scope_type"] == "assessment":
+            top_k = ((case_cfg.get("episodic") or {}).get("top_k", 5))
+            episodic_memories.extend(
+                store.list_memories(
+                    tenant_id=tenant_id,
+                    scope_type="assessment",
+                    scope_id=scope["scope_id"],
+                    memory_type="episodic",
+                    top_k=top_k,
+                )
+            )
+
         if scope["scope_type"] == "member":
             top_k = ((member_cfg.get("semantic") or {}).get("top_k", 3))
             semantic_memories.extend(

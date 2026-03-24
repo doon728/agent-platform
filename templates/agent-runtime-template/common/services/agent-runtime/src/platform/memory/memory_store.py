@@ -49,6 +49,7 @@ class FileMemoryStore:
         role: str,
         content: str,
         metadata: Dict[str, Any] | None = None,
+        max_short_term_records: int = 100,
     ) -> Dict[str, Any]:
         record = {
             "memory_id": f"mem_{uuid4().hex[:12]}",
@@ -62,7 +63,11 @@ class FileMemoryStore:
         }
         records = self._read_records(tenant_id, "conversation", thread_id)
         records.append(record)
-        self._write_records(tenant_id, "conversation", thread_id, records)
+        # Keep non-short_term records (summary etc.) plus a rolling window of short_term
+        non_st = [r for r in records if r.get("memory_type") != "short_term"]
+        short_term = [r for r in records if r.get("memory_type") == "short_term"]
+        short_term = short_term[-max_short_term_records:]
+        self._write_records(tenant_id, "conversation", thread_id, non_st + short_term)
         return record
 
     def list_recent_turns(
@@ -72,6 +77,7 @@ class FileMemoryStore:
         max_turns: int = 8,
     ) -> List[Dict[str, Any]]:
         records = self._read_records(tenant_id, "conversation", thread_id)
+        records = [r for r in records if r.get("memory_type") == "short_term"]
         return records[-max_turns:]
 
     def write_memory(
@@ -95,6 +101,32 @@ class FileMemoryStore:
         records = self._read_records(tenant_id, scope_type, scope_id)
         records.append(record)
         self._write_records(tenant_id, scope_type, scope_id, records)
+        return record
+
+    def replace_memory(
+        self,
+        tenant_id: str,
+        memory_type: str,
+        scope_type: str,
+        scope_id: str,
+        content: str,
+        metadata: Dict[str, Any] | None = None,
+    ) -> Dict[str, Any]:
+        """Write a single memory record, replacing any existing records of the same type."""
+        record = {
+            "memory_id": f"mem_{uuid4().hex[:12]}",
+            "memory_type": memory_type,
+            "scope_type": scope_type,
+            "scope_id": scope_id,
+            "content": content,
+            "metadata": metadata or {},
+            "created_at": _utc_now(),
+        }
+        # Keep all records except existing ones of this memory_type
+        existing = self._read_records(tenant_id, scope_type, scope_id)
+        kept = [r for r in existing if r.get("memory_type") != memory_type]
+        kept.append(record)
+        self._write_records(tenant_id, scope_type, scope_id, kept)
         return record
 
     def list_memories(
