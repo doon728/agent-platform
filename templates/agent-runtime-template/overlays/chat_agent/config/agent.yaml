@@ -8,6 +8,9 @@ tools:
 retrieval:
   enabled: true
   default_tool: search_kb
+  strategy: semantic
+  top_k: 5
+  similarity_threshold: 0.35
   fallback:
     allow_no_results_response: true
 risk:

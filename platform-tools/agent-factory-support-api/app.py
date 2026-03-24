@@ -246,6 +246,9 @@ def materialize_usecase_pack(
         "retrieval": {
             "enabled": bool(rag_cfg.get("enabled", True)),
             "default_tool": rag_cfg.get("default_tool", "search_kb"),
+            "strategy": rag_cfg.get("strategy", "semantic"),
+            "top_k": int(rag_cfg.get("top_k", 5)),
+            "similarity_threshold": float(rag_cfg.get("score_threshold") or rag_cfg.get("similarity_threshold", 0.35)),
             "fallback": {
                 "allow_no_results_response": True,
             },

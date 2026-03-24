@@ -30,6 +30,8 @@ class ToolSpec(BaseModel):
 
 class SearchKBInput(BaseModel):
     query: str
+    top_k: Optional[int] = None
+    threshold: Optional[float] = None
 
 
 class SearchKBResult(BaseModel):
@@ -136,7 +138,7 @@ def search_kb_handler(inp: SearchKBInput) -> SearchKBOutput:
     if not q:
         return SearchKBOutput(results=[])
 
-    results = retrieve(q, top_k=3)
+    results = retrieve(q, top_k=inp.top_k, threshold=inp.threshold)
 
     return SearchKBOutput(
         results=[

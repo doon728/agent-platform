@@ -37,9 +37,11 @@ def embed_text(text: str) -> List[float]:
     return resp.data[0].embedding
 
 
-def retrieve(query: str, top_k: int | None = None) -> List[Dict[str, Any]]:
+def retrieve(query: str, top_k: int | None = None, threshold: float | None = None) -> List[Dict[str, Any]]:
     if top_k is None:
         top_k = int(os.getenv("KB_TOP_K", "3"))
+    if threshold is None:
+        threshold = SIMILARITY_THRESHOLD
     emb = embed_text(query)
 
     sql = """
@@ -73,7 +75,7 @@ def retrieve(query: str, top_k: int | None = None) -> List[Dict[str, Any]]:
 
         score = float(score) if score is not None else 0.0
 
-        if score < SIMILARITY_THRESHOLD:
+        if score < threshold:
             continue
 
         results.append(

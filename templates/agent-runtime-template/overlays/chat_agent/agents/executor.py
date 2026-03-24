@@ -92,6 +92,14 @@ def execute(steps: List[str], ctx: Dict[str, Any]) -> Any:
         tool = plan["tool"]
         tool_input = plan["input"]
 
+        # Inject RAG params from agent.yaml retrieval config when calling the retrieval tool
+        retrieval_cfg = ctx.get("retrieval") or {}
+        if tool == retrieval_cfg.get("default_tool"):
+            if retrieval_cfg.get("top_k") is not None:
+                tool_input = {**tool_input, "top_k": retrieval_cfg["top_k"]}
+            if retrieval_cfg.get("similarity_threshold") is not None:
+                tool_input = {**tool_input, "threshold": retrieval_cfg["similarity_threshold"]}
+
         add_step(run_id, "tool_call", {"tool": tool, "input": tool_input})
         result = _invoke_tool(tool, tool_input, ctx)
 
