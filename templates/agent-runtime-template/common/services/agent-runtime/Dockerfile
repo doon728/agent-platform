@@ -15,8 +15,6 @@ COPY services/agent-runtime/config/ /app/config
 COPY services/agent-runtime/src/ /app/src
 COPY overlays/ /app/overlays
 
-# VERY IMPORTANT → platform folder is at template ROOT
-COPY platform/ /app/platform
 
 EXPOSE 8080
 

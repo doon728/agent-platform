@@ -13,7 +13,7 @@ from src.platform.memory.write_engine import (
 
 from src.graph.build_graph import build_graph
 from src.platform.observability.tracer import start_run, finish_run
-from src.platform.usecase_config_loader import load_usecase_config
+from src.platform.usecase_config_loader import load_agent_config
 from src.platform.config import load_config
 from src.platform.memory.config_loader import load_memory_config
 from src.platform.memory.scope_resolver import resolve_scopes
@@ -40,19 +40,18 @@ class LangGraphRunner:
 
         memory_store = FileMemoryStore()
 
+        cfg = load_config()
+        agent_type = cfg.prompt_service.agent_type
+
         run_id = start_run(
-            agent="chat_agent",
+            agent=agent_type,
             thread_id=thread_id,
             prompt=prompt,
         )
 
         ctx["run_id"] = run_id
 
-        cfg = load_config()
-        usecase_cfg = load_usecase_config(
-            cfg.app.capability_name,
-            cfg.app.active_usecase
-        )
+        usecase_cfg = load_agent_config(agent_type)
 
         ctx["usecase_config"] = usecase_cfg
         ctx["prompts"] = usecase_cfg.get("prompts", {})

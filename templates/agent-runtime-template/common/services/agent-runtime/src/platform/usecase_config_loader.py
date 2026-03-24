@@ -16,20 +16,13 @@ def _load_yaml_if_exists(path: str) -> Dict[str, Any]:
         return yaml.safe_load(f) or {}
 
 
-def load_usecase_config(capability_name: str, usecase_name: str) -> Dict[str, Any]:
-    usecase_dir = os.path.join(
-        PLATFORM_ROOT,
-        "platform",
-        "capability-packs",
-        capability_name,
-        "usecases",
-        usecase_name,
-    )
+def load_agent_config(agent_type: str) -> Dict[str, Any]:
+    config_dir = os.path.join(PLATFORM_ROOT, "overlays", agent_type, "config")
 
-    raw = _load_yaml_if_exists(os.path.join(usecase_dir, "usecase.yaml"))
-    prompts = _load_yaml_if_exists(os.path.join(usecase_dir, "prompt-defaults.yaml"))
-    memory = _load_yaml_if_exists(os.path.join(usecase_dir, "memory.yaml"))
-    workflow_rules = _load_yaml_if_exists(os.path.join(usecase_dir, "workflow-rules.yaml"))
+    raw = _load_yaml_if_exists(os.path.join(config_dir, "agent.yaml"))
+    prompts = _load_yaml_if_exists(os.path.join(config_dir, "prompt-defaults.yaml"))
+    memory = _load_yaml_if_exists(os.path.join(config_dir, "memory.yaml"))
+    workflow_rules = _load_yaml_if_exists(os.path.join(config_dir, "workflow-rules.yaml"))
 
     usecase_cfg = raw.get("usecase") or {}
     agent_cfg = raw.get("agent") or {}

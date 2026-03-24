@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
 
 from src.platform.config import load_config
-from src.platform.usecase_config_loader import load_usecase_config
+from src.platform.usecase_config_loader import load_agent_config
 from src.platform.context import build_context
 from src.platform.auth import authenticate_request
 from src.platform.authorization import enforce_tenant_isolation
@@ -26,7 +26,7 @@ register_tools()
 load_tools_from_gateway()
 
 print(
-    f"[config] active_usecase={cfg.app.active_usecase} "
+    f"[config] agent_type={cfg.prompt_service.agent_type} "
     f"tool_gateway_url={cfg.tool_gateway.url}",
     flush=True,
 )
@@ -66,10 +66,7 @@ async def debug_memory(request: Request) -> JSONResponse:
     ctx["prompt"] = payload.get("prompt") or payload.get("text") or payload.get("message") or ""
 
     cfg = load_config()
-    usecase_cfg = load_usecase_config(
-        cfg.app.capability_name,
-        cfg.app.active_usecase
-    )
+    usecase_cfg = load_agent_config(cfg.prompt_service.agent_type)
 
     from src.platform.memory.config_loader import load_memory_config
     from src.platform.memory.scope_resolver import resolve_scopes
