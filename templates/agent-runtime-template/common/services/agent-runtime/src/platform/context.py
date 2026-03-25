@@ -34,6 +34,7 @@ def build_context(request: Request, payload: Dict[str, Any]) -> Dict[str, str]:
     )
 
     memory_policy_override = payload.get("memory_policy_override") or {}
+    hitl_override = payload.get("hitl_override") or {}
 
     return {
         "tenant_id": tenant_id,
@@ -45,4 +46,5 @@ def build_context(request: Request, payload: Dict[str, Any]) -> Dict[str, str]:
         "care_plan_id": care_plan_id,
         "correlation_id": correlation_id,
         "memory_policy_override": memory_policy_override,
+        "hitl_override": hitl_override,
     }

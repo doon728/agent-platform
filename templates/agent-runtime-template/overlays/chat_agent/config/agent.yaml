@@ -15,6 +15,25 @@ retrieval:
     allow_no_results_response: true
 risk:
   approval_required: false
+  risk_levels:
+    write_case_note: high
+    get_member_summary: low
+    get_assessment_summary: low
+    get_assessment_tasks: low
+    get_member: low
+    search_kb: low
+
+hitl:
+  adapter: internal
+  routing_rules:
+    - risk_level: high
+      requires_approval: true
+    - risk_level: medium
+      requires_approval: true
+    - risk_level: low
+      requires_approval: false
+  sla:
+    timeout_minutes: 60
 features:
   memory: true
   rag: true

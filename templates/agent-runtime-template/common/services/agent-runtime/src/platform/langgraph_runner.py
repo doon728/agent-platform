@@ -58,6 +58,7 @@ class LangGraphRunner:
         ctx["tool_policy"] = usecase_cfg.get("tool_policy", {})
         ctx["retrieval"] = usecase_cfg.get("retrieval", {})
         ctx["workflow_rules"] = usecase_cfg.get("workflow_rules", {})
+        ctx["hitl"] = usecase_cfg.get("hitl", {})
 
         memory_cfg = load_memory_config(usecase_cfg)
         active_scopes = resolve_scopes(ctx, memory_cfg)

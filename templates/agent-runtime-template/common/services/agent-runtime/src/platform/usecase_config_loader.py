@@ -29,6 +29,7 @@ def load_agent_config(agent_type: str) -> Dict[str, Any]:
     tools_cfg = raw.get("tools") or {}
     retrieval_cfg = raw.get("retrieval") or {}
     risk_cfg = raw.get("risk") or {}
+    hitl_cfg = raw.get("hitl") or {}
     features_cfg = raw.get("features") or {}
 
     return {
@@ -46,6 +47,7 @@ def load_agent_config(agent_type: str) -> Dict[str, Any]:
         },
         "retrieval": retrieval_cfg,
         "risk": risk_cfg,
+        "hitl": hitl_cfg,
         "features": features_cfg,
         "prompts": prompts,
         "memory": memory,
