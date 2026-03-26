@@ -33,25 +33,8 @@ def _get_planner_prompt(ctx: Dict[str, Any]) -> str:
     if local_prompt:
         return local_prompt
 
-    return """
-You are an AI planning agent.
-
-Your job is to decide which tool should be used next.
-
-Rules:
-- Choose the best tool from the available tools.
-- Use conversation context when selecting tool arguments.
-- Never invent IDs such as assessment_id or member_id.
-- If the current user message explicitly contains an assessment_id or member_id, that explicit ID takes priority over history.
-- Only use IDs that appear in:
-  1) current user message
-  2) conversation history
-  3) current assessment context
-- Return exactly one tool call.
-
-Format:
-tool_name: argument
-""".strip()
+    # Minimal fallback — full prompt should be in prompt-defaults.yaml
+    return "You are an AI planning agent. Choose the best tool. Return exactly one tool call in format: tool_name: argument"
 
 
 def _extract_latest_assessment_id(history: List[Dict[str, Any]]) -> str | None:
@@ -120,6 +103,39 @@ def _get_allowed_tools(ctx: Dict[str, Any]) -> List[str]:
     return []
 
 
+def _filter_tools_by_context(
+    allowed_tools: List[str],
+    ctx_member_id: str | None,
+    ctx_case_id: str | None,
+    active_assessment_id: str | None,
+) -> List[str]:
+    """Reduce allowed_tools to only those valid for the current context."""
+    if active_assessment_id:
+        context_valid = {"get_assessment_summary", "get_assessment_tasks", "write_case_note", "search_kb", "get_member"}
+    elif ctx_case_id:
+        context_valid = {"get_case_summary", "write_case_note", "search_kb", "get_member"}
+    elif ctx_member_id:
+        context_valid = {"get_member_summary", "get_member", "search_kb"}
+    else:
+        context_valid = {"search_kb"}
+
+    filtered = [t for t in allowed_tools if t in context_valid]
+    return filtered if filtered else allowed_tools
+
+
+def _build_tool_call_schema(allowed_tools: List[str]):
+    """Build a dynamic Pydantic model for structured LLM output."""
+    from pydantic import create_model
+    from typing import Literal
+
+    if len(allowed_tools) == 1:
+        tool_type = Literal[allowed_tools[0]]  # type: ignore
+    else:
+        tool_type = Literal[tuple(allowed_tools)]  # type: ignore
+
+    return create_model("ToolCall", tool=(tool_type, ...), argument=(str, ...))
+
+
 def _get_tool_descriptions(allowed_tools: List[str]) -> str:
     specs = registry.list_specs()
     spec_map = {s.name: s for s in specs}
@@ -160,6 +176,8 @@ def plan(prompt: str, history: List[Dict[str, Any]], ctx: Dict[str, Any]) -> Lis
     ctx_assessment_id = str(ctx.get("assessment_id") or "").strip() or None
     latest_assessment_id = _extract_latest_assessment_id(history)
     active_assessment_id = explicit_assessment_id or ctx_assessment_id or latest_assessment_id
+    ctx_member_id = str(ctx.get("member_id") or "").strip() or None
+    ctx_case_id = str(ctx.get("case_id") or "").strip() or None
 
     print(f"[planner] allowed_tools={allowed_tools} explicit_assessment_id={explicit_assessment_id} prompt={p}", flush=True)
 
@@ -181,6 +199,20 @@ def plan(prompt: str, history: List[Dict[str, Any]], ctx: Dict[str, Any]) -> Lis
         "status",
         "latest note",
         "last note",
+        "concern",
+        "major concern",
+        "key concern",
+        "risk",
+        "risk level",
+        "overall risk",
+        "clinical",
+        "condition",
+        "health status",
+        "diagnosis",
+        "what is",
+        "tell me",
+        "how is",
+        "what are",
     ]
 
     patient_phrases = [
@@ -258,31 +290,77 @@ def plan(prompt: str, history: List[Dict[str, Any]], ctx: Dict[str, Any]) -> Lis
                 {"route_type": "HARD_ROUTE", "tool": "write_case_note", "reason": "active_assessment + note write phrase", "active_assessment_id": target_assessment},
             )
 
+    # 5) Member-level summary — no assessment, no case in context
+    if ctx_member_id and not ctx_case_id and not active_assessment_id and any(x in lower_p for x in clinical_summary_phrases):
+        if "get_member_summary" in allowed_tools:
+            print("[planner] HARD ROUTE -> get_member_summary (member ctx)", flush=True)
+            return (
+                [f"get_member_summary: {ctx_member_id}"],
+                {"route_type": "HARD_ROUTE", "tool": "get_member_summary", "reason": "member_id in ctx + summary phrase"},
+            )
+        if "get_member" in allowed_tools:
+            print("[planner] HARD ROUTE -> get_member (member ctx)", flush=True)
+            return (
+                [f"get_member: {ctx_member_id}"],
+                {"route_type": "HARD_ROUTE", "tool": "get_member", "reason": "member_id in ctx + summary phrase"},
+            )
+
+    # 6) Case-level summary — case_id in context, no assessment
+    if ctx_case_id and not active_assessment_id and any(x in lower_p for x in clinical_summary_phrases):
+        if "get_case_summary" in allowed_tools:
+            print("[planner] HARD ROUTE -> get_case_summary (case ctx)", flush=True)
+            return (
+                [f"get_case_summary: {ctx_case_id}"],
+                {"route_type": "HARD_ROUTE", "tool": "get_case_summary", "reason": "case_id in ctx + summary phrase → case_summary"},
+            )
+        target_member = ctx_member_id or prompt_member_id
+        if target_member and "get_member_summary" in allowed_tools:
+            print("[planner] HARD ROUTE -> get_member_summary (case ctx fallback)", flush=True)
+            return (
+                [f"get_member_summary: {target_member}"],
+                {"route_type": "HARD_ROUTE", "tool": "get_member_summary", "reason": "case_id in ctx + summary phrase → member_summary (fallback)"},
+            )
+        if target_member and "get_member" in allowed_tools:
+            print("[planner] HARD ROUTE -> get_member (case ctx)", flush=True)
+            return (
+                [f"get_member: {target_member}"],
+                {"route_type": "HARD_ROUTE", "tool": "get_member", "reason": "case_id in ctx + summary phrase → get_member"},
+            )
+
+    retrieval_cfg = ctx.get("retrieval") or {}
+    default_retrieval_tool = retrieval_cfg.get("default_tool", "search_kb")
+
+    # --------------------------------------------------
+    # LLM PATH — structured output with context-filtered tools
+    # --------------------------------------------------
+    filtered_tools = _filter_tools_by_context(allowed_tools, ctx_member_id, ctx_case_id, active_assessment_id)
+    print(f"[planner] filtered_tools={filtered_tools}", flush=True)
+
     model_name = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
     api_key = os.getenv("OPENAI_API_KEY", "")
     llm = ChatOpenAI(model=model_name, temperature=0, api_key=api_key)
 
-    tools_text = _get_tool_descriptions(allowed_tools)
+    ToolCallSchema = _build_tool_call_schema(filtered_tools)
+    structured_llm = llm.with_structured_output(ToolCallSchema)
+
+    tools_text = _get_tool_descriptions(filtered_tools)
 
     system = SystemMessage(
         content=f"""
 {planner_prompt}
 
 Conversation context:
-Explicit assessment in current prompt: {explicit_assessment_id or "(none)"}
-Current assessment from history: {latest_assessment_id or "(none)"}
-Active assessment to prefer: {active_assessment_id or "(none)"}
+Active member_id: {ctx_member_id or "(none)"}
+Active case_id: {ctx_case_id or "(none)"}
+Active assessment_id: {active_assessment_id or "(none)"}
 
-Available tools:
+Available tools (only these are valid for the current context):
 {tools_text}
 
-Rules:
-- Never invent a member_id or assessment_id.
-- If the current user message explicitly contains an assessment_id, use that instead of history.
-- If there is an active assessment and the user asks about patient/member name, status, latest note, or summary, use get_assessment_summary with that assessment_id.
-- If there is an active assessment and the user is trying to write/update/add a note, use:
-  write_case_note: <assessment_id> | <note text>
-- Only choose from the tools listed above.
+Choose the single best tool for the user's message.
+For the argument, use the active ID from context (assessment_id, case_id, or member_id) unless the user specifies a different one.
+For write_case_note, use the active assessment_id or case_id as the argument.
+For search_kb, use the user's message as the argument.
 """
     )
 
@@ -290,35 +368,35 @@ Rules:
         content=(
             f"Conversation history:\n{history_text or '(none)'}\n\n"
             f"User message:\n{p}\n\n"
-            "Return the next tool call."
+            "Return the best tool call."
         )
     )
 
-    resp = llm.invoke([system, human]).content.strip()
-
-    line = resp.splitlines()[0].strip()
-    line = line.replace("Tool:", "").replace("tool:", "").strip()
-
-    retrieval_cfg = ctx.get("retrieval") or {}
-    default_retrieval_tool = retrieval_cfg.get("default_tool", "search_kb")
-
-    if ":" not in line:
+    try:
+        result = structured_llm.invoke([system, human])
+        tool = result.tool
+        arg = (result.argument or "").strip()
+    except Exception as e:
+        print(f"[planner] structured output failed: {e}", flush=True)
         return (
             [f"{default_retrieval_tool}: {p}"],
-            {"route_type": "LLM_ROUTE", "tool": default_retrieval_tool, "reason": "LLM returned no colon — fallback", "llm_raw": resp},
+            {"route_type": "LLM_ROUTE", "tool": default_retrieval_tool, "reason": f"structured output failed: {e}"},
         )
 
-    tool, arg = line.split(":", 1)
-    tool = tool.strip()
-    arg = arg.strip()
+    print(f"[planner] LLM structured result: tool={tool} argument={arg}", flush=True)
 
-    if tool in allowed_tools:
-        return (
-            [f"{tool}: {arg}"],
-            {"route_type": "LLM_ROUTE", "tool": tool, "reason": "LLM decision", "llm_raw": resp},
-        )
+    # Step 3 — Inject missing argument from context
+    if not arg:
+        if tool in ("get_assessment_summary", "get_assessment_tasks") and active_assessment_id:
+            arg = active_assessment_id
+        elif tool == "get_case_summary" and ctx_case_id:
+            arg = ctx_case_id
+        elif tool in ("get_member_summary", "get_member") and ctx_member_id:
+            arg = ctx_member_id
+        else:
+            arg = p
 
     return (
-        [f"{default_retrieval_tool}: {p}"],
-        {"route_type": "LLM_ROUTE", "tool": default_retrieval_tool, "reason": f"LLM chose disallowed tool '{tool}' — fallback", "llm_raw": resp},
+        [f"{tool}: {arg}"],
+        {"route_type": "LLM_ROUTE", "tool": tool, "reason": "LLM structured decision", "filtered_tools": filtered_tools},
     )

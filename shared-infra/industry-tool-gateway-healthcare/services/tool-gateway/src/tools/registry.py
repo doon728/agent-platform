@@ -20,6 +20,9 @@ class ToolSpec(BaseModel):
     primary_arg: str = "query"
     mode: str = "read"
     tags: list[str] = Field(default_factory=list)
+    # Retrieval metadata — only set for tools tagged "retrieval"
+    db_type: str | None = None    # "vector_db" | "graph_db" | "relational" | "search_engine"
+    strategy: str | None = None   # "semantic" | "hybrid" | "keyword" | "graph"
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -159,13 +162,18 @@ def get_member_handler(inp: GetMemberInput) -> GetMemberOutput:
     if not member_id:
         return GetMemberOutput(member=None)
 
+    result = store().get_member_summary(member_id)
+    m = result.get("member") if result.get("found") else None
+    if not m:
+        return GetMemberOutput(member=None)
+
     return GetMemberOutput(
         member=Member(
-            member_id=member_id,
-            first_name="Jane",
-            last_name="Doe",
-            dob="1990-01-01",
-            plan="SamplePlan",
+            member_id=m.get("member_id", member_id),
+            first_name=m.get("first_name", ""),
+            last_name=m.get("last_name", ""),
+            dob=m.get("dob", ""),
+            plan=m.get("plan_id", ""),
         )
     )
 
@@ -207,6 +215,23 @@ def write_case_note_handler(inp: WriteCaseNoteInput) -> WriteCaseNoteOutput:
     return WriteCaseNoteOutput(written=True, note_id=note_id)
 
 
+class GetCaseSummaryInput(BaseModel):
+    case_id: str = Field(..., description="Case ID like case-001")
+
+
+class GetCaseSummaryOutput(BaseModel):
+    found: bool
+    case_id: str
+    data: Optional[dict[str, Any]] = None
+
+
+def get_case_summary_handler(inp: GetCaseSummaryInput) -> GetCaseSummaryOutput:
+    result = store().get_case_summary(inp.case_id)
+    if not result.get("found"):
+        return GetCaseSummaryOutput(found=False, case_id=inp.case_id, data=None)
+    return GetCaseSummaryOutput(found=True, case_id=inp.case_id, data=result)
+
+
 class GetAssessmentTasksInput(BaseModel):
     assessment_id: str = Field(..., description="Assessment ID like asmt-000001")
 
@@ -241,6 +266,8 @@ TOOL_REGISTRY: Dict[str, ToolSpec] = {
         primary_arg="query",
         mode="read",
         tags=["retrieval", "knowledge", "policy", "care_management"],
+        db_type="vector_db",
+        strategy="semantic",
     ),
 
     "get_member": ToolSpec(
@@ -296,5 +323,16 @@ TOOL_REGISTRY: Dict[str, ToolSpec] = {
         primary_arg="assessment_id",
         mode="read",
         tags=["assessment", "tasks", "care_management"],
+    ),
+
+    "get_case_summary": ToolSpec(
+        name="get_case_summary",
+        description="Return case details + member profile + assessments + recent case notes for a specific case.",
+        input_model=GetCaseSummaryInput,
+        output_model=GetCaseSummaryOutput,
+        handler=get_case_summary_handler,
+        primary_arg="case_id",
+        mode="read",
+        tags=["case", "summary", "care_management"],
     ),
 }

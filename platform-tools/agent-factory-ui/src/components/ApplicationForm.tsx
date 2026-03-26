@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from "react"
+import { useEffect, useState, type CSSProperties } from "react"
 import {
   createApplication,
   createCapability,
@@ -11,6 +11,7 @@ import {
   getRegistryUsecases,
   getRegistryAgents,
   getRegistryAppByCapability,
+  getTemplateManifest,
 } from "../api/factoryApi"
 
 type GatewayTool = {
@@ -19,6 +20,8 @@ type GatewayTool = {
   primary_arg?: string
   mode: string
   tags?: string[]
+  db_type?: string
+  strategy?: string
 }
 
 type RegistryAgentRecord = {
@@ -68,6 +71,42 @@ type UsecaseMetadata = {
 type FactoryMode = "create_capability" | "manage_usecase_agent" | "govern_existing"
 type CapabilityCreateMode = "__new__" | string
 type UsecaseManageMode = "new" | "existing"
+
+function InfoTooltip({ text }: { text: string }) {
+  const [visible, setVisible] = useState(false)
+  return (
+    <span style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
+      <span
+        onMouseEnter={() => setVisible(true)}
+        onMouseLeave={() => setVisible(false)}
+        style={{ cursor: "help", color: "#9ca3af", fontSize: 13, lineHeight: 1, userSelect: "none" }}
+      >
+        ⓘ
+      </span>
+      {visible && (
+        <span style={{
+          position: "absolute",
+          bottom: "calc(100% + 6px)",
+          left: "50%",
+          transform: "translateX(-50%)",
+          background: "#1f2937",
+          color: "#f9fafb",
+          fontSize: 12,
+          lineHeight: 1.5,
+          padding: "6px 10px",
+          borderRadius: 6,
+          whiteSpace: "normal",
+          width: 220,
+          zIndex: 100,
+          boxShadow: "0 4px 12px rgba(0,0,0,0.25)",
+          pointerEvents: "none",
+        }}>
+          {text}
+        </span>
+      )}
+    </span>
+  )
+}
 
 function slugify(value: string) {
   return value
@@ -130,7 +169,6 @@ export default function ApplicationForm() {
   const [modelName, setModelName] = useState("gpt-4o-mini")
   const [temperature, setTemperature] = useState("0")
 
-  const [localHumanReviewEnabled, setLocalHumanReviewEnabled] = useState(true)
 
   const [memoryEnabled, setMemoryEnabled] = useState(true)
 
@@ -150,8 +188,17 @@ export default function ApplicationForm() {
 
 
 
+  // HITL
+  const [hitlApprovalRequired, setHitlApprovalRequired] = useState(true)
+  const [hitlRiskLevels, setHitlRiskLevels] = useState<Record<string, string>>({ write_case_note: "high" })
+  const [hitlMinRisk, setHitlMinRisk] = useState<"high" | "medium_and_above" | "all">("high")
+  const [hitlTimeoutMinutes, setHitlTimeoutMinutes] = useState("60")
+
+  // Template manifest (loaded when agentType changes)
+  const [templateManifest, setTemplateManifest] = useState<any>(null)
+
   const [localRagEnabled, setLocalRagEnabled] = useState(true)
-  const [localRagType, setLocalRagType] = useState("vector_rag")
+  const [localRagDefaultTool, setLocalRagDefaultTool] = useState("search_kb")
   const [localTopK, setLocalTopK] = useState("3")
   const [localScoreThreshold, setLocalScoreThreshold] = useState("0.35")
 
@@ -161,7 +208,6 @@ export default function ApplicationForm() {
 
   
   const [agentCoreRagEnabled] = useState(true)
-  const [agentCoreRagType] = useState("vector_rag")
   const [agentCoreTopK] = useState("3")
   const [agentCoreScoreThreshold] = useState("0.35")
 
@@ -189,30 +235,6 @@ export default function ApplicationForm() {
   const createCapabilityExistingSelected =
     factoryMode === "create_capability" && createCapabilitySelection !== "__new__"
 
-  const plannerVisible = useMemo(() => {
-    if (factoryMode !== "govern_existing" || !usecaseMetadata) return true
-    return !!usecaseMetadata.components?.planner
-  }, [factoryMode, usecaseMetadata])
-
-  const responderVisible = useMemo(() => {
-    if (factoryMode !== "govern_existing" || !usecaseMetadata) return true
-    return !!usecaseMetadata.components?.responder
-  }, [factoryMode, usecaseMetadata])
-
-  const agentTypeOptions = useMemo(() => {
-    if (
-      factoryMode !== "govern_existing" ||
-      !usecaseMetadata?.supported_agent_types?.length
-    ) {
-      return BASE_AGENT_TYPE_OPTIONS
-    }
-
-    const supported = new Set(usecaseMetadata.supported_agent_types)
-    return BASE_AGENT_TYPE_OPTIONS.map((option) => ({
-      ...option,
-      enabled: supported.has(option.value),
-    }))
-  }, [factoryMode, usecaseMetadata])
 
   useEffect(() => {
     const loadInitial = async () => {
@@ -224,8 +246,11 @@ export default function ApplicationForm() {
 
         setAvailableGateways(["healthcare-tool-gateway"])
         setSelectedGateway("healthcare-tool-gateway")
-        setAvailableTools(toolsRes.data.tools || [])
-        setSelectedTools((toolsRes.data.tools || []).map((t: GatewayTool) => t.name))
+        const tools: GatewayTool[] = toolsRes.data.tools || []
+        setAvailableTools(tools)
+        setSelectedTools(tools.map((t) => t.name))
+        const firstRetrievalTool = tools.find((t) => !!t.db_type)
+        if (firstRetrievalTool) setLocalRagDefaultTool(firstRetrievalTool.name)
         setRegistryCapabilities(capsRes.data.capabilities || [])
       } catch (err: any) {
         console.error(err)
@@ -449,6 +474,16 @@ export default function ApplicationForm() {
     setAgentRepoName(selected.agent_repo_name || "")
   }, [factoryMode, selectedGovernAgentRepo, registryAgents])
 
+  // Fetch template manifest when agentType changes (to get D2 RAG info)
+  useEffect(() => {
+    let cancelled = false
+    setTemplateManifest(null)
+    getTemplateManifest(agentType)
+      .then((res) => { if (!cancelled && res.data?.ok) setTemplateManifest(res.data.manifest) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [agentType])
+
   useEffect(() => {
     if (factoryMode !== "create_capability") return
     if (createCapabilitySelection !== "__new__") return
@@ -584,10 +619,6 @@ export default function ApplicationForm() {
         return
       }
 
-      const writeTools = availableTools
-        .filter((t) => t.mode === "write" && selectedTools.includes(t.name))
-        .map((t) => t.name)
-
       const payload = {
         industry,
         customer_name: customer,
@@ -618,6 +649,8 @@ export default function ApplicationForm() {
               },
               rag: {
                 enabled: localRagEnabled,
+                default_tool: localRagDefaultTool,
+                strategy: availableTools.find((t) => t.name === localRagDefaultTool)?.strategy || "semantic",
                 top_k: Number(localTopK),
                 score_threshold: Number(localScoreThreshold),
               },
@@ -626,9 +659,17 @@ export default function ApplicationForm() {
                 model: modelName,
                 temperature: Number(temperature),
               },
-              approval: {
-                enabled: localHumanReviewEnabled,
-                write_tools: localHumanReviewEnabled ? writeTools : [],
+              risk: {
+                approval_required: hitlApprovalRequired,
+                risk_levels: hitlRiskLevels,
+              },
+              hitl: {
+                routing_rules: hitlMinRisk === "all"
+                  ? [{ risk_level: "low", requires_approval: true }, { risk_level: "medium", requires_approval: true }, { risk_level: "high", requires_approval: true }]
+                  : hitlMinRisk === "medium_and_above"
+                  ? [{ risk_level: "medium", requires_approval: true }, { risk_level: "high", requires_approval: true }]
+                  : [{ risk_level: "high", requires_approval: true }],
+                sla: { timeout_minutes: Number(hitlTimeoutMinutes) },
               },
               memory: buildMemoryPayload(),
               embeddings: {
@@ -1163,6 +1204,21 @@ export default function ApplicationForm() {
                           </option>
                         ))}
                       </select>
+
+                      {/* D2 RAG info — shown immediately after agent type is selected */}
+                      {templateManifest?.rag_dimension2 ? (
+                        <div style={{ marginTop: 8, padding: "8px 10px", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 6, fontSize: 12 }}>
+                          <span style={{ fontWeight: 700, color: "#15803d" }}>RAG built-in: </span>
+                          <span style={{ fontWeight: 600, color: "#166534" }}>
+                            Dimension 2 — {templateManifest.rag_dimension2.pattern}
+                          </span>
+                          <span style={{ color: "#4b5563" }}> · {templateManifest.rag_dimension2.description}</span>
+                        </div>
+                      ) : templateManifest !== null ? (
+                        <div style={{ marginTop: 8, padding: "8px 10px", background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 12, color: "#6b7280" }}>
+                          No RAG pipeline built into this agent type.
+                        </div>
+                      ) : null}
                     </div>
 
                     <div>
@@ -1724,24 +1780,115 @@ export default function ApplicationForm() {
                         </div>
                       </div>
 
-                      <div style={{ marginBottom: 12 }}>
-                        <strong style={{ fontSize: 14 }}>Human Review</strong>
-                        <div style={{ marginTop: 8 }}>
-                          <label>
+                      {/* ── HITL ── */}
+                      <div style={{ marginBottom: 16 }}>
+                        <strong style={{ fontSize: 14 }}>HITL (Human-in-the-Loop)</strong>
+                        <div style={{ marginTop: 8, display: "grid", gap: 14 }}>
+
+                          {/* Approval Required */}
+                          <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
                             <input
                               type="checkbox"
-                              checked={localHumanReviewEnabled}
-                              onChange={(e) => setLocalHumanReviewEnabled(e.target.checked)}
-                            />{" "}
-                            Require human review for selected write tools
+                              checked={hitlApprovalRequired}
+                              onChange={(e) => setHitlApprovalRequired(e.target.checked)}
+                            />
+                            <span style={{ fontWeight: 600, fontSize: 13 }}>Approval Required</span>
+                            <InfoTooltip text="Master on/off switch. When enabled, the agent will pause and wait for a human to approve before executing any tool that meets the risk threshold." />
                           </label>
+
+                          {hitlApprovalRequired && (
+                            <>
+                              {/* Risk Levels per Tool */}
+                              <div>
+                                <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
+                                  Risk Level per Tool
+                                  <InfoTooltip text="Classify how risky each tool call is. Read-only tools like get_member are low risk. Write tools like write_case_note that modify data are high risk." />
+                                </div>
+                                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                                  <thead>
+                                    <tr style={{ background: "#f3f4f6" }}>
+                                      <th style={{ padding: "5px 8px", textAlign: "left", border: "1px solid #e5e7eb" }}>Tool</th>
+                                      <th style={{ padding: "5px 8px", textAlign: "left", border: "1px solid #e5e7eb" }}>Risk Level</th>
+                                      <th style={{ padding: "5px 8px", border: "1px solid #e5e7eb" }}></th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {Object.entries(hitlRiskLevels).map(([tool, level]) => (
+                                      <tr key={tool}>
+                                        <td style={{ padding: "5px 8px", border: "1px solid #e5e7eb" }}>
+                                          <input
+                                            style={{ ...inputStyle, padding: "4px 6px" }}
+                                            value={tool}
+                                            onChange={(e) => {
+                                              const next: Record<string, string> = {}
+                                              Object.entries(hitlRiskLevels).forEach(([k, v]) => { next[k === tool ? e.target.value : k] = v })
+                                              setHitlRiskLevels(next)
+                                            }}
+                                          />
+                                        </td>
+                                        <td style={{ padding: "5px 8px", border: "1px solid #e5e7eb" }}>
+                                          <select style={inputStyle} value={level} onChange={(e) => setHitlRiskLevels({ ...hitlRiskLevels, [tool]: e.target.value })}>
+                                            <option value="low">low</option>
+                                            <option value="medium">medium</option>
+                                            <option value="high">high</option>
+                                          </select>
+                                        </td>
+                                        <td style={{ padding: "5px 8px", border: "1px solid #e5e7eb", textAlign: "center" }}>
+                                          <button type="button" style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", fontSize: 14 }}
+                                            onClick={() => { const next = { ...hitlRiskLevels }; delete next[tool]; setHitlRiskLevels(next) }}>✕</button>
+                                        </td>
+                                      </tr>
+                                    ))}
+                                    <tr>
+                                      <td colSpan={3} style={{ padding: "5px 8px", border: "1px solid #e5e7eb" }}>
+                                        <button type="button" style={{ ...pillButton(false), fontSize: 12, padding: "4px 10px" }}
+                                          onClick={() => setHitlRiskLevels({ ...hitlRiskLevels, new_tool: "low" })}>
+                                          + Add Tool
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+
+                              {/* Min Risk for Approval */}
+                              <div>
+                                <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
+                                  Minimum Risk for Approval
+                                  <InfoTooltip text="Sets the threshold. 'High only' means only high-risk tools trigger approval. 'Medium and above' means both medium and high do. 'All' means every tool call needs approval." />
+                                </div>
+                                <select
+                                  style={inputStyle}
+                                  value={hitlMinRisk}
+                                  onChange={(e) => setHitlMinRisk(e.target.value as typeof hitlMinRisk)}
+                                >
+                                  <option value="high">High only — only high-risk tools require approval</option>
+                                  <option value="medium_and_above">Medium and above — medium + high require approval</option>
+                                  <option value="all">All — every tool call requires approval</option>
+                                </select>
+                              </div>
+
+                              {/* SLA */}
+                              <div>
+                                <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
+                                  SLA Timeout (minutes)
+                                  <InfoTooltip text="How long the agent waits for a human to approve before the request expires. After this time, the action is rejected and the agent moves on." />
+                                </div>
+                                <input
+                                  style={{ ...inputStyle, width: 100 }}
+                                  value={hitlTimeoutMinutes}
+                                  onChange={(e) => setHitlTimeoutMinutes(e.target.value)}
+                                />
+                              </div>
+                            </>
+                          )}
                         </div>
                       </div>
 
-                      
-
+                      {/* ── RAG (only shown when agent type has RAG built in) ── */}
+                      {templateManifest?.rag_dimension2 && (
                       <div>
-                        <strong style={{ fontSize: 14 }}>RAG</strong>
+                        <strong style={{ fontSize: 14 }}>RAG — Dimension 1 (Search Method)</strong>
                         <div style={{ marginTop: 8, display: "grid", gap: 8 }}>
                           <label>
                             <input
@@ -1752,45 +1899,89 @@ export default function ApplicationForm() {
                             Enable RAG
                           </label>
 
-                          {localRagEnabled && (
-                            <div style={{ display: "grid", gap: 10, paddingTop: 4 }}>
-                              <div>
-                                <label style={labelStyle}>RAG Type</label>
-                                <select
-                                  style={inputStyle}
-                                  value={localRagType}
-                                  onChange={(e) => setLocalRagType(e.target.value)}
-                                >
-                                  <option value="none">None</option>
-                                  <option value="vector_rag">Vector RAG</option>
-                                  <option value="hybrid_rag">Hybrid RAG (teaser)</option>
-                                  <option value="graph_rag">Graph RAG (teaser)</option>
-                                  <option value="sql_rag">Structured / SQL RAG (teaser)</option>
-                                </select>
-                              </div>
+                          {localRagEnabled && (() => {
+                            const retrievalTools = availableTools.filter((t) => !!t.db_type && selectedTools.includes(t.name))
+                            return (
+                              <div style={{ display: "grid", gap: 10, paddingTop: 4 }}>
+                                {retrievalTools.length === 0 ? (
+                                  <div style={{ fontSize: 12, color: "#6b7280" }}>
+                                    No retrieval tools selected above. Enable a KB tool (e.g. search_kb) to configure RAG.
+                                  </div>
+                                ) : (
+                                  <>
+                                    <div>
+                                      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6, color: "#374151" }}>
+                                        Knowledge Bases (from selected tools)
+                                      </div>
+                                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                                        <thead>
+                                          <tr style={{ background: "#f3f4f6" }}>
+                                            <th style={{ padding: "6px 8px", textAlign: "left", border: "1px solid #e5e7eb" }}>Tool / KB</th>
+                                            <th style={{ padding: "6px 8px", textAlign: "left", border: "1px solid #e5e7eb" }}>DB Type</th>
+                                            <th style={{ padding: "6px 8px", textAlign: "left", border: "1px solid #e5e7eb" }}>Search Strategy</th>
+                                            <th style={{ padding: "6px 8px", textAlign: "center", border: "1px solid #e5e7eb" }}>Default</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {retrievalTools.map((tool) => (
+                                            <tr key={tool.name}>
+                                              <td style={{ padding: "6px 8px", border: "1px solid #e5e7eb", fontWeight: 600 }}>{tool.name}</td>
+                                              <td style={{ padding: "6px 8px", border: "1px solid #e5e7eb", color: "#4b5563" }}>{tool.db_type || "—"}</td>
+                                              <td style={{ padding: "6px 8px", border: "1px solid #e5e7eb" }}>
+                                                <span style={{
+                                                  background: "#eff6ff",
+                                                  color: "#1d4ed8",
+                                                  borderRadius: 4,
+                                                  padding: "2px 6px",
+                                                  fontSize: 12,
+                                                  fontWeight: 600,
+                                                }}>
+                                                  {tool.strategy || "semantic"}
+                                                </span>
+                                              </td>
+                                              <td style={{ padding: "6px 8px", border: "1px solid #e5e7eb", textAlign: "center" }}>
+                                                <input
+                                                  type="radio"
+                                                  name="ragDefaultTool"
+                                                  checked={localRagDefaultTool === tool.name}
+                                                  onChange={() => setLocalRagDefaultTool(tool.name)}
+                                                />
+                                              </td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                      <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 4 }}>
+                                        Strategy is determined by DB type — one-to-one mapping, auto-populated from tool gateway.
+                                      </div>
+                                    </div>
 
-                              <div style={compactGrid}>
-                                <div>
-                                  <label style={labelStyle}>Top K</label>
-                                  <input
-                                    style={inputStyle}
-                                    value={localTopK}
-                                    onChange={(e) => setLocalTopK(e.target.value)}
-                                  />
-                                </div>
-                                <div>
-                                  <label style={labelStyle}>Score Threshold</label>
-                                  <input
-                                    style={inputStyle}
-                                    value={localScoreThreshold}
-                                    onChange={(e) => setLocalScoreThreshold(e.target.value)}
-                                  />
-                                </div>
+                                    <div style={compactGrid}>
+                                      <div>
+                                        <label style={labelStyle}>Top K</label>
+                                        <input
+                                          style={inputStyle}
+                                          value={localTopK}
+                                          onChange={(e) => setLocalTopK(e.target.value)}
+                                        />
+                                      </div>
+                                      <div>
+                                        <label style={labelStyle}>Score Threshold</label>
+                                        <input
+                                          style={inputStyle}
+                                          value={localScoreThreshold}
+                                          onChange={(e) => setLocalScoreThreshold(e.target.value)}
+                                        />
+                                      </div>
+                                    </div>
+                                  </>
+                                )}
                               </div>
-                            </div>
-                          )}
+                            )
+                          })()}
                         </div>
                       </div>
+                      )}
                     </div>
 
                     {showAgentCoreProfile && (
@@ -1821,11 +2012,6 @@ export default function ApplicationForm() {
 
                             {agentCoreRagEnabled && (
                               <div style={{ display: "grid", gap: 10, paddingTop: 4 }}>
-                                <div>
-                                  <label style={labelStyle}>RAG Type</label>
-                                  <input style={readonlyInputStyle} value={agentCoreRagType} readOnly />
-                                </div>
-
                                 <div style={compactGrid}>
                                   <div>
                                     <label style={labelStyle}>Top K</label>

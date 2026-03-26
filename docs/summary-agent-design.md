@@ -221,6 +221,59 @@ member_summary_prompt: |
 
 ---
 
+## RAG and Memory — Architecture Decisions
+
+### No RAG (Dimension 1 or Dimension 2)
+
+The summary agent has no RAG — neither D1 nor D2.
+
+**Dimension 1** (search strategy — vector, keyword, graph) only applies when doing unstructured
+document search against a knowledge base. The summary agent fetches structured records by known
+IDs (`assessment_id`, `case_id`, `member_id`) via direct tool calls. That is a direct lookup,
+not a vector search. No D1.
+
+**Dimension 2** (pipeline design — naive, multi-hop, agentic) only applies when there is a
+retrieval pipeline over a KB. Since there is no KB search at all in this agent, there is no D2.
+
+The `agent_manifest.yaml` for `summary_agent` will have no `rag_dimension2` field. As a result,
+the RAG section will not appear in the Agent Factory UI when this agent type is selected.
+
+### Tools Yes — But Hardcoded, Not LLM-Planned
+
+The fetch_node calls tools from the tool gateway — but unlike `chat_agent`, the tool calls are
+hardcoded in code, not decided by an LLM planner. The planner in `chat_agent` decides dynamically
+which tools to call based on the user's question. In `summary_agent`, fetch_node always calls the
+same fixed set of tools in parallel.
+
+| | chat_agent | summary_agent |
+|---|---|---|
+| Who decides which tools to call | LLM planner | hardcoded in fetch_node |
+| Tool calls per turn | 1 at a time, iterative | All in parallel, one shot |
+| RAG tools (KB search) | Yes | No |
+
+### No memory.yaml, HITL, or Risk Config — In This Platform
+
+In this platform today, `summary_agent` has no `memory.yaml`, no `hitl` config, and no risk config:
+
+- **No memory** — no conversation to remember; each summary call is stateless
+- **No HITL** — read-only fetch + summarize, no write operations that need approval
+- **No risk config** — no actions that could modify data
+
+The only config files needed are `agent.yaml` (tools + feature flags) and `prompt-defaults.yaml`
+(summarize prompt templates).
+
+### Real World — Memory Would Apply
+
+In production, the summary agent would also pull from **episodic memory** (past case interactions)
+and **semantic memory** (accumulated member facts) to enrich the summary beyond what the structured
+tool calls return. In that case, `memory.yaml` would be needed and the summary would incorporate
+vector-retrieved context alongside the structured records.
+
+This is not built today because the platform uses flat file memory storage, not a vector DB.
+In the platform today, the summary is generated entirely from structured tool call results.
+
+---
+
 ## Open Questions
 
 - Should member-level summary be generated lazily (only when viewed) or eagerly

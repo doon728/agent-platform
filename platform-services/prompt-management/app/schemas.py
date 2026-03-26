@@ -2,7 +2,15 @@ from typing import List, Optional, Literal
 from pydantic import BaseModel, Field
 
 
-PromptType = Literal["planner", "responder", "router", "summarizer"]
+PromptType = Literal[
+    "planner",
+    "responder",
+    "router",
+    "summarizer",
+    "assessment_summary",
+    "case_summary",
+    "member_summary",
+]
 PromptLifecycleStatus = Literal["draft", "active", "retired"]
 PromptVersionStatus = Literal["draft", "approved", "rejected"]
 EnvironmentType = Literal["dev", "test", "prod"]

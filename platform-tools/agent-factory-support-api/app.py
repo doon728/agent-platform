@@ -24,6 +24,19 @@ from usecase_registry_store import (
 )
 
 load_dotenv(Path(__file__).resolve().parent / ".env")
+
+# Resolve docker binary — uvicorn may run without /usr/local/bin in PATH
+_DOCKER_CANDIDATES = [
+    "/usr/local/bin/docker",
+    "/Applications/Docker.app/Contents/Resources/bin/docker",
+    "/opt/homebrew/bin/docker",
+    "docker",
+]
+DOCKER_BIN = next(
+    (p for p in _DOCKER_CANDIDATES if Path(p).exists() or p == "docker"),
+    "docker"
+)
+
 GENERATED_REPOS_ROOT = Path(
     os.getenv("GENERATED_REPOS_ROOT", str(Path.home() / "agent-platform" / "generated-repos"))
 )
@@ -48,7 +61,28 @@ PLATFORM_ROOT = Path(
 )
 
 SHARED_INFRA_ROOT = PLATFORM_ROOT / "shared-infra" / "industry-tool-gateway-healthcare" / "services" / "tool-gateway"
-LAST_WORKSPACE_STATE: dict[str, Any] = {}
+
+_DATA_DIR = Path(__file__).resolve().parent / "data"
+_WORKSPACE_STATE_FILE = _DATA_DIR / "workspace_state.json"
+
+def _load_workspace_state() -> dict[str, Any]:
+    try:
+        if _WORKSPACE_STATE_FILE.exists():
+            import json as _json
+            return _json.loads(_WORKSPACE_STATE_FILE.read_text()) or {}
+    except Exception:
+        pass
+    return {}
+
+def _save_workspace_state(state: dict[str, Any]):
+    try:
+        import json as _json
+        _DATA_DIR.mkdir(parents=True, exist_ok=True)
+        _WORKSPACE_STATE_FILE.write_text(_json.dumps(state, indent=2))
+    except Exception:
+        pass
+
+LAST_WORKSPACE_STATE: dict[str, Any] = _load_workspace_state()
 app = FastAPI(title="Agent Factory Support API", version="v1")
 
 TEMPLATES_ROOT = PLATFORM_ROOT / "templates"
@@ -151,7 +185,12 @@ def ensure_capability_app_repo(
             "app_reused": True,
         }
 
-    app_copy = copy_template_repo(APP_TEMPLATE_ROOT, app_repo_root)
+    # Use capability-specific UI template if one exists, otherwise fall back to root template
+    capability_slug = capability_name.replace("-", "_").lower()
+    capability_ui_template = APP_TEMPLATE_ROOT / capability_slug
+    ui_template_src = capability_ui_template if capability_ui_template.exists() else APP_TEMPLATE_ROOT
+
+    app_copy = copy_template_repo(ui_template_src, app_repo_root)
     if not app_copy["ok"]:
         return app_copy
 
@@ -596,7 +635,7 @@ def docker_compose_down(repo_root: Path):
             "stderr": f"Repo path does not exist: {repo_root}",
         }
 
-    result = run_cmd(["docker", "compose", "down", "--remove-orphans"], cwd=str(repo_root))
+    result = run_cmd([DOCKER_BIN, "compose", "down", "--remove-orphans"], cwd=str(repo_root))
     return {
         "ok": result.returncode == 0,
         "repo_root": str(repo_root),
@@ -617,7 +656,7 @@ def health():
 def infra_status():
     try:
         result = run_cmd(
-            ["docker", "compose", "ps", "--format", "json"],
+            [DOCKER_BIN, "compose", "ps", "--format", "json"],
             cwd=str(SHARED_INFRA_ROOT),
         )
 
@@ -826,7 +865,7 @@ def infra_start():
         env["PATH"] = ":".join([p for p in path_parts if p])
 
         docker_up = run_cmd(
-            ["docker", "compose", "up", "-d", "--build", "--force-recreate"],
+            [DOCKER_BIN, "compose", "up", "-d", "--build", "--force-recreate"],
             cwd=str(SHARED_INFRA_ROOT),
             env=env,
         )
@@ -1131,6 +1170,7 @@ def workspace_start(
     LAST_WORKSPACE_STATE = {
         "agent_repo": agent_repo,
         "app_repo": app_repo,
+        "status": "running",
         "requested_runtime_port": runtime_port,
         "requested_app_port": app_port,
         "resolved_runtime_port": resolved_runtime_port,
@@ -1139,6 +1179,7 @@ def workspace_start(
         "agent_runtime_url": f"http://localhost:{resolved_runtime_port}",
         "app_ui_url": f"http://localhost:{resolved_app_port}",
     }
+    _save_workspace_state(LAST_WORKSPACE_STATE)
     return {
         "ok": infra.get("ok") and runtime.get("ok") and app_result.get("ok"),
         "infra": infra,
@@ -1161,26 +1202,82 @@ def workspace_start(
         },
     }
 
+def _detect_running_workspace() -> dict[str, Any]:
+    """Fallback: detect running agents by probing well-known ports, reconstruct workspace state."""
+    import urllib.request as _req
+    import re
+
+    records = list_registry_records()
+    real_agents = [
+        r for r in records
+        if r.get("usecase_name") != "__capability__" and r.get("agent_type") != "__app__"
+        and r.get("agent_repo_name")
+    ]
+
+    probe_ports = [8081, 8082, 8083, 8084, 8085]
+    for agent in real_agents:
+        for port in probe_ports:
+            try:
+                req = _req.Request(f"http://localhost:{port}/health", headers={"User-Agent": "factory-detect"})
+                with _req.urlopen(req, timeout=1) as resp:
+                    if resp.getcode() == 200:
+                        app_repo = agent.get("app_repo_name")
+                        # Probe common app UI ports
+                        detected_app_port = None
+                        for app_port in [3000, 3001, 3002, 4173]:
+                            try:
+                                ar = _req.Request(f"http://localhost:{app_port}/", headers={"User-Agent": "factory-detect"})
+                                with _req.urlopen(ar, timeout=1):
+                                    detected_app_port = app_port
+                                    break
+                            except Exception:
+                                pass
+                        return {
+                            "agent_repo": agent["agent_repo_name"],
+                            "app_repo": app_repo,
+                            "resolved_runtime_port": port,
+                            "resolved_app_port": detected_app_port,
+                            "tool_gateway_url": "http://localhost:8080",
+                            "agent_runtime_url": f"http://localhost:{port}",
+                            "app_ui_url": f"http://localhost:{detected_app_port}" if detected_app_port else None,
+                            "_source": "port_detect",
+                        }
+            except Exception:
+                continue
+    return {}
+
+
 @app.get("/workspace/status")
 def workspace_status():
     global LAST_WORKSPACE_STATE
 
+    state = LAST_WORKSPACE_STATE
+    # If state is empty (API restarted with no saved state), try to detect from docker
+    if not state.get("agent_repo"):
+        state = _detect_running_workspace()
+        if state.get("agent_repo"):
+            # Populate in-memory state so stop/delete work without re-detection
+            LAST_WORKSPACE_STATE = {**state, "status": "running"}
+            _save_workspace_state(LAST_WORKSPACE_STATE)
+            state = LAST_WORKSPACE_STATE
+
     return {
         "ok": True,
+        "status": state.get("status", "running") if state.get("agent_repo") else "none",
         "repos": {
-            "agent_repo": LAST_WORKSPACE_STATE.get("agent_repo"),
-            "app_repo": LAST_WORKSPACE_STATE.get("app_repo"),
+            "agent_repo": state.get("agent_repo"),
+            "app_repo": state.get("app_repo"),
         },
         "ports": {
-            "requested_runtime_port": LAST_WORKSPACE_STATE.get("requested_runtime_port"),
-            "requested_app_port": LAST_WORKSPACE_STATE.get("requested_app_port"),
-            "resolved_runtime_port": LAST_WORKSPACE_STATE.get("resolved_runtime_port"),
-            "resolved_app_port": LAST_WORKSPACE_STATE.get("resolved_app_port"),
+            "requested_runtime_port": state.get("requested_runtime_port"),
+            "requested_app_port": state.get("requested_app_port"),
+            "resolved_runtime_port": state.get("resolved_runtime_port"),
+            "resolved_app_port": state.get("resolved_app_port"),
         },
         "urls": {
-            "tool_gateway_url": LAST_WORKSPACE_STATE.get("tool_gateway_url"),
-            "agent_runtime_url": LAST_WORKSPACE_STATE.get("agent_runtime_url"),
-            "app_ui_url": LAST_WORKSPACE_STATE.get("app_ui_url"),
+            "tool_gateway_url": state.get("tool_gateway_url"),
+            "agent_runtime_url": state.get("agent_runtime_url"),
+            "app_ui_url": state.get("app_ui_url"),
         },
         "runtime_model": {
             "gateway": "shared_external_local",
@@ -1188,6 +1285,94 @@ def workspace_status():
             "agent_runtime": "repo_local",
             "ui": "repo_local",
         },
+        "source": state.get("_source", "saved_state"),
+    }
+
+
+@app.post("/workspace/stop")
+def workspace_stop():
+    global LAST_WORKSPACE_STATE
+    state = LAST_WORKSPACE_STATE
+    agent_repo = state.get("agent_repo")
+    app_repo = state.get("app_repo")
+
+    # If state was lost (API restart), try to detect from running containers
+    if not agent_repo:
+        detected = _detect_running_workspace()
+        if not detected.get("agent_repo"):
+            return {"ok": False, "error": "No active workspace to stop"}
+        agent_repo = detected["agent_repo"]
+        app_repo = detected.get("app_repo")
+        LAST_WORKSPACE_STATE = {**detected, "status": "running"}
+        state = LAST_WORKSPACE_STATE
+
+    runtime_result = runtime_stop(repo_name=agent_repo)
+    app_result = app_stop(repo_name=app_repo) if app_repo else {"ok": True}
+
+    LAST_WORKSPACE_STATE["status"] = "stopped"
+    _save_workspace_state(LAST_WORKSPACE_STATE)
+
+    return {
+        "ok": True,
+        "agent_repo": agent_repo,
+        "app_repo": app_repo,
+        "runtime": runtime_result,
+        "app": app_result,
+    }
+
+
+@app.delete("/workspace/delete")
+def workspace_delete():
+    global LAST_WORKSPACE_STATE
+    state = LAST_WORKSPACE_STATE
+    agent_repo = state.get("agent_repo")
+    app_repo = state.get("app_repo")
+
+    if not agent_repo:
+        return {"ok": False, "error": "No workspace to delete"}
+
+    if state.get("status") != "stopped":
+        return {"ok": False, "error": "Workspace must be stopped before deleting"}
+
+    # Stop containers just in case
+    runtime_stop(repo_name=agent_repo)
+    if app_repo:
+        app_stop(repo_name=app_repo)
+
+    deleted = []
+    errors = []
+
+    # Delete generated repo dirs
+    for repo in [agent_repo, app_repo]:
+        if not repo:
+            continue
+        repo_path = resolve_repo_path(repo)
+        try:
+            if repo_path.exists():
+                shutil.rmtree(repo_path)
+                deleted.append(str(repo_path))
+        except Exception as e:
+            errors.append(f"Failed to delete {repo_path}: {e}")
+
+    # Remove registry records for this agent repo
+    try:
+        import json as _json
+        registry_file = _DATA_DIR / "usecase_registry.json"
+        if registry_file.exists():
+            records = _json.loads(registry_file.read_text()) or []
+            records = [r for r in records if r.get("agent_repo_name") != agent_repo]
+            registry_file.write_text(_json.dumps(records, indent=2))
+    except Exception as e:
+        errors.append(f"Registry cleanup failed: {e}")
+
+    # Clear workspace state
+    LAST_WORKSPACE_STATE = {}
+    _save_workspace_state(LAST_WORKSPACE_STATE)
+
+    return {
+        "ok": len(errors) == 0,
+        "deleted": deleted,
+        "errors": errors,
     }
 
 @app.get("/repo-exists")
@@ -1374,3 +1559,182 @@ def get_registry_app_by_capability(capability_name: str):
         "ok": True,
         "app": app_record,
     }
+
+
+# =========================================================
+# AGENT CONFIG READ / WRITE
+# =========================================================
+
+def _get_agent_config_dir(capability_name: str, usecase_name: str, agent_type: str, agent_repo_name: str) -> Path:
+    return (
+        GENERATED_REPOS_ROOT
+        / capability_name
+        / "usecases"
+        / usecase_name
+        / agent_repo_name
+        / "overlays"
+        / agent_type
+        / "config"
+    )
+
+
+def _deep_merge(base: dict, override: dict):
+    for key, val in override.items():
+        if key in base and isinstance(base[key], dict) and isinstance(val, dict):
+            _deep_merge(base[key], val)
+        else:
+            base[key] = val
+
+
+@app.get("/registry/agent-config")
+def get_agent_config(capability_name: str, usecase_name: str, agent_type: str):
+    agents = list_agents(capability_name, usecase_name)
+    agent_record = next((a for a in agents if a.get("agent_type") == agent_type), None)
+    if not agent_record:
+        return {"ok": False, "error": "Agent not found in registry"}
+
+    agent_repo_name = agent_record.get("agent_repo_name", "")
+    config_dir = _get_agent_config_dir(capability_name, usecase_name, agent_type, agent_repo_name)
+
+    result = {}
+    file_keys = {
+        "agent.yaml": "agent",
+        "memory.yaml": "memory",
+        "prompt-defaults.yaml": "prompts",
+    }
+    for filename, key in file_keys.items():
+        filepath = config_dir / filename
+        result[key] = yaml.safe_load(filepath.read_text()) or {} if filepath.exists() else {}
+
+    return {
+        "ok": True,
+        "capability_name": capability_name,
+        "usecase_name": usecase_name,
+        "agent_type": agent_type,
+        "agent_repo_name": agent_repo_name,
+        "config": result,
+        "config_dir": str(config_dir),
+    }
+
+
+class PatchAgentConfigRequest(BaseModel):
+    capability_name: str
+    usecase_name: str
+    agent_type: str
+    section: str  # "agent", "memory", "prompts"
+    changes: dict
+
+
+@app.get("/registry/agent-manifest")
+def get_agent_manifest(capability_name: str, usecase_name: str, agent_type: str):
+    agents = list_agents(capability_name, usecase_name)
+    agent_record = next((a for a in agents if a.get("agent_type") == agent_type), None)
+    if not agent_record:
+        return {"ok": False, "error": "Agent not found in registry"}
+
+    agent_repo_name = agent_record.get("agent_repo_name", "")
+    manifest_path = (
+        GENERATED_REPOS_ROOT
+        / capability_name
+        / "usecases"
+        / usecase_name
+        / agent_repo_name
+        / "overlays"
+        / agent_type
+        / "agent_manifest.yaml"
+    )
+
+    if not manifest_path.exists():
+        return {"ok": False, "error": f"Manifest not found: {manifest_path}"}
+
+    manifest = yaml.safe_load(manifest_path.read_text()) or {}
+    return {"ok": True, "manifest": manifest}
+
+
+@app.get("/registry/template-manifest")
+def get_template_manifest(agent_type: str):
+    """Read agent_manifest.yaml from the template overlay (before any repo is created)."""
+    manifest_path = AGENT_TEMPLATE_ROOT / "overlays" / agent_type / "agent_manifest.yaml"
+    if not manifest_path.exists():
+        return {"ok": False, "error": f"No template manifest for agent_type '{agent_type}'"}
+    manifest = yaml.safe_load(manifest_path.read_text()) or {}
+    return {"ok": True, "manifest": manifest}
+
+
+@app.patch("/registry/agent-config")
+def patch_agent_config(payload: PatchAgentConfigRequest):
+    agents = list_agents(payload.capability_name, payload.usecase_name)
+    agent_record = next((a for a in agents if a.get("agent_type") == payload.agent_type), None)
+    if not agent_record:
+        return {"ok": False, "error": "Agent not found in registry"}
+
+    agent_repo_name = agent_record.get("agent_repo_name", "")
+    config_dir = _get_agent_config_dir(
+        payload.capability_name, payload.usecase_name, payload.agent_type, agent_repo_name
+    )
+
+    file_map = {"agent": "agent.yaml", "memory": "memory.yaml", "prompts": "prompt-defaults.yaml"}
+    filename = file_map.get(payload.section)
+    if not filename:
+        return {"ok": False, "error": f"Unknown section '{payload.section}'. Must be one of: {list(file_map.keys())}"}
+
+    filepath = config_dir / filename
+    if not filepath.exists():
+        return {"ok": False, "error": f"Config file not found: {filepath}"}
+
+    existing = yaml.safe_load(filepath.read_text()) or {}
+    _deep_merge(existing, payload.changes)
+    filepath.write_text(yaml.safe_dump(existing, sort_keys=False))
+
+    return {
+        "ok": True,
+        "section": payload.section,
+        "file": filename,
+        "config_dir": str(config_dir),
+    }
+
+
+# =========================================================
+# AGENT STATUS (health check per registered agent)
+# =========================================================
+
+@app.get("/registry/agent-status")
+def get_agent_status():
+    import urllib.request as _urllib_req
+
+    records = list_registry_records()
+    real_agents = [
+        r for r in records
+        if r.get("usecase_name") != "__capability__" and r.get("agent_type") != "__app__"
+    ]
+
+    workspace_agent_repo = LAST_WORKSPACE_STATE.get("agent_repo", "")
+    workspace_runtime_url = LAST_WORKSPACE_STATE.get("agent_runtime_url", "http://localhost:8081")
+
+    result = []
+    for agent in real_agents:
+        agent_repo = agent.get("agent_repo_name", "")
+        runtime_url = workspace_runtime_url if agent_repo == workspace_agent_repo else "http://localhost:8081"
+
+        status = "stopped"
+        try:
+            req = _urllib_req.Request(f"{runtime_url}/health", headers={"User-Agent": "factory-status-check"})
+            with _urllib_req.urlopen(req, timeout=2) as resp:
+                if resp.getcode() == 200:
+                    status = "running"
+        except Exception:
+            status = "stopped"
+
+        result.append({
+            "capability_name": agent.get("capability_name"),
+            "usecase_name": agent.get("usecase_name"),
+            "agent_type": agent.get("agent_type"),
+            "agent_repo_name": agent_repo,
+            "app_repo_name": agent.get("app_repo_name"),
+            "status": status,
+            "runtime_url": runtime_url,
+            "features": agent.get("features", {}),
+            "locked_features": agent.get("locked_features", []),
+        })
+
+    return {"ok": True, "agents": result}

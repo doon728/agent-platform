@@ -38,5 +38,32 @@
       "prompt_versioning": true
     },
     "default_model": "gpt-4o-mini"
+  },
+  {
+    "capability_name": "care-management",
+    "usecase_name": "UC_PreCall_Assess",
+    "agent_type": "summary_agent",
+    "app_name": "CM hero Fl APP",
+    "app_repo_name": "cm-hero-fl-app",
+    "agent_name": "CM-summary-buddy-Assess",
+    "agent_repo_name": "cm-chat-buddy-assess",
+    "components": {
+      "planner": false,
+      "responder": true,
+      "workflow": true,
+      "router": false
+    },
+    "prompt_types": [
+      "summarizer"
+    ],
+    "features": {
+      "memory": false,
+      "rag": false,
+      "hitl": false,
+      "observability": true,
+      "prompt_versioning": true
+    },
+    "locked_features": ["hitl", "memory", "rag"],
+    "default_model": "gpt-4o-mini"
   }
 ]

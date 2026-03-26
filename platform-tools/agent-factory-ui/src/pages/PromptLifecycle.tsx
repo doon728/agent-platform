@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react"
-import { listPrompts, approvePrompt, activatePrompt } from "../api/factoryApi"
+import { listPrompts, approvePrompt, activatePrompt, getPrompt } from "../api/factoryApi"
 
 export default function PromptLifecycle() {
   const [prompts, setPrompts] = useState<any[]>([])
   const [message, setMessage] = useState("")
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [promptTexts, setPromptTexts] = useState<Record<string, string>>({})
 
   const load = async () => {
     try {
@@ -33,6 +35,23 @@ export default function PromptLifecycle() {
       setMessage(
         `Approve failed: ${err?.response?.data?.detail || err.message}`
       )
+    }
+  }
+
+  const toggleExpand = async (id: string) => {
+    if (expandedId === id) {
+      setExpandedId(null)
+      return
+    }
+    setExpandedId(id)
+    if (!promptTexts[id]) {
+      try {
+        const res = await getPrompt(id)
+        const text = res.data?.prompt?.template_text || "(no prompt text)"
+        setPromptTexts(prev => ({ ...prev, [id]: text }))
+      } catch {
+        setPromptTexts(prev => ({ ...prev, [id]: "(failed to load)" }))
+      }
     }
   }
 
@@ -107,7 +126,29 @@ export default function PromptLifecycle() {
           <div><b>Prompt ID:</b> {p.prompt_id}</div>
           <div><b>Active Version ID:</b> {p.active_version_id || "none"}</div>
 
-          <div style={{ marginTop: 12, display: "flex", gap: 10 }}>
+          <div style={{ marginTop: 10 }}>
+            <button onClick={() => toggleExpand(p.prompt_id)} style={{ fontSize: 12, padding: "2px 10px" }}>
+              {expandedId === p.prompt_id ? "Hide Prompt" : "View Prompt"}
+            </button>
+            {expandedId === p.prompt_id && (
+              <pre style={{
+                marginTop: 8,
+                padding: 10,
+                background: "#f1f5f9",
+                border: "1px solid #e2e8f0",
+                borderRadius: 6,
+                fontSize: 12,
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-word",
+                maxHeight: 300,
+                overflowY: "auto",
+              }}>
+                {promptTexts[p.prompt_id] || "Loading..."}
+              </pre>
+            )}
+          </div>
+
+          <div style={{ marginTop: 8, display: "flex", gap: 10 }}>
             <button onClick={() => approve(p.prompt_id)}>Approve Version</button>
             <button onClick={() => activate(p.prompt_id)}>Activate Version</button>
           </div>

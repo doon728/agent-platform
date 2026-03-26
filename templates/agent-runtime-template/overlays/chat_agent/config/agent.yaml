@@ -18,6 +18,7 @@ risk:
   risk_levels:
     write_case_note: high
     get_member_summary: low
+    get_case_summary: low
     get_assessment_summary: low
     get_assessment_tasks: low
     get_member: low

@@ -42,6 +42,19 @@ def health() -> dict:
     return {"ok": True, "service": "agent-runtime", "version": "v1"}
 
 
+@app.get("/config-flags")
+def config_flags() -> dict:
+    """Return feature flags derived from the agent config. Used by the UI to lock/unlock toggles."""
+    agent_cfg = load_agent_config(cfg.prompt_service.agent_type)
+    memory_enabled = bool((agent_cfg.get("memory") or {}).get("enabled", True))
+    hitl_enabled = bool((agent_cfg.get("risk") or {}).get("approval_required", False))
+    return {
+        "ok": True,
+        "memory_enabled": memory_enabled,
+        "hitl_enabled": hitl_enabled,
+    }
+
+
 @app.get("/traces")
 def traces() -> dict:
     return {"ok": True, "traces": list_traces()}
@@ -193,6 +206,99 @@ async def invocations(request: Request) -> JSONResponse:
         status_code=200,
         content={"ok": True, "output": out, "correlation_id": ctx.get("correlation_id")},
     )
+
+
+@app.post("/summarize")
+async def summarize_scope(request: Request) -> JSONResponse:
+    """
+    Generate (or return cached) an AI summary for a given scope.
+
+    Body:
+      scope_type   : "assessment" | "case" | "member"
+      scope_id     : the ID of the scope (assessment_id, case_id, or member_id)
+      tenant_id    : optional, defaults to "default-tenant"
+      member_id    : required when scope_type is "case"
+      force_refresh: optional bool, bypass cache and regenerate
+    """
+    import json
+    from datetime import datetime, timezone, timedelta
+
+    try:
+        payload = await request.json()
+    except Exception:
+        payload = {}
+
+    scope_type = payload.get("scope_type", "assessment")
+    scope_id = payload.get("scope_id", "")
+    tenant_id = payload.get("tenant_id") or "default-tenant"
+    force_refresh = bool(payload.get("force_refresh", False))
+
+    if not scope_id:
+        return JSONResponse(status_code=400, content={"ok": False, "error": "scope_id is required"})
+
+    if scope_type not in ("assessment", "case", "member"):
+        return JSONResponse(status_code=400, content={"ok": False, "error": "scope_type must be assessment, case, or member"})
+
+    CACHE_TTL_SECONDS = 1800  # 30 minutes
+
+    from src.platform.memory.memory_store import FileMemoryStore
+    store = FileMemoryStore()
+
+    # Check cache
+    if not force_refresh:
+        records = store._read_records(tenant_id, scope_type, scope_id)
+        cached = next((r for r in reversed(records) if r.get("memory_type") == "summary_cache"), None)
+        if cached:
+            try:
+                created_at = datetime.fromisoformat(cached["created_at"])
+                if datetime.now(timezone.utc) - created_at < timedelta(seconds=CACHE_TTL_SECONDS):
+                    summary_data = json.loads(cached["content"]) if isinstance(cached["content"], str) else cached["content"]
+                    return JSONResponse(content={
+                        "ok": True,
+                        "cached": True,
+                        "generated_at": cached["created_at"],
+                        **summary_data,
+                    })
+            except Exception:
+                pass  # stale or corrupt cache — fall through to regenerate
+
+    # Run the summary graph
+    try:
+        from overlays.summary_agent.orchestration.build_graph import build_graph
+
+        ctx = {
+            "tenant_id": tenant_id,
+            "member_id": payload.get("member_id") or scope_id,
+        }
+        graph = build_graph()
+        result = graph.invoke({"scope_type": scope_type, "scope_id": scope_id, "ctx": ctx})
+        summary = result.get("summary") or {}
+    except Exception as e:
+        return JSONResponse(
+            status_code=200,
+            content={"ok": False, "error": f"Summary generation failed: {e}"},
+        )
+
+    # Cache result
+    generated_at = datetime.now(timezone.utc).isoformat()
+    try:
+        store.replace_memory(
+            tenant_id=tenant_id,
+            memory_type="summary_cache",
+            scope_type=scope_type,
+            scope_id=scope_id,
+            content=json.dumps(summary),
+            metadata={"scope_type": scope_type, "scope_id": scope_id, "generated_at": generated_at},
+        )
+    except Exception:
+        pass  # cache failure is non-fatal
+
+    return JSONResponse(content={
+        "ok": True,
+        "cached": False,
+        "generated_at": generated_at,
+        **summary,
+    })
 
 
 @app.get("/hitl/pending")

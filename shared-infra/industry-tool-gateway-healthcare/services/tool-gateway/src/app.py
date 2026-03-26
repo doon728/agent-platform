@@ -87,15 +87,18 @@ def tool_specs():
     tools = []
 
     for spec in TOOL_REGISTRY.values():
-        tools.append(
-            {
-                "name": spec.name,
-                "description": spec.description,
-                "primary_arg": spec.primary_arg,
-                "mode": spec.mode,
-                "tags": spec.tags,
-            }
-        )
+        entry: dict = {
+            "name": spec.name,
+            "description": spec.description,
+            "primary_arg": spec.primary_arg,
+            "mode": spec.mode,
+            "tags": spec.tags,
+        }
+        if spec.db_type is not None:
+            entry["db_type"] = spec.db_type
+        if spec.strategy is not None:
+            entry["strategy"] = spec.strategy
+        tools.append(entry)
 
     return {
         "ok": True,

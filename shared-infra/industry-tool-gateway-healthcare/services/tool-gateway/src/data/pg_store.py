@@ -425,6 +425,81 @@ class PGStore:
                     for r in cur.fetchall()
                 ]
 
+    def get_case_summary(self, case_id: str) -> Dict[str, Any]:
+        with _conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT case_id, member_id, title, status, open_date::text, close_date::text, assigned_nurse, program
+                    FROM cases WHERE case_id = %s
+                    """,
+                    (case_id,),
+                )
+                r = cur.fetchone()
+                if not r:
+                    return {"found": False, "case_id": case_id}
+
+                case = {"case_id": r[0], "member_id": r[1], "title": r[2], "status": r[3],
+                        "open_date": r[4], "close_date": r[5], "assigned_nurse": r[6], "program": r[7]}
+                member_id = case["member_id"]
+
+                cur.execute(
+                    """
+                    SELECT member_id, first_name, last_name, dob::text, gender, state, plan_id,
+                           pcp_provider_id, risk_score::text, chronic_conditions
+                    FROM members WHERE member_id = %s
+                    """,
+                    (member_id,),
+                )
+                m = cur.fetchone()
+                member = {}
+                if m:
+                    member = {"member_id": m[0], "first_name": m[1], "last_name": m[2],
+                              "dob": m[3], "gender": m[4], "state": m[5], "plan_id": m[6],
+                              "pcp_provider_id": m[7], "risk_score": m[8], "chronic_conditions": m[9]}
+
+                cur.execute(
+                    """
+                    SELECT assessment_id, assessment_type, status, priority,
+                           created_at::text, completed_at::text, overall_risk_level, summary
+                    FROM assessments WHERE case_id = %s
+                    ORDER BY created_at DESC NULLS LAST
+                    LIMIT 5
+                    """,
+                    (case_id,),
+                )
+                assessments = [
+                    {"assessment_id": a[0], "assessment_type": a[1], "status": a[2],
+                     "priority": a[3], "created_at": a[4], "completed_at": a[5],
+                     "overall_risk_level": a[6], "summary": a[7]}
+                    for a in cur.fetchall()
+                ]
+
+                cur.execute(
+                    """
+                    SELECT n.note_id, n.assessment_id, n.author, n.created_at::text, n.note_text
+                    FROM case_notes n
+                    JOIN assessments a ON a.assessment_id = n.assessment_id
+                    WHERE a.case_id = %s
+                    ORDER BY n.created_at DESC NULLS LAST
+                    LIMIT 10
+                    """,
+                    (case_id,),
+                )
+                recent_notes = [
+                    {"note_id": r[0], "assessment_id": r[1], "author": r[2],
+                     "created_at": r[3], "note_text": r[4]}
+                    for r in cur.fetchall()
+                ]
+
+                return {
+                    "found": True,
+                    "case": case,
+                    "member": member,
+                    "assessments": assessments,
+                    "recent_notes": recent_notes,
+                }
+
     def get_assessment_member_id(self, assessment_id: str) -> str:
         with _conn() as conn:
             with conn.cursor() as cur:

@@ -99,6 +99,10 @@ export const listPrompts = () => {
   return PROMPT_API.get("/prompts")
 }
 
+export const getPrompt = (promptId: string) => {
+  return PROMPT_API.get(`/prompts/${promptId}`)
+}
+
 export const resolvePrompt = (params: any) => {
   return PROMPT_API.get("/prompts/resolve", { params })
 }
@@ -113,4 +117,50 @@ export const activatePrompt = (promptId: string, version: number) => {
   return PROMPT_API.post(`/prompts/${promptId}/activate`, null, {
     params: { version }
   })
+}
+
+export const getAgentManifest = (capability_name: string, usecase_name: string, agent_type: string) => {
+  return SUPPORT_API.get("/registry/agent-manifest", {
+    params: { capability_name, usecase_name, agent_type },
+  })
+}
+
+export const getTemplateManifest = (agent_type: string) => {
+  return SUPPORT_API.get("/registry/template-manifest", {
+    params: { agent_type },
+  })
+}
+
+export const getAgentConfig = (capability_name: string, usecase_name: string, agent_type: string) => {
+  return SUPPORT_API.get("/registry/agent-config", {
+    params: { capability_name, usecase_name, agent_type },
+  })
+}
+
+export const patchAgentConfig = (payload: {
+  capability_name: string
+  usecase_name: string
+  agent_type: string
+  section: string
+  changes: Record<string, any>
+}) => {
+  return SUPPORT_API.patch("/registry/agent-config", payload)
+}
+
+export const getAgentStatus = () => {
+  return SUPPORT_API.get("/registry/agent-status")
+}
+
+export const restartAgent = (agentRepo: string, appRepo: string) => {
+  return SUPPORT_API.post("/workspace/start", null, {
+    params: { agent_repo: agentRepo, app_repo: appRepo },
+  })
+}
+
+export const stopWorkspace = () => {
+  return SUPPORT_API.post("/workspace/stop")
+}
+
+export const deleteWorkspace = () => {
+  return SUPPORT_API.delete("/workspace/delete")
 }

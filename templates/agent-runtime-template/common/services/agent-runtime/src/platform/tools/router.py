@@ -77,6 +77,12 @@ def _resolve_primary_arg(primary_arg: str, tool_value: str, raw_prompt: str, ctx
             raise RuntimeError("Missing member_id for tool call")
         return value
 
+    if primary_arg == "case_id":
+        value = tool_value or ctx.get("case_id") or ""
+        if not value:
+            raise RuntimeError("Missing case_id for tool call")
+        return value
+
     if primary_arg == "query":
         return tool_value or raw_prompt
 

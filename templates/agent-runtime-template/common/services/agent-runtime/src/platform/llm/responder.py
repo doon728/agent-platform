@@ -31,15 +31,8 @@ def _get_responder_prompt(ctx: Dict) -> str:
     if local_prompt:
         return local_prompt
 
-    return """
-You are a healthcare care-management assistant helping nurses.
-
-Rules:
-- Use only the provided tool data or retrieved policy content
-- Do not invent information
-- Be concise and clinically useful
-- If the information is insufficient, say so
-""".strip()
+    # Minimal fallback — full prompt should be in prompt-defaults.yaml
+    return "You are a clinical care management assistant. Use only the provided tool data. Be concise and clinically useful."
 
 
 def _format_tool_output(tool_name: str, tool_output: Dict) -> str:

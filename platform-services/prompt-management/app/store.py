@@ -20,20 +20,26 @@ def get_prompt_by_id(prompt_id: str) -> Optional[dict]:
               p.lifecycle_status,
               p.created_at,
               p.updated_at,
-              pv.version_id,
-              pv.version_number AS version,
-              pv.template_text,
-              pv.model_provider,
-              pv.model_name,
-              pv.temperature,
-              pv.version_status,
+              COALESCE(pv_active.version_id, pv_latest.version_id) AS version_id,
+              COALESCE(pv_active.version_number, pv_latest.version_number) AS version,
+              COALESCE(pv_active.template_text, pv_latest.template_text) AS template_text,
+              COALESCE(pv_active.model_provider, pv_latest.model_provider) AS model_provider,
+              COALESCE(pv_active.model_name, pv_latest.model_name) AS model_name,
+              COALESCE(pv_active.temperature, pv_latest.temperature) AS temperature,
+              COALESCE(pv_active.version_status, pv_latest.version_status) AS version_status,
               COALESCE(pa.is_active, FALSE) AS is_active
             FROM prompts p
             LEFT JOIN prompt_activations pa
               ON pa.prompt_id = p.prompt_id
              AND pa.is_active = TRUE
-            LEFT JOIN prompt_versions pv
-              ON pv.version_id = pa.version_id
+            LEFT JOIN prompt_versions pv_active
+              ON pv_active.version_id = pa.version_id
+            LEFT JOIN LATERAL (
+              SELECT * FROM prompt_versions
+              WHERE prompt_id = p.prompt_id
+              ORDER BY version_number DESC
+              LIMIT 1
+            ) pv_latest ON TRUE
             WHERE p.prompt_id = %s
             """,
             (prompt_id,),
