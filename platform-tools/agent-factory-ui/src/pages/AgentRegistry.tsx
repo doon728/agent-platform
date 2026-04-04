@@ -527,12 +527,46 @@ function RagTab({ config, onSave }: { config: AgentConfig; onSave: (section: str
 
       <Divider />
 
-      {/* Retrieval params */}
+      {/* Pre-graph RAG */}
       <Box>
-        <Typography variant="body2" fontWeight={700} sx={{ mb: 1.5 }}>Retrieval Parameters</Typography>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+          <Typography variant="body2" fontWeight={700}>Pre-Graph RAG</Typography>
+          <Chip label="Ambient Enrichment" size="small" sx={{ bgcolor: "#ede9fe", color: "#5b21b6", fontWeight: 600, fontSize: 11 }} />
+        </Box>
+        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1.5 }}>
+          Retrieves KB chunks before the planner runs and injects them into context. The planner and responder both see this silently — no explicit tool call needed.
+        </Typography>
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <FormControlLabel
+            control={<Switch checked={!!retrieval.pre_graph?.enabled}
+              onChange={e => setRetrieval({ ...retrieval, pre_graph: { ...retrieval.pre_graph, enabled: e.target.checked } })} />}
+            label="Pre-Graph RAG Enabled"
+          />
+          <TextField size="small" label="Top K" type="number"
+            value={retrieval.pre_graph?.top_k ?? 3}
+            onChange={e => setRetrieval({ ...retrieval, pre_graph: { ...retrieval.pre_graph, top_k: Number(e.target.value) } })}
+            sx={{ maxWidth: 160 }} helperText="Chunks to inject (keep low — ambient context only)" />
+          <TextField size="small" label="Similarity Threshold" type="number" inputProps={{ step: 0.05, min: 0, max: 1 }}
+            value={retrieval.pre_graph?.similarity_threshold ?? 0.5}
+            onChange={e => setRetrieval({ ...retrieval, pre_graph: { ...retrieval.pre_graph, similarity_threshold: Number(e.target.value) } })}
+            sx={{ maxWidth: 200 }} helperText="Higher threshold — only inject if highly relevant" />
+        </Box>
+      </Box>
+
+      <Divider />
+
+      {/* Planner tool RAG */}
+      <Box>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+          <Typography variant="body2" fontWeight={700}>Planner Tool RAG</Typography>
+          <Chip label="Explicit Query" size="small" sx={{ bgcolor: "#dcfce7", color: "#166534", fontWeight: 600, fontSize: 11 }} />
+        </Box>
+        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1.5 }}>
+          Planner calls the retrieval tool explicitly when the user asks a KB question (e.g. "what is the protocol for X"). This is the primary response for that turn.
+        </Typography>
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
           <TextField size="small" label="Default Tool" value={retrieval.default_tool || ""} onChange={e => setRetrieval({ ...retrieval, default_tool: e.target.value })} sx={{ maxWidth: 240 }}
-            helperText="Which tool to call when retrieval is triggered" />
+            helperText="Which tool to call for retrieval" />
           <TextField size="small" label="Top K" type="number" value={retrieval.top_k ?? 5} onChange={e => setRetrieval({ ...retrieval, top_k: Number(e.target.value) })} sx={{ maxWidth: 160 }}
             helperText="Number of results to retrieve" />
           <TextField size="small" label="Similarity Threshold" type="number" inputProps={{ step: 0.05, min: 0, max: 1 }}

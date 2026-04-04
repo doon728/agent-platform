@@ -129,7 +129,7 @@ const BASE_AGENT_TYPE_OPTIONS = [
   { value: "workflow_agent", label: "workflow_agent", enabled: false },
   { value: "supervisor_agent", label: "supervisor_agent", enabled: false },
   { value: "multi_agent", label: "multi_agent", enabled: false },
-  { value: "summarization_agent", label: "summarization_agent", enabled: false },
+  { value: "summarization_agent", label: "summarization_agent", enabled: true },
 ]
 
 const DEFAULT_PLANNER_PROMPT =
@@ -1783,6 +1783,12 @@ export default function ApplicationForm() {
                       {/* ── HITL ── */}
                       <div style={{ marginBottom: 16 }}>
                         <strong style={{ fontSize: 14 }}>HITL (Human-in-the-Loop)</strong>
+                        {agentType === "summarization_agent" && (
+                          <div style={{ marginTop: 8, padding: "8px 12px", borderRadius: 6, background: "rgba(100,116,139,0.08)", border: "1px solid rgba(100,116,139,0.2)", color: "#64748b", fontSize: 12 }}>
+                            Not applicable — summarization agents are read-only and do not call write tools.
+                          </div>
+                        )}
+                        {agentType !== "summarization_agent" && (
                         <div style={{ marginTop: 8, display: "grid", gap: 14 }}>
 
                           {/* Approval Required */}
@@ -1883,6 +1889,7 @@ export default function ApplicationForm() {
                             </>
                           )}
                         </div>
+                        )}
                       </div>
 
                       {/* ── RAG (only shown when agent type has RAG built in) ── */}

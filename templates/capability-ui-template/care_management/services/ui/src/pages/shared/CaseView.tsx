@@ -7,12 +7,14 @@ const TOOL_GATEWAY = "http://localhost:8080";
 
 function StatusBadge({ status }: { status: string }) {
   const colors: Record<string, { bg: string; color: string; border: string }> = {
-    OPEN:      { bg: "rgba(34,197,94,0.15)",   color: "#4ade80", border: "rgba(34,197,94,0.3)" },
-    COMPLETED: { bg: "rgba(99,102,241,0.15)",  color: "#818cf8", border: "rgba(99,102,241,0.3)" },
-    PENDING:   { bg: "rgba(251,191,36,0.15)",  color: "#fcd34d", border: "rgba(251,191,36,0.3)" },
-    ACTIVE:    { bg: "rgba(34,197,94,0.15)",   color: "#4ade80", border: "rgba(34,197,94,0.3)" },
+    OPEN:      { bg: "rgba(22,163,74,0.1)",    color: "#15803d", border: "rgba(22,163,74,0.3)" },
+    COMPLETED: { bg: "rgba(99,102,241,0.1)",   color: "#4338ca", border: "rgba(99,102,241,0.3)" },
+    COMPLETE:  { bg: "rgba(99,102,241,0.1)",   color: "#4338ca", border: "rgba(99,102,241,0.3)" },
+    PENDING:   { bg: "rgba(217,119,6,0.1)",    color: "#b45309", border: "rgba(217,119,6,0.3)" },
+    ACTIVE:    { bg: "rgba(22,163,74,0.1)",    color: "#15803d", border: "rgba(22,163,74,0.3)" },
+    SCHEDULED: { bg: "rgba(100,116,139,0.1)",  color: "#475569", border: "rgba(100,116,139,0.3)" },
   };
-  const c = colors[status] || { bg: "rgba(100,116,139,0.2)", color: "#94a3b8", border: "rgba(100,116,139,0.3)" };
+  const c = colors[status] || { bg: "rgba(100,116,139,0.1)", color: "#475569", border: "rgba(100,116,139,0.3)" };
   return (
     <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 7px", borderRadius: 4, background: c.bg, color: c.color, border: `1px solid ${c.border}` }}>
       {status}
@@ -21,10 +23,14 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 function RiskBadge({ level }: { level: string }) {
-  const colors: Record<string, string> = { HIGH: "#f87171", MEDIUM: "#fcd34d", LOW: "#4ade80" };
-  const color = colors[(level || "").toUpperCase()] || "#94a3b8";
+  const colors: Record<string, { bg: string; color: string; border: string }> = {
+    HIGH:   { bg: "rgba(220,38,38,0.1)",  color: "#dc2626", border: "rgba(220,38,38,0.25)" },
+    MEDIUM: { bg: "rgba(217,119,6,0.1)",  color: "#d97706", border: "rgba(217,119,6,0.25)" },
+    LOW:    { bg: "rgba(22,163,74,0.1)",  color: "#15803d", border: "rgba(22,163,74,0.25)" },
+  };
+  const c = colors[(level || "").toUpperCase()] || { bg: "rgba(100,116,139,0.1)", color: "#475569", border: "rgba(100,116,139,0.2)" };
   return (
-    <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 7px", borderRadius: 4, background: "rgba(255,255,255,0.05)", color, border: `1px solid ${color}44` }}>
+    <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 7px", borderRadius: 4, background: c.bg, color: c.color, border: `1px solid ${c.border}` }}>
       {level}
     </span>
   );
@@ -92,10 +98,10 @@ export default function CaseView() {
       <SummaryPanel scopeType="case" scopeId={caseId!} memberId={caseData.member_id} />
 
       {/* Case Header */}
-      <div style={{ padding: "16px 20px", background: "#0f172a", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, marginBottom: 16 }}>
+      <div style={{ padding: "16px 20px", background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 10, marginBottom: 16, boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: "#f8fafc" }}>{caseData.title}</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: "#0f172a" }}>{caseData.title}</div>
             <div style={{ color: "#64748b", fontSize: 12, marginTop: 4, display: "flex", gap: 16 }}>
               <span>{caseData.case_id}</span>
               <span>Opened: {caseData.open_date}</span>
@@ -126,7 +132,7 @@ export default function CaseView() {
       </div>
 
       {/* Assessments */}
-      <div style={{ fontWeight: 700, fontSize: 14, color: "#f8fafc", marginBottom: 10 }}>
+      <div style={{ fontWeight: 700, fontSize: 14, color: "#0f172a", marginBottom: 10 }}>
         Assessments ({assessments.length})
       </div>
 
@@ -145,16 +151,17 @@ export default function CaseView() {
                 alignItems: "center",
                 gap: 12,
                 padding: "12px 16px",
-                background: "#0f172a",
-                border: `1px solid ${isActive ? "rgba(99,102,241,0.6)" : "rgba(255,255,255,0.08)"}`,
+                background: isActive ? "#eef2ff" : "#ffffff",
+                border: `1px solid ${isActive ? "#6366f1" : "#e2e8f0"}`,
                 borderRadius: 8,
                 transition: "border-color 0.15s",
+                boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
               }}
-              onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.borderColor = "rgba(99,102,241,0.3)"; }}
-              onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; }}
+              onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.borderColor = "#c7d2fe"; }}
+              onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.borderColor = "#e2e8f0"; }}
             >
               <div style={{ cursor: "pointer" }} onClick={() => navigate(`/assessments/${a.assessment_id}`)}>
-                <div style={{ fontWeight: 600, color: "#f8fafc", fontSize: 14 }}>{a.assessment_type}</div>
+                <div style={{ fontWeight: 600, color: "#0f172a", fontSize: 14 }}>{a.assessment_type}</div>
                 <div style={{ color: "#64748b", fontSize: 12, marginTop: 2 }}>
                   {a.assessment_id} · Created: {a.created_at?.slice(0, 10)}
                   {a.summary && <span> · {a.summary.slice(0, 60)}{a.summary.length > 60 ? "…" : ""}</span>}

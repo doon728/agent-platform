@@ -8,6 +8,7 @@ type TraceRun = { run_id: string; agent: string; thread_id: string; prompt: stri
 type InvocationOk = { ok: true; output: any; correlation_id: string };
 type InvocationErr = { ok: false; error: { code: string; message: string }; correlation_id?: string };
 type InvocationResp = InvocationOk | InvocationErr;
+type EpisodicEntry = { content: string; metadata: any };
 
 export interface ChatContext {
   type: "member" | "case" | "assessment";
@@ -35,6 +36,21 @@ function getOrCreateThread(type: string, id: string): string {
   return tid;
 }
 
+function loadMessages(type: string, id: string): ChatMsg[] {
+  try {
+    const raw = localStorage.getItem(`chat-messages:${type}:${id}`);
+    return raw ? (JSON.parse(raw) as ChatMsg[]) : [];
+  } catch { return []; }
+}
+
+function saveMessages(type: string, id: string, msgs: ChatMsg[]) {
+  try { localStorage.setItem(`chat-messages:${type}:${id}`, JSON.stringify(msgs)); } catch {}
+}
+
+function clearStoredMessages(type: string, id: string) {
+  localStorage.removeItem(`chat-messages:${type}:${id}`);
+}
+
 // ── Context type icon ─────────────────────────────────────────────────────────
 function ContextIcon({ type }: { type: string }) {
   const icons: Record<string, string> = { member: "👤", case: "📋", assessment: "📝" };
@@ -42,13 +58,25 @@ function ContextIcon({ type }: { type: string }) {
 }
 
 // ── Memory Panel ──────────────────────────────────────────────────────────────
-function MemoryPanel({ data, toggles, onToggle }: { data: any; toggles: Record<string, boolean>; onToggle: (k: string) => void }) {
+function MemoryPanel({ data, toggles, onToggle, liveEpisodic }: {
+  data: any;
+  toggles: Record<string, boolean>;
+  onToggle: (k: string) => void;
+  liveEpisodic: EpisodicEntry[];
+}) {
   const trace = data?.memory_trace || {};
   const planner = trace.planner || {};
   const router = trace.router || {};
   const executor = trace.executor || {};
-  const written = trace.written || {};
   const policyKeys = ["short_term", "episodic", "summary", "semantic"];
+
+  // Merge live episodic into written section: if liveEpisodic has entries, show episodic as written
+  const written = {
+    ...(trace.written || {}),
+    ...(liveEpisodic.length > 0 ? {
+      episodic: { status: "written", scope: "case_or_assessment", trigger: "tool_success_post_hitl" }
+    } : {}),
+  };
 
   function Row({ label, value }: { label: string; value: React.ReactNode }) {
     return (
@@ -62,8 +90,6 @@ function MemoryPanel({ data, toggles, onToggle }: { data: any; toggles: Record<s
   function Sec({ title }: { title: string }) {
     return <div style={{ fontSize: 10, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 1, marginTop: 10, marginBottom: 3 }}>{title}</div>;
   }
-
-  const policyState = trace.policy_state || {};
 
   if (!data) return <div style={{ color: "#475569", fontSize: 12, padding: 8 }}>No memory data yet. Send a message.</div>;
 
@@ -124,6 +150,25 @@ function MemoryPanel({ data, toggles, onToggle }: { data: any; toggles: Record<s
           {written.short_term?.status && <Row label="short_term" value={written.short_term.status} />}
         </>
       )}
+
+      {liveEpisodic.length > 0 && (
+        <>
+          <Sec title="Episodic Entries" />
+          {liveEpisodic.slice(0, 3).map((entry, i) => (
+            <div key={i} style={{
+              marginBottom: 6, padding: "6px 8px", borderRadius: 6,
+              background: "rgba(99,102,241,0.06)", border: "1px solid rgba(99,102,241,0.15)",
+            }}>
+              <div style={{ color: "#475569", fontSize: 10, lineHeight: 1.4, fontFamily: "monospace" }}>
+                {entry.content.length > 180 ? entry.content.slice(0, 180) + "…" : entry.content}
+              </div>
+              {entry.metadata?.tool && (
+                <div style={{ color: "#6366f1", fontSize: 10, marginTop: 3 }}>tool: {entry.metadata.tool}</div>
+              )}
+            </div>
+          ))}
+        </>
+      )}
     </div>
   );
 }
@@ -143,6 +188,7 @@ export default function InlineChatPanel({ context, onClose }: Props) {
     approval_id: string; tool_name: string; tool_input: any; risk_level: string;
   } | null>(null);
   const [memoryDebug, setMemoryDebug] = useState<any | null>(null);
+  const [liveEpisodic, setLiveEpisodic] = useState<EpisodicEntry[]>([]);
   const [traces, setTraces] = useState<TraceRun[]>([]);
   const [memoryToggles, setMemoryToggles] = useState({ short_term: true, episodic: true, summary: true, semantic: false });
   const [activeTab, setActiveTab] = useState<"chat" | "memory" | "trace">("chat");
@@ -156,29 +202,69 @@ export default function InlineChatPanel({ context, onClose }: Props) {
     if (prevContextId.current !== context.id) {
       prevContextId.current = context.id;
       threadRef.current = getOrCreateThread(context.type, context.id);
-      setMessages([]);
       setMemoryDebug(null);
+      setLiveEpisodic([]);
       setTraces([]);
       setActiveTab("chat");
     }
   }, [context.id, context.type]);
 
-  // Welcome message on mount / context switch
+  // Welcome message on mount / context switch — skip if stored history exists
   useEffect(() => {
-    setMessages([{
-      id: uid(), role: "assistant", ts: Date.now(),
-      text: context.type === "member"
-        ? `Chatting about member ${context.label}. Ask about their cases, conditions, or care status.`
-        : context.type === "case"
-        ? `Chatting about case: ${context.label} (${context.id}). Ask about assessments, tasks, or clinical status.`
-        : `Chatting about assessment ${context.id}. Ask about concerns, tasks, or findings.`,
-    }]);
+    const stored = loadMessages(context.type, context.id);
+    if (stored.length > 0) {
+      setMessages(stored);
+    } else {
+      setMessages([{
+        id: uid(), role: "assistant", ts: Date.now(),
+        text: context.type === "member"
+          ? `Chatting about member ${context.label}. Ask about their cases, conditions, or care status.`
+          : context.type === "case"
+          ? `Chatting about case: ${context.label} (${context.id}). Ask about assessments, tasks, or clinical status.`
+          : `Chatting about assessment ${context.id}. Ask about concerns, tasks, or findings.`,
+      }]);
+    }
     loadTraces();
   }, [context.id]);
+
+  // Persist messages to localStorage on every update
+  useEffect(() => {
+    if (messages.length > 0) saveMessages(context.type, context.id, messages);
+  }, [messages]);
 
   useEffect(() => {
     if (activeTab === "chat") requestAnimationFrame(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); });
   }, [messages, pendingApproval, activeTab]);
+
+  // Build context body for /debug/memory fetch
+  function buildContextBody() {
+    const body: any = { tenant_id: "t1", thread_id: threadRef.current };
+    if (context.type === "assessment") {
+      body.assessment_id = context.id;
+      if (context.memberId) body.member_id = context.memberId;
+    } else if (context.type === "case") {
+      body.case_id = context.id;
+      if (context.memberId) body.member_id = context.memberId;
+    } else {
+      body.member_id = context.id;
+    }
+    return body;
+  }
+
+  // Fetch live episodic entries from memory store after HITL approval
+  async function fetchLiveEpisodic() {
+    try {
+      const res = await fetch("/api/debug/memory", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildContextBody()),
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      const episodic: EpisodicEntry[] = (data.memory_context?.episodic_memories || []);
+      if (episodic.length > 0) setLiveEpisodic(episodic);
+    } catch {}
+  }
 
   useEffect(() => {
     if (!pendingApproval?.approval_id) return;
@@ -191,6 +277,8 @@ export default function InlineChatPanel({ context, onClose }: Props) {
         if (record.status === "approved") {
           setMessages((m) => [...m, { id: uid(), role: "assistant", ts: Date.now(), text: `✓ Approved by ${record.decided_by || "supervisor"}.` }]);
           setPendingApproval(null);
+          // Fetch live episodic so the memory panel shows what was written post-approval
+          await fetchLiveEpisodic();
         } else if (record.status === "rejected") {
           setMessages((m) => [...m, { id: uid(), role: "system", ts: Date.now(), text: `✗ Rejected by ${record.decided_by || "supervisor"}.` }]);
           setPendingApproval(null);
@@ -239,6 +327,7 @@ export default function InlineChatPanel({ context, onClose }: Props) {
       const outputAny = (data as InvocationOk).output as any;
       const answerObj = outputAny?.answer ?? outputAny;
       setMemoryDebug(outputAny);
+      setLiveEpisodic([]); // reset live episodic on each new turn
       await loadTraces();
 
       const isApproval =
@@ -298,6 +387,7 @@ export default function InlineChatPanel({ context, onClose }: Props) {
               const newThread = `${context.type}-${context.id}-${Date.now().toString(16)}`;
               localStorage.setItem(`chat-thread:${context.type}:${context.id}`, newThread);
               threadRef.current = newThread;
+              clearStoredMessages(context.type, context.id);
               setMessages([{
                 id: uid(), role: "assistant", ts: Date.now(),
                 text: context.type === "member"
@@ -307,6 +397,7 @@ export default function InlineChatPanel({ context, onClose }: Props) {
                   : `Chatting about assessment ${context.id}. Ask about concerns, tasks, or findings.`,
               }]);
               setMemoryDebug(null);
+              setLiveEpisodic([]);
               setTraces([]);
               setActiveTab("chat");
             }}
@@ -405,7 +496,12 @@ export default function InlineChatPanel({ context, onClose }: Props) {
       {/* Memory tab */}
       {activeTab === "memory" && (
         <div style={{ height: 380, overflowY: "auto", padding: "12px 16px" }}>
-          <MemoryPanel data={memoryDebug} toggles={memoryToggles} onToggle={(k) => setMemoryToggles((prev) => ({ ...prev, [k]: !prev[k as keyof typeof prev] }))} />
+          <MemoryPanel
+            data={memoryDebug}
+            toggles={memoryToggles}
+            onToggle={(k) => setMemoryToggles((prev) => ({ ...prev, [k]: !prev[k as keyof typeof prev] }))}
+            liveEpisodic={liveEpisodic}
+          />
         </div>
       )}
 

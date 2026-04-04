@@ -18,7 +18,7 @@ from src.platform.tools.registry import registry
 from src.platform.observability.tracer import list_traces
 from src.platform.usecase_contract import execute
 from src.platform.hitl import approval_store
-from src.platform.hitl.memory_writer import write_hitl_decision
+from src.platform.hitl.memory_writer import write_hitl_decision, write_hitl_tool_executed
 
 load_dotenv()
 
@@ -371,6 +371,13 @@ async def hitl_decide(request: Request) -> JSONResponse:
             tool_result=tool_result,
             ctx=ctx,
         )
+        if decision == "approved" and tool_result is not None:
+            write_hitl_tool_executed(
+                tool_name=record["tool_name"],
+                tool_input=record["tool_input"] if isinstance(record["tool_input"], dict) else {},
+                tool_result=tool_result,
+                ctx=ctx,
+            )
         approval_store.log_event(approval_id, "memory_written", "system", {})
     except Exception as e:
         print(f"[hitl] memory write failed: {e}")

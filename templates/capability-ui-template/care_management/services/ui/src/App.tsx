@@ -39,7 +39,21 @@ export default function App() {
         <div style={{ display: "flex", gap: 12 }}>
           <NavLink to="/nurse" label="Nurse" />
           <NavLink to="/members" label="Members" />
-          <NavLink to="/supervisor" label="Approval Console" />
+          <a
+            href="/supervisor"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              padding: "8px 12px",
+              borderRadius: 8,
+              textDecoration: "none",
+              color: "#f8fafc",
+              background: "#1e293b",
+              border: "1px solid rgba(255,255,255,0.12)",
+            }}
+          >
+            Approval Console
+          </a>
         </div>
       </div>
 

@@ -9,6 +9,12 @@ retrieval:
   enabled: true
   default_tool: search_kb
   strategy: semantic
+  # Pre-graph RAG: ambient KB enrichment injected into ctx before planner runs
+  pre_graph:
+    enabled: false          # off by default — opt in per usecase
+    top_k: 3
+    similarity_threshold: 0.5
+  # Planner tool RAG: search_kb called explicitly by planner for KB questions
   top_k: 5
   similarity_threshold: 0.35
   fallback:

@@ -143,6 +143,35 @@ class LangGraphRunner:
         ctx["memory_scopes"] = active_scopes
         ctx["memory_context"] = memory_context
 
+        # ── Pre-graph RAG retrieval ────────────────────────────────────────────
+        # If retrieval.pre_graph.enabled, call the KB retrieval tool before the
+        # graph runs and inject results into ctx["rag_context"]. The planner and
+        # responder both see this ambient KB context without needing to call a
+        # tool themselves. This is separate from search_kb as a planner tool call
+        # (which handles explicit "what is the protocol for X" queries).
+        retrieval_cfg = usecase_cfg.get("retrieval") or {}
+        pre_graph_cfg = retrieval_cfg.get("pre_graph") or {}
+        ctx["rag_context"] = []
+
+        if pre_graph_cfg.get("enabled", False):
+            try:
+                from src.platform.tools.registry import registry as _registry
+                _default_tool = retrieval_cfg.get("default_tool", "search_kb")
+                _top_k = pre_graph_cfg.get("top_k", 3)
+                _threshold = pre_graph_cfg.get("similarity_threshold", 0.5)
+                _rag_result = _registry.invoke(
+                    _default_tool,
+                    {"query": prompt, "top_k": _top_k, "threshold": _threshold},
+                    ctx,
+                )
+                _chunks = _rag_result.get("results") or []
+                ctx["rag_context"] = _chunks
+                print(f"[pre_graph_rag] retrieved {len(_chunks)} chunks for query: {prompt[:60]}", flush=True)
+            except Exception as _e:
+                print(f"[pre_graph_rag] retrieval failed (non-fatal): {_e}", flush=True)
+                ctx["rag_context"] = []
+        # ── End pre-graph RAG ─────────────────────────────────────────────────
+
         self._ensure_app()
 
         # IMPORTANT:
