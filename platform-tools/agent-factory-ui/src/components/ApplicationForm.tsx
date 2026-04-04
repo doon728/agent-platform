@@ -81,11 +81,6 @@ const BASE_AGENT_TYPE_OPTIONS = [
   { value: "multi_agent", label: "multi_agent", enabled: false },
 ]
 
-const DEFAULT_PLANNER_PROMPT =
-  "You are a care-management agent planner. Your job is to decide which tool should be called next. Only choose from the available tools. Return the next tool call in this format: tool_name: argument"
-
-const DEFAULT_RESPONDER_PROMPT =
-  "You are a healthcare care-management assistant helping nurses. Use only the provided tool data or retrieved policy content. Do not invent information. Be concise and clinically useful."
 
 export default function ApplicationForm() {
   const [factoryMode, setFactoryMode] = useState<FactoryMode>("scaffold_agent")
@@ -130,9 +125,7 @@ export default function ApplicationForm() {
   const [localTopK, setLocalTopK] = useState("3")
   const [localScoreThreshold, setLocalScoreThreshold] = useState("0.35")
 
-  // Prompts
-  const [plannerPrompt, setPlannerPrompt] = useState(DEFAULT_PLANNER_PROMPT)
-  const [responderPrompt, setResponderPrompt] = useState(DEFAULT_RESPONDER_PROMPT)
+
 
   // Tools
   const [availableGateways] = useState<string[]>(["healthcare-tool-gateway"])
@@ -146,7 +139,7 @@ export default function ApplicationForm() {
 
   // AgentCore teaser
   const [showAgentCoreProfile, setShowAgentCoreProfile] = useState(false)
-  const [agentBehaviorTab, setAgentBehaviorTab] = useState<"settings" | "memory" | "prompts">("settings")
+  const [agentBehaviorTab, setAgentBehaviorTab] = useState<"settings" | "memory">("settings")
 
   // Data from filesystem
   const [filesystemCapabilities, setFilesystemCapabilities] = useState<string[]>([])
@@ -296,7 +289,7 @@ export default function ApplicationForm() {
             },
             memory: buildMemoryPayload(),
             embeddings: { provider: "openai", model: "text-embedding-3-small" },
-            prompts: { planner_system_prompt: plannerPrompt, responder_system_prompt: responderPrompt },
+            prompts: {},
           },
         }],
       }
@@ -514,7 +507,7 @@ export default function ApplicationForm() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                 <h2 style={{ margin: 0 }}>Agent Behavior</h2>
                 <div style={{ display: "flex", gap: 8 }}>
-                  {(["settings", "memory", "prompts"] as const).map((tab) => (
+                  {(["settings", "memory"] as const).map((tab) => (
                     <button key={tab} type="button" onClick={() => setAgentBehaviorTab(tab)} style={pillButton(agentBehaviorTab === tab)}>
                       {tab.charAt(0).toUpperCase() + tab.slice(1)}
                     </button>
@@ -565,18 +558,6 @@ export default function ApplicationForm() {
                 </div>
               )}
 
-              {agentBehaviorTab === "prompts" && (
-                <div style={{ display: "grid", gap: 14 }}>
-                  <div>
-                    <label style={labelStyle}>Planner System Prompt</label>
-                    <textarea style={{ ...inputStyle, minHeight: 90, fontFamily: "monospace", fontSize: 12 }} value={plannerPrompt} onChange={(e) => setPlannerPrompt(e.target.value)} />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Responder System Prompt</label>
-                    <textarea style={{ ...inputStyle, minHeight: 90, fontFamily: "monospace", fontSize: 12 }} value={responderPrompt} onChange={(e) => setResponderPrompt(e.target.value)} />
-                  </div>
-                </div>
-              )}
             </div>
           </div>
 
