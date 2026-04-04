@@ -1,0 +1,12 @@
+app:
+  contract_version: v1
+  capability_name: care-management
+  active_usecase: UC_PreCall_Assess
+tool_gateway:
+  url: http://healthcare-tool-gateway:8080
+prompt_service:
+  url: http://host.docker.internal:8101
+  app_name: CM hero Fl APP
+  agent_type: chat_agent
+  usecase_name: UC_PreCall_Assess
+  environment: dev

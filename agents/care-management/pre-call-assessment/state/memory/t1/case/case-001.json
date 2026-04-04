@@ -1,0 +1,15 @@
+[
+  {
+    "memory_id": "mem_b13084ae3dbc",
+    "memory_type": "summary_cache",
+    "scope_type": "case",
+    "scope_id": "case-001",
+    "content": "{\"summary\": \"Mia Martinez has chronic heart failure (I50.9) and is currently enrolled in active care plans for asthma and maternity. Recent assessments indicate a scheduled reassessment for Q2 2026. Claims show consistent engagement with healthcare services, with recent denials for DME requests. Overall, her health trajectory appears stable with ongoing management of chronic conditions.\", \"key_concerns\": [\"Chronic heart failure management\", \"Asthma exacerbation risk\", \"Recent DME authorization denial\"], \"last_action\": \"Scheduled reassessment for Q2 2026.\", \"next_steps\": [\"Conduct scheduled reassessment\", \"Review asthma management strategies\", \"Address DME authorization denial with provider\"]}",
+    "metadata": {
+      "scope_type": "case",
+      "scope_id": "case-001",
+      "generated_at": "2026-04-02T15:09:47.171269+00:00"
+    },
+    "created_at": "2026-04-02T15:09:47.171303+00:00"
+  }
+]

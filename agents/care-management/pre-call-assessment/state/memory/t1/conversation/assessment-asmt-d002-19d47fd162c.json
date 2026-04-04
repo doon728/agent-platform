@@ -1,0 +1,62 @@
+[
+  {
+    "memory_id": "mem_c9356797446f",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "assessment-asmt-d002-19d47fd162c",
+    "role": "user",
+    "content": "what is the care management protocol for members with depression risk and low medication adherence",
+    "metadata": {
+      "case_id": "",
+      "member_id": "m-001715",
+      "assessment_id": "asmt-d002",
+      "care_plan_id": ""
+    },
+    "created_at": "2026-04-01T07:41:11.587609+00:00"
+  },
+  {
+    "memory_id": "mem_deefe8be2ee7",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "assessment-asmt-d002-19d47fd162c",
+    "role": "assistant",
+    "content": "The care management protocol for members with depression risk and low medication adherence includes the following steps:\n\n1. **Behavioral Health Follow-Up**: Ensure regular follow-up for behavioral health support.\n2. **Social Needs Screening**: Conduct screenings to identify any social needs that may impact adherence.\n3. **Documented Case Management Outreach**: Maintain documentation of outreach efforts to engage the member.\n4. **Escalation for High-Risk Members**: Identify and escalate cases of high-risk members for timely intervention and care coordination.",
+    "metadata": {
+      "case_id": "",
+      "member_id": "m-001715",
+      "assessment_id": "asmt-d002",
+      "care_plan_id": ""
+    },
+    "created_at": "2026-04-01T07:41:11.589711+00:00"
+  },
+  {
+    "memory_id": "mem_32324f4d4366",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "assessment-asmt-d002-19d47fd162c",
+    "role": "user",
+    "content": "write a case note:Mia's Care plan is on track",
+    "metadata": {
+      "case_id": "",
+      "member_id": "m-001715",
+      "assessment_id": "asmt-d002",
+      "care_plan_id": ""
+    },
+    "created_at": "2026-04-01T07:42:14.231831+00:00"
+  },
+  {
+    "memory_id": "mem_c2319009fa0f",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "assessment-asmt-d002-19d47fd162c",
+    "role": "assistant",
+    "content": "[APPROVAL_REQUIRED] Awaiting human approval for tool: write_case_note",
+    "metadata": {
+      "case_id": "",
+      "member_id": "m-001715",
+      "assessment_id": "asmt-d002",
+      "care_plan_id": ""
+    },
+    "created_at": "2026-04-01T07:42:14.233042+00:00"
+  }
+]

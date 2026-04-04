@@ -1,0 +1,14 @@
+services:
+  ui:
+    image: node:20-alpine
+    working_dir: /app
+    ports:
+      - "${APP_UI_PORT:-3000}:3000"
+    environment:
+      VITE_API_PROXY_TARGET: ${VITE_API_PROXY_TARGET:-http://host.docker.internal:8081}
+    volumes:
+      - ./services/ui:/app
+      - /app/node_modules
+    command: sh -lc "npm install && npm run dev"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

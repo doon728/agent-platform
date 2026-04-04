@@ -1,0 +1,15 @@
+[
+  {
+    "memory_id": "mem_bcdf364f9537",
+    "memory_type": "summary_cache",
+    "scope_type": "assessment",
+    "scope_id": "asmt-d003",
+    "content": "{\"summary\": \"Mia Martinez is scheduled for a reassessment for Q2. Current status is 'SCHEDULED' with a low priority. No care plan is currently in place. Chronic condition noted is I50.9.\", \"key_concerns\": [\"No active care plan\", \"Chronic condition management\"], \"last_action\": \"Scheduled reassessment for Q2.\", \"next_steps\": [\"Complete reassessment survey\", \"Review Q1 progress notes\", \"Update medication list\", \"Write case note\", \"Update care plan\"]}",
+    "metadata": {
+      "scope_type": "assessment",
+      "scope_id": "asmt-d003",
+      "generated_at": "2026-04-01T06:19:17.409053+00:00"
+    },
+    "created_at": "2026-04-01T06:19:17.409124+00:00"
+  }
+]

@@ -1,0 +1,62 @@
+[
+  {
+    "memory_id": "mem_b63a18c85225",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "assessment-asmt-d002-19d4ad2decd",
+    "role": "user",
+    "content": "what was the last note which was updated",
+    "metadata": {
+      "case_id": "",
+      "member_id": "m-001715",
+      "assessment_id": "asmt-d002",
+      "care_plan_id": ""
+    },
+    "created_at": "2026-04-02T15:10:42.114544+00:00"
+  },
+  {
+    "memory_id": "mem_9050c6315cb8",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "assessment-asmt-d002-19d4ad2decd",
+    "role": "assistant",
+    "content": "The last updated note is from April 1, 2026, at 15:40:16 UTC. It states: \"Member is now drinking heavily and not taking his medications on time.\"",
+    "metadata": {
+      "case_id": "",
+      "member_id": "m-001715",
+      "assessment_id": "asmt-d002",
+      "care_plan_id": ""
+    },
+    "created_at": "2026-04-02T15:10:42.118173+00:00"
+  },
+  {
+    "memory_id": "mem_3bf07702dd99",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "assessment-asmt-d002-19d4ad2decd",
+    "role": "user",
+    "content": "update new note: member is getting better",
+    "metadata": {
+      "case_id": "",
+      "member_id": "m-001715",
+      "assessment_id": "asmt-d002",
+      "care_plan_id": ""
+    },
+    "created_at": "2026-04-02T15:11:56.605794+00:00"
+  },
+  {
+    "memory_id": "mem_42ffd635170e",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "assessment-asmt-d002-19d4ad2decd",
+    "role": "assistant",
+    "content": "[APPROVAL_REQUIRED] Awaiting human approval for tool: write_case_note",
+    "metadata": {
+      "case_id": "",
+      "member_id": "m-001715",
+      "assessment_id": "asmt-d002",
+      "care_plan_id": ""
+    },
+    "created_at": "2026-04-02T15:11:56.606228+00:00"
+  }
+]

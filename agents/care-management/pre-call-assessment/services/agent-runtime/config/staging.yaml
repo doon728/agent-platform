@@ -1,0 +1,16 @@
+environment: staging
+logging:
+  level: INFO
+  format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+
+tool_gateway:
+  url: http://tool-gateway.staging.internal
+  timeout: 5
+
+observability:
+  enabled: true
+  sampling_rate: 0.5
+
+secrets:
+  kb_api_key: staging_placeholder_key
+  db_connection: staging_db_connection

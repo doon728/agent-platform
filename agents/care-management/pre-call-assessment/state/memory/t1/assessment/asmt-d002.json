@@ -1,0 +1,180 @@
+[
+  {
+    "memory_id": "mem_452cf6623707",
+    "memory_type": "episodic",
+    "scope_type": "assessment",
+    "scope_id": "asmt-d002",
+    "content": "HITL approval requested for tool 'write_case_note' (risk: high). Approval ID: appr-bb2cd3c9fa36",
+    "metadata": {
+      "type": "hitl_requested",
+      "approval_id": "appr-bb2cd3c9fa36",
+      "tool": "write_case_note",
+      "risk_level": "high",
+      "requested_by": "nurse-1",
+      "timestamp": "2026-04-01T07:59:55.981545+00:00"
+    },
+    "created_at": "2026-04-01T07:59:55.981562+00:00"
+  },
+  {
+    "memory_id": "mem_5ef392d9e052",
+    "memory_type": "episodic",
+    "scope_type": "assessment",
+    "scope_id": "asmt-d002",
+    "content": "HITL approval APPROVED for tool 'write_case_note' by supervisor-001. Reason: approve. Result: {'written': True, 'note_id': 'note-1775030405'}",
+    "metadata": {
+      "type": "hitl_approved",
+      "approval_id": "appr-bb2cd3c9fa36",
+      "tool": "write_case_note",
+      "decided_by": "supervisor-001",
+      "reason": "approve",
+      "tool_result": "{'written': True, 'note_id': 'note-1775030405'}",
+      "timestamp": "2026-04-01T08:00:05.927631+00:00"
+    },
+    "created_at": "2026-04-01T08:00:05.927656+00:00"
+  },
+  {
+    "memory_id": "mem_fc66bbaedd7d",
+    "memory_type": "episodic",
+    "scope_type": "assessment",
+    "scope_id": "asmt-d002",
+    "content": "Tool 'write_case_note' executed after supervisor approval. Input: case_id: asmt-d002, note: write case note;member smoking, assessment_id: asmt-d002. Result: {'written': True, 'note_id': 'note-1775030405'}",
+    "metadata": {
+      "type": "tool_executed_post_hitl",
+      "tool": "write_case_note",
+      "tool_input": {
+        "case_id": "asmt-d002",
+        "note": "write case note;member smoking",
+        "assessment_id": "asmt-d002"
+      },
+      "source": "tool_success",
+      "timestamp": "2026-04-01T08:00:05.928634+00:00",
+      "case_id": "",
+      "member_id": "m-001715",
+      "assessment_id": "asmt-d002"
+    },
+    "created_at": "2026-04-01T08:00:05.928653+00:00"
+  },
+  {
+    "memory_id": "mem_5a84f44191f3",
+    "memory_type": "episodic",
+    "scope_type": "assessment",
+    "scope_id": "asmt-d002",
+    "content": "HITL approval requested for tool 'write_case_note' (risk: high). Approval ID: appr-f40d95f1ed1a",
+    "metadata": {
+      "type": "hitl_requested",
+      "approval_id": "appr-f40d95f1ed1a",
+      "tool": "write_case_note",
+      "risk_level": "high",
+      "requested_by": "nurse-1",
+      "timestamp": "2026-04-01T15:39:59.451341+00:00"
+    },
+    "created_at": "2026-04-01T15:39:59.451357+00:00"
+  },
+  {
+    "memory_id": "mem_51f139631d74",
+    "memory_type": "episodic",
+    "scope_type": "assessment",
+    "scope_id": "asmt-d002",
+    "content": "HITL approval APPROVED for tool 'write_case_note' by supervisor-001. Reason: Approved. Result: {'written': True, 'note_id': 'note-1775058016'}",
+    "metadata": {
+      "type": "hitl_approved",
+      "approval_id": "appr-f40d95f1ed1a",
+      "tool": "write_case_note",
+      "decided_by": "supervisor-001",
+      "reason": "Approved",
+      "tool_result": "{'written': True, 'note_id': 'note-1775058016'}",
+      "timestamp": "2026-04-01T15:40:16.381698+00:00"
+    },
+    "created_at": "2026-04-01T15:40:16.381723+00:00"
+  },
+  {
+    "memory_id": "mem_14e22f14307d",
+    "memory_type": "episodic",
+    "scope_type": "assessment",
+    "scope_id": "asmt-d002",
+    "content": "Tool 'write_case_note' executed after supervisor approval. Input: case_id: asmt-d002, note: write a note: Member is now drinking heavily and not taking his medications on time, assessment_id: asmt-d002. Result: {'written': True, 'note_id': 'note-1775058016'}",
+    "metadata": {
+      "type": "tool_executed_post_hitl",
+      "tool": "write_case_note",
+      "tool_input": {
+        "case_id": "asmt-d002",
+        "note": "write a note: Member is now drinking heavily and not taking his medications on time",
+        "assessment_id": "asmt-d002"
+      },
+      "source": "tool_success",
+      "timestamp": "2026-04-01T15:40:16.382589+00:00",
+      "case_id": "",
+      "member_id": "m-001715",
+      "assessment_id": "asmt-d002"
+    },
+    "created_at": "2026-04-01T15:40:16.382605+00:00"
+  },
+  {
+    "memory_id": "mem_0e22c59d8cd2",
+    "memory_type": "summary_cache",
+    "scope_type": "assessment",
+    "scope_id": "asmt-d002",
+    "content": "{\"summary\": \"Mia Martinez is currently in an active follow-up assessment for asthma management, reporting improvement with inhaler use. However, recent notes indicate concerns regarding heavy drinking and medication non-compliance.\", \"key_concerns\": [\"Heavy drinking\", \"Medication non-compliance\", \"Smoking\"], \"last_action\": \"Reviewed prior notes.\", \"next_steps\": [\"Complete the questionnaire during the call.\", \"Write case note post-call.\", \"Update care plan by due date.\"]}",
+    "metadata": {
+      "scope_type": "assessment",
+      "scope_id": "asmt-d002",
+      "generated_at": "2026-04-01T20:53:51.728174+00:00"
+    },
+    "created_at": "2026-04-01T20:53:51.728253+00:00"
+  },
+  {
+    "memory_id": "mem_5a0a8d58f8ec",
+    "memory_type": "episodic",
+    "scope_type": "assessment",
+    "scope_id": "asmt-d002",
+    "content": "HITL approval requested for tool 'write_case_note' (risk: high). Approval ID: appr-9e0fa7c16d6d",
+    "metadata": {
+      "type": "hitl_requested",
+      "approval_id": "appr-9e0fa7c16d6d",
+      "tool": "write_case_note",
+      "risk_level": "high",
+      "requested_by": "nurse-1",
+      "timestamp": "2026-04-02T15:11:56.604245+00:00"
+    },
+    "created_at": "2026-04-02T15:11:56.604267+00:00"
+  },
+  {
+    "memory_id": "mem_eeae27920e6e",
+    "memory_type": "episodic",
+    "scope_type": "assessment",
+    "scope_id": "asmt-d002",
+    "content": "HITL approval APPROVED for tool 'write_case_note' by supervisor-001. Reason: approved. Result: {'written': True, 'note_id': 'note-1775142740'}",
+    "metadata": {
+      "type": "hitl_approved",
+      "approval_id": "appr-9e0fa7c16d6d",
+      "tool": "write_case_note",
+      "decided_by": "supervisor-001",
+      "reason": "approved",
+      "tool_result": "{'written': True, 'note_id': 'note-1775142740'}",
+      "timestamp": "2026-04-02T15:12:20.018552+00:00"
+    },
+    "created_at": "2026-04-02T15:12:20.018569+00:00"
+  },
+  {
+    "memory_id": "mem_87859b723e61",
+    "memory_type": "episodic",
+    "scope_type": "assessment",
+    "scope_id": "asmt-d002",
+    "content": "Tool 'write_case_note' executed after supervisor approval. Input: case_id: asmt-d002, note: update new note: member is getting better, assessment_id: asmt-d002. Result: {'written': True, 'note_id': 'note-1775142740'}",
+    "metadata": {
+      "type": "tool_executed_post_hitl",
+      "tool": "write_case_note",
+      "tool_input": {
+        "case_id": "asmt-d002",
+        "note": "update new note: member is getting better",
+        "assessment_id": "asmt-d002"
+      },
+      "source": "tool_success",
+      "timestamp": "2026-04-02T15:12:20.019208+00:00",
+      "case_id": "",
+      "member_id": "m-001715",
+      "assessment_id": "asmt-d002"
+    },
+    "created_at": "2026-04-02T15:12:20.019216+00:00"
+  }
+]

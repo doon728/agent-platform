@@ -1,0 +1,32 @@
+[
+  {
+    "memory_id": "mem_8b80f5a03411",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "member-m-001715-19d284a2b1e",
+    "role": "user",
+    "content": "suammrize and highlight any risks",
+    "metadata": {
+      "case_id": "",
+      "member_id": "m-001715",
+      "assessment_id": "",
+      "care_plan_id": ""
+    },
+    "created_at": "2026-03-29T18:59:47.719591+00:00"
+  },
+  {
+    "memory_id": "mem_6310a43622eb",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "member-m-001715-19d284a2b1e",
+    "role": "assistant",
+    "content": "**Summary of Member Mia Martinez (ID: m-001715)**\n\n- **Demographics**: \n  - DOB: October 21, 1954\n  - Gender: X\n  - State: MD\n  - Risk Score: 1.26\n  - Chronic Condition: Heart failure (I50.9)\n\n- **Care Plans**:\n  - **Asthma** (Active): Goals include reducing exacerbations and improving inhaler technique.\n  - **Maternity** (Active): Goals focus on prenatal visit adherence and postpartum follow-up.\n  - **PostDischarge** (Closed): Aimed at stabilizing post-discharge and ensuring medication adherence.\n\n- **Recent Assessments**:\n  - Reassessment scheduled for Q2, priority is low.\n\n- **Recent Claims**: Multiple claims paid, with diagnoses including hypertension (I10), anxiety (F41.1), and diabetes (E11.9).\n\n- **Recent Authorizations**: One DME request denied due to rationale recorded.\n\n**Highlighted Risks**:\n1. **Chronic Condition**: Heart failure (I50.9) may require ongoing management and monitoring.\n2. **Active Care Plans**: The presence of active care plans for asthma and maternity indicates potential complications if not managed properly.\n3. **Denial of DME Authorization**: The denial of a DME request may impact the management of her conditions, particularly if related to her chronic health issues.\n4. **Scheduled Reassessment**: Low priority may delay necessary evaluations and adjustments to care plans. \n\nOverall, close monitoring and proactive management of her chronic condition and active care plans are essential to mitigate risks.",
+    "metadata": {
+      "case_id": "",
+      "member_id": "m-001715",
+      "assessment_id": "",
+      "care_plan_id": ""
+    },
+    "created_at": "2026-03-29T18:59:47.722053+00:00"
+  }
+]

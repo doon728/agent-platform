@@ -1,0 +1,62 @@
+[
+  {
+    "memory_id": "mem_da5c91bfb9ca",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "assessment-asmt-d002-19d47173a57",
+    "role": "user",
+    "content": "What is the standard care protocol for a member with heart failure and low medication adherence?",
+    "metadata": {
+      "case_id": "",
+      "member_id": "m-001715",
+      "assessment_id": "asmt-d002",
+      "care_plan_id": ""
+    },
+    "created_at": "2026-04-01T03:37:48.837379+00:00"
+  },
+  {
+    "memory_id": "mem_65bb994aec38",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "assessment-asmt-d002-19d47173a57",
+    "role": "assistant",
+    "content": "The retrieved tool context does not provide specific information on the standard care protocol for a member with heart failure and low medication adherence. It focuses on members with depression risk, emphasizing behavioral health follow-up, social needs screening, and case management outreach. For heart failure management, consider integrating similar outreach and coordination strategies to address medication adherence.",
+    "metadata": {
+      "case_id": "",
+      "member_id": "m-001715",
+      "assessment_id": "asmt-d002",
+      "care_plan_id": ""
+    },
+    "created_at": "2026-04-01T03:37:48.840809+00:00"
+  },
+  {
+    "memory_id": "mem_00daa82d743a",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "assessment-asmt-d002-19d47173a57",
+    "role": "user",
+    "content": "What is the care management protocol for members with depression risk and low medication            adherence?",
+    "metadata": {
+      "case_id": "",
+      "member_id": "m-001715",
+      "assessment_id": "asmt-d002",
+      "care_plan_id": ""
+    },
+    "created_at": "2026-04-01T03:39:13.218754+00:00"
+  },
+  {
+    "memory_id": "mem_35846ec3e2b8",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "assessment-asmt-d002-19d47173a57",
+    "role": "assistant",
+    "content": "The care management protocol for members with depression risk and low medication adherence includes the following steps: \n\n1. Provide behavioral health follow-up.\n2. Conduct social needs screening.\n3. Document case management outreach.\n4. Escalate high-risk members for timely intervention and care coordination.",
+    "metadata": {
+      "case_id": "",
+      "member_id": "m-001715",
+      "assessment_id": "asmt-d002",
+      "care_plan_id": ""
+    },
+    "created_at": "2026-04-01T03:39:13.220310+00:00"
+  }
+]

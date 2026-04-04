@@ -1,0 +1,92 @@
+[
+  {
+    "memory_id": "mem_f5647ff46413",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "assessment-asmt-d002-19d480a8198",
+    "role": "user",
+    "content": "write another case note; Member health is improving",
+    "metadata": {
+      "case_id": "",
+      "member_id": "m-001715",
+      "assessment_id": "asmt-d002",
+      "care_plan_id": ""
+    },
+    "created_at": "2026-04-01T07:56:07.176258+00:00"
+  },
+  {
+    "memory_id": "mem_0df72c054418",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "assessment-asmt-d002-19d480a8198",
+    "role": "assistant",
+    "content": "[APPROVAL_REQUIRED] Awaiting human approval for tool: write_case_note",
+    "metadata": {
+      "case_id": "",
+      "member_id": "m-001715",
+      "assessment_id": "asmt-d002",
+      "care_plan_id": ""
+    },
+    "created_at": "2026-04-01T07:56:07.176991+00:00"
+  },
+  {
+    "memory_id": "mem_39dbbee86c9c",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "assessment-asmt-d002-19d480a8198",
+    "role": "user",
+    "content": "give last note",
+    "metadata": {
+      "case_id": "",
+      "member_id": "m-001715",
+      "assessment_id": "asmt-d002",
+      "care_plan_id": ""
+    },
+    "created_at": "2026-04-01T07:59:44.989115+00:00"
+  },
+  {
+    "memory_id": "mem_8390b7607a15",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "assessment-asmt-d002-19d480a8198",
+    "role": "assistant",
+    "content": "The last note for Mia Martinez is as follows:\n\n- **Author:** nurse-001\n- **Created At:** 2026-04-01 07:56:19+00\n- **Note Text:** \"write another case note; Member health is improving\"",
+    "metadata": {
+      "case_id": "",
+      "member_id": "m-001715",
+      "assessment_id": "asmt-d002",
+      "care_plan_id": ""
+    },
+    "created_at": "2026-04-01T07:59:44.990808+00:00"
+  },
+  {
+    "memory_id": "mem_8c546bd43cc2",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "assessment-asmt-d002-19d480a8198",
+    "role": "user",
+    "content": "write case note;member smoking",
+    "metadata": {
+      "case_id": "",
+      "member_id": "m-001715",
+      "assessment_id": "asmt-d002",
+      "care_plan_id": ""
+    },
+    "created_at": "2026-04-01T07:59:55.983911+00:00"
+  },
+  {
+    "memory_id": "mem_7278ce765ade",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "assessment-asmt-d002-19d480a8198",
+    "role": "assistant",
+    "content": "[APPROVAL_REQUIRED] Awaiting human approval for tool: write_case_note",
+    "metadata": {
+      "case_id": "",
+      "member_id": "m-001715",
+      "assessment_id": "asmt-d002",
+      "care_plan_id": ""
+    },
+    "created_at": "2026-04-01T07:59:55.984568+00:00"
+  }
+]

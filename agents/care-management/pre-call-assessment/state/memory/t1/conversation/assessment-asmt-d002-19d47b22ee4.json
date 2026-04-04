@@ -1,0 +1,92 @@
+[
+  {
+    "memory_id": "mem_c4e4ed3b31aa",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "assessment-asmt-d002-19d47b22ee4",
+    "role": "user",
+    "content": "what is the care management protocol for members with depression risk and low medication adherence",
+    "metadata": {
+      "case_id": "",
+      "member_id": "m-001715",
+      "assessment_id": "asmt-d002",
+      "care_plan_id": ""
+    },
+    "created_at": "2026-04-01T06:20:39.102041+00:00"
+  },
+  {
+    "memory_id": "mem_39e4a63dec2a",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "assessment-asmt-d002-19d47b22ee4",
+    "role": "assistant",
+    "content": "The care management protocol for members with depression risk and low medication adherence includes the following steps:\n\n1. **Behavioral Health Follow-Up**: Ensure regular follow-up for behavioral health support.\n2. **Social Needs Screening**: Conduct screenings to identify any social needs that may impact adherence.\n3. **Documented Case Management Outreach**: Maintain documentation of outreach efforts to engage the member.\n4. **Escalation for High-Risk Members**: Identify and escalate cases of high-risk members for timely intervention and care coordination.",
+    "metadata": {
+      "case_id": "",
+      "member_id": "m-001715",
+      "assessment_id": "asmt-d002",
+      "care_plan_id": ""
+    },
+    "created_at": "2026-04-01T06:20:39.104032+00:00"
+  },
+  {
+    "memory_id": "mem_add588abecdb",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "assessment-asmt-d002-19d47b22ee4",
+    "role": "user",
+    "content": "write a case note: Mia's care plan is back on track and follow-u is scheduled for next month",
+    "metadata": {
+      "case_id": "",
+      "member_id": "m-001715",
+      "assessment_id": "asmt-d002",
+      "care_plan_id": ""
+    },
+    "created_at": "2026-04-01T06:22:16.738240+00:00"
+  },
+  {
+    "memory_id": "mem_9a8d7f5d98be",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "assessment-asmt-d002-19d47b22ee4",
+    "role": "assistant",
+    "content": "[APPROVAL_REQUIRED] Awaiting human approval for tool: write_case_note",
+    "metadata": {
+      "case_id": "",
+      "member_id": "m-001715",
+      "assessment_id": "asmt-d002",
+      "care_plan_id": ""
+    },
+    "created_at": "2026-04-01T06:22:16.738950+00:00"
+  },
+  {
+    "memory_id": "mem_6aca02cd2377",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "assessment-asmt-d002-19d47b22ee4",
+    "role": "user",
+    "content": "giveme lastnte",
+    "metadata": {
+      "case_id": "",
+      "member_id": "m-001715",
+      "assessment_id": "asmt-d002",
+      "care_plan_id": ""
+    },
+    "created_at": "2026-04-01T06:29:48.496179+00:00"
+  },
+  {
+    "memory_id": "mem_8f50e6ec9cf7",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "assessment-asmt-d002-19d47b22ee4",
+    "role": "assistant",
+    "content": "The last note for Mia Martinez (member ID: m-001715) was created on April 1, 2026, by nurse-001. The note states: \"Mia's care plan is back on track and follow-up is scheduled for next month.\"",
+    "metadata": {
+      "case_id": "",
+      "member_id": "m-001715",
+      "assessment_id": "asmt-d002",
+      "care_plan_id": ""
+    },
+    "created_at": "2026-04-01T06:29:48.498186+00:00"
+  }
+]

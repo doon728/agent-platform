@@ -37,19 +37,19 @@ DOCKER_BIN = next(
     "docker"
 )
 
-GENERATED_REPOS_ROOT = Path(
-    os.getenv("GENERATED_REPOS_ROOT", str(Path.home() / "agent-platform" / "generated-repos"))
+AGENTS_ROOT = Path(
+    os.getenv("AGENTS_ROOT", str(Path.home() / "agent-platform" / "agents"))
 )
 
 def resolve_repo_path(repo_name: str) -> Path:
     """
-    Finds repo anywhere under generated-repos (supports capability/usecase nesting)
+    Finds agent repo anywhere under agents/ (capability/agent-name structure)
     """
-    direct = GENERATED_REPOS_ROOT / repo_name
+    direct = AGENTS_ROOT / repo_name
     if direct.exists():
         return direct
 
-    matches = list(GENERATED_REPOS_ROOT.rglob(repo_name))
+    matches = list(AGENTS_ROOT.rglob(repo_name))
     if matches:
         return matches[0]
 
@@ -172,7 +172,7 @@ def ensure_capability_app_repo(
     app_repo_name: str,
     app_name: str,
 ):
-    capability_root = GENERATED_REPOS_ROOT / capability_name
+    capability_root = AGENTS_ROOT / capability_name
     capability_root.mkdir(parents=True, exist_ok=True)
 
     app_repo_root = capability_root / app_repo_name
@@ -707,33 +707,14 @@ def create_application(payload: dict[str, Any]):
             return {"ok": False, "error": "Missing repo names"}
 
         # ======================================================
-        # NEW HIERARCHY
-        # capability/
-        #   app_repo
-        #   usecases/
-        #       usecase/
-        #           agent_repo
+        # STRUCTURE: agents/<capability>/<agent-name>/
         # ======================================================
 
-        capability_root = GENERATED_REPOS_ROOT / capability_name
+        capability_root = AGENTS_ROOT / capability_name
         capability_root.mkdir(parents=True, exist_ok=True)
 
-        usecase_root = capability_root / "usecases" / usecase_name
-        usecase_root.mkdir(parents=True, exist_ok=True)
-
-        # ---------- ensure app repo exists ----------
-        app_result = ensure_capability_app_repo(
-            capability_name=capability_name,
-            app_repo_name=app_repo_name,
-            app_name=app_name,
-        )
-        if not app_result["ok"]:
-            return app_result
-
-        app_repo_root = Path(app_result["repo_root"])
-
         # ---------- create agent repo ----------
-        agent_repo_root = usecase_root / agent_repo_name
+        agent_repo_root = capability_root / agent_repo_name
 
         agent_copy = assemble_agent_repo_from_template(agent_repo_root, agent_type)
         if not agent_copy["ok"]:
@@ -1377,7 +1358,7 @@ def workspace_delete():
 
 @app.get("/repo-exists")
 def repo_exists(name: str):
-    matches = list(GENERATED_REPOS_ROOT.rglob(name))
+    matches = list(AGENTS_ROOT.rglob(name))
 
     return {
         "ok": True,
@@ -1395,7 +1376,7 @@ def next_available_repo_name(base: str):
     candidate = base_slug
     counter = 2
 
-    existing_names = {p.name for p in GENERATED_REPOS_ROOT.rglob("*") if p.is_dir()}
+    existing_names = {p.name for p in AGENTS_ROOT.rglob("*") if p.is_dir()}
 
     while candidate in existing_names:
         candidate = f"{base_slug}-{counter}"
@@ -1567,10 +1548,8 @@ def get_registry_app_by_capability(capability_name: str):
 
 def _get_agent_config_dir(capability_name: str, usecase_name: str, agent_type: str, agent_repo_name: str) -> Path:
     return (
-        GENERATED_REPOS_ROOT
+        AGENTS_ROOT
         / capability_name
-        / "usecases"
-        / usecase_name
         / agent_repo_name
         / "overlays"
         / agent_type
@@ -1634,10 +1613,8 @@ def get_agent_manifest(capability_name: str, usecase_name: str, agent_type: str)
 
     agent_repo_name = agent_record.get("agent_repo_name", "")
     manifest_path = (
-        GENERATED_REPOS_ROOT
+        AGENTS_ROOT
         / capability_name
-        / "usecases"
-        / usecase_name
         / agent_repo_name
         / "overlays"
         / agent_type
