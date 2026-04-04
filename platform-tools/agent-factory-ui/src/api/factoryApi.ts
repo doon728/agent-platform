@@ -20,13 +20,14 @@ export const createApplication = (payload: any) => {
   return FACTORY_API.post("/create-application", payload)
 }
 
-export const createCapability = (payload: {
-  capability_name: string
-  app_name: string
-  app_repo_name: string
-  description?: string
-}) => {
-  return SUPPORT_API.post("/capability/create", payload)
+export const getFilesystemCapabilities = () => {
+  return SUPPORT_API.get("/filesystem/capabilities")
+}
+
+export const getFilesystemAgents = (capabilityName: string) => {
+  return SUPPORT_API.get("/filesystem/agents", {
+    params: { capability_name: capabilityName },
+  })
 }
 
 export const getGatewayTools = () => {
@@ -39,11 +40,11 @@ export const getNextAvailableRepoName = (base: string) => {
   })
 }
 
-export const startWorkspace = (agentRepo: string, appRepo: string) => {
+export const startWorkspace = (agentRepo: string, appRepo: string = "") => {
   return SUPPORT_API.post("/workspace/start", null, {
     params: {
       agent_repo: agentRepo,
-      app_repo: appRepo,
+      ...(appRepo ? { app_repo: appRepo } : {}),
     },
   })
 }

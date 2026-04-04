@@ -1,16 +1,12 @@
 import { useEffect, useState, type CSSProperties } from "react"
 import {
   createApplication,
-  createCapability,
   getGatewayTools,
   getNextAvailableRepoName,
   startWorkspace,
   getWorkspaceStatus,
-  getUsecaseContract,
-  getRegistryCapabilities,
-  getRegistryUsecases,
-  getRegistryAgents,
-  getRegistryAppByCapability,
+  getFilesystemCapabilities,
+  getFilesystemAgents,
   getTemplateManifest,
 } from "../api/factoryApi"
 
@@ -24,53 +20,7 @@ type GatewayTool = {
   strategy?: string
 }
 
-type RegistryAgentRecord = {
-  agent_type: string
-  agent_repo_name: string
-  app_repo_name: string
-  agent_name: string
-  app_name: string
-}
-
-type UsecaseMetadata = {
-  capability_name: string
-  usecase_name: string
-  default_agent_type: string
-  supported_agent_types: string[]
-  components: {
-    planner: boolean
-    responder: boolean
-    workflow: boolean
-    router: boolean
-  }
-  prompt_types: string[]
-  features?: {
-    memory?: {
-      supported: boolean
-      configurable: boolean
-      default?: boolean
-    }
-    rag?: {
-      supported: boolean
-      configurable: boolean
-      default?: boolean
-    }
-    hitl?: {
-      supported: boolean
-      configurable: boolean
-      default?: boolean
-    }
-    model?: {
-      supported: boolean
-      configurable: boolean
-      default?: string
-    }
-  }
-}
-
-type FactoryMode = "create_capability" | "manage_usecase_agent" | "govern_existing"
-type CapabilityCreateMode = "__new__" | string
-type UsecaseManageMode = "new" | "existing"
+type FactoryMode = "scaffold_agent" | "configure_agent"
 
 function InfoTooltip({ text }: { text: string }) {
   const [visible, setVisible] = useState(false)
@@ -126,10 +76,9 @@ const MODEL_OPTIONS = [
 
 const BASE_AGENT_TYPE_OPTIONS = [
   { value: "chat_agent", label: "chat_agent", enabled: true },
-  { value: "workflow_agent", label: "workflow_agent", enabled: false },
-  { value: "supervisor_agent", label: "supervisor_agent", enabled: false },
-  { value: "multi_agent", label: "multi_agent", enabled: false },
   { value: "summarization_agent", label: "summarization_agent", enabled: true },
+  { value: "workflow_agent", label: "workflow_agent", enabled: false },
+  { value: "multi_agent", label: "multi_agent", enabled: false },
 ]
 
 const DEFAULT_PLANNER_PROMPT =
@@ -139,46 +88,29 @@ const DEFAULT_RESPONDER_PROMPT =
   "You are a healthcare care-management assistant helping nurses. Use only the provided tool data or retrieved policy content. Do not invent information. Be concise and clinically useful."
 
 export default function ApplicationForm() {
-  const [factoryMode, setFactoryMode] = useState<FactoryMode>("create_capability")
+  const [factoryMode, setFactoryMode] = useState<FactoryMode>("scaffold_agent")
 
-  const [industry, setIndustry] = useState("")
-  const [customer, setCustomer] = useState("")
-  const [lob, setLob] = useState("")
-  const [description, setDescription] = useState("")
-
+  // Agent identity
   const [capabilityName, setCapabilityName] = useState("")
-  const [createCapabilitySelection, setCreateCapabilitySelection] =
-    useState<CapabilityCreateMode>("__new__")
-
-  const [appName, setAppName] = useState("")
-  const [repoName, setRepoName] = useState("")
-  const [repoNameTouched, setRepoNameTouched] = useState(false)
-
-  const [usecaseName, setUsecaseName] = useState("")
-  const [manageUsecaseMode, setManageUsecaseMode] = useState<UsecaseManageMode>("new")
-
   const [agentName, setAgentName] = useState("")
-  const [agentRepoName, setAgentRepoName] = useState("")
-  const [agentRepoNameTouched, setAgentRepoNameTouched] = useState(false)
+  const [agentFolder, setAgentFolder] = useState("")
+  const [agentFolderTouched, setAgentFolderTouched] = useState(false)
   const [agentType, setAgentType] = useState("chat_agent")
   const [persona, setPersona] = useState("care_manager")
+  const [description, setDescription] = useState("")
 
-  const [plannerPrompt, setPlannerPrompt] = useState(DEFAULT_PLANNER_PROMPT)
-  const [responderPrompt, setResponderPrompt] = useState(DEFAULT_RESPONDER_PROMPT)
-
+  // Model
   const [modelName, setModelName] = useState("gpt-4o-mini")
   const [temperature, setTemperature] = useState("0")
 
-
+  // Memory
   const [memoryEnabled, setMemoryEnabled] = useState(true)
-
   const [memoryTypes, setMemoryTypes] = useState({
     shortTerm: true,
     episodic: true,
     semantic: false,
     summary: true,
   })
-  
   const [memoryAdvanced, setMemoryAdvanced] = useState({
     shortTermWindow: "12",
     summaryInterval: "10",
@@ -186,295 +118,88 @@ export default function ApplicationForm() {
     semanticTopK: "3",
   })
 
-
-
   // HITL
   const [hitlApprovalRequired, setHitlApprovalRequired] = useState(true)
   const [hitlRiskLevels, setHitlRiskLevels] = useState<Record<string, string>>({ write_case_note: "high" })
   const [hitlMinRisk, setHitlMinRisk] = useState<"high" | "medium_and_above" | "all">("high")
   const [hitlTimeoutMinutes, setHitlTimeoutMinutes] = useState("60")
 
-  // Template manifest (loaded when agentType changes)
-  const [templateManifest, setTemplateManifest] = useState<any>(null)
-
+  // RAG
   const [localRagEnabled, setLocalRagEnabled] = useState(true)
   const [localRagDefaultTool, setLocalRagDefaultTool] = useState("search_kb")
   const [localTopK, setLocalTopK] = useState("3")
   const [localScoreThreshold, setLocalScoreThreshold] = useState("0.35")
 
-  const [showAgentCoreProfile, setShowAgentCoreProfile] = useState(false)
-  const [agentCoreHumanReviewEnabled] = useState(true)
-  
+  // Prompts
+  const [plannerPrompt, setPlannerPrompt] = useState(DEFAULT_PLANNER_PROMPT)
+  const [responderPrompt, setResponderPrompt] = useState(DEFAULT_RESPONDER_PROMPT)
 
-  
-  const [agentCoreRagEnabled] = useState(true)
-  const [agentCoreTopK] = useState("3")
-  const [agentCoreScoreThreshold] = useState("0.35")
-
-  const [availableGateways, setAvailableGateways] = useState<string[]>([
-    "healthcare-tool-gateway",
-  ])
+  // Tools
+  const [availableGateways] = useState<string[]>(["healthcare-tool-gateway"])
   const [selectedGateway, setSelectedGateway] = useState("healthcare-tool-gateway")
   const [availableTools, setAvailableTools] = useState<GatewayTool[]>([])
   const [selectedTools, setSelectedTools] = useState<string[]>([])
   const [toolsExpanded, setToolsExpanded] = useState(false)
 
+  // Template manifest
+  const [templateManifest, setTemplateManifest] = useState<any>(null)
+
+  // AgentCore teaser
+  const [showAgentCoreProfile, setShowAgentCoreProfile] = useState(false)
   const [agentBehaviorTab, setAgentBehaviorTab] = useState<"settings" | "memory" | "prompts">("settings")
 
+  // Data from filesystem
+  const [filesystemCapabilities, setFilesystemCapabilities] = useState<string[]>([])
+  const [filesystemAgents, setFilesystemAgents] = useState<string[]>([])
+
+  // Configure Agent
+  const [configureCapability, setConfigureCapability] = useState("")
+  const [configureAgent, setConfigureAgent] = useState("")
+
+  // Status
   const [message, setMessage] = useState("")
   const [result, setResult] = useState<any>(null)
 
-  const [registryCapabilities, setRegistryCapabilities] = useState<string[]>([])
-  const [registryUsecases, setRegistryUsecases] = useState<string[]>([])
-  const [registryAgents, setRegistryAgents] = useState<RegistryAgentRecord[]>([])
-
-  const [selectedGovernAgentRepo, setSelectedGovernAgentRepo] = useState("")
-  const [usecaseMetadata, setUsecaseMetadata] = useState<UsecaseMetadata | null>(null)
-  const [metadataMessage, setMetadataMessage] = useState("")
-
-  const createCapabilityExistingSelected =
-    factoryMode === "create_capability" && createCapabilitySelection !== "__new__"
-
-
+  // ── Load initial data ──────────────────────────────────────────────────────
   useEffect(() => {
-    const loadInitial = async () => {
+    const load = async () => {
       try {
         const [toolsRes, capsRes] = await Promise.all([
           getGatewayTools(),
-          getRegistryCapabilities(),
+          getFilesystemCapabilities(),
         ])
-
-        setAvailableGateways(["healthcare-tool-gateway"])
-        setSelectedGateway("healthcare-tool-gateway")
         const tools: GatewayTool[] = toolsRes.data.tools || []
         setAvailableTools(tools)
         setSelectedTools(tools.map((t) => t.name))
         const firstRetrievalTool = tools.find((t) => !!t.db_type)
         if (firstRetrievalTool) setLocalRagDefaultTool(firstRetrievalTool.name)
-        setRegistryCapabilities(capsRes.data.capabilities || [])
+        setFilesystemCapabilities(capsRes.data.capabilities || [])
       } catch (err: any) {
-        console.error(err)
-        setMessage(
-          `Error loading initial data: ${err?.response?.data?.detail || err.message}`
-        )
+        setMessage(`Error loading: ${err?.response?.data?.detail || err.message}`)
       }
     }
-
-    loadInitial()
+    load()
   }, [])
 
+  // ── Auto-slug agent name → folder ─────────────────────────────────────────
   useEffect(() => {
-    setResult(null)
-    setMessage("")
-    setUsecaseMetadata(null)
+    if (agentFolderTouched) return
+    const base = slugify(agentName)
+    if (!base) { setAgentFolder(""); return }
+    getNextAvailableRepoName(base)
+      .then((res) => setAgentFolder(res.data.suggested || base))
+      .catch(() => setAgentFolder(base))
+  }, [agentName, agentFolderTouched])
 
-    if (factoryMode === "create_capability") {
-      setMetadataMessage("Create a new capability and app shell. If you select an existing capability below, the app fields become readonly and creation is blocked.")
-      setCreateCapabilitySelection("__new__")
-      setCapabilityName("")
-      setAppName("")
-      setRepoName("")
-      setRepoNameTouched(false)
-      setUsecaseName("")
-      setAgentName("")
-      setAgentRepoName("")
-      setAgentRepoNameTouched(false)
-      setRegistryUsecases([])
-      setRegistryAgents([])
-      setSelectedGovernAgentRepo("")
-    } else if (factoryMode === "manage_usecase_agent") {
-      setMetadataMessage("Select a capability, then either create a new use case + new agent, or select an existing use case and create a new agent under it.")
-      setCapabilityName("")
-      setAppName("")
-      setRepoName("")
-      setUsecaseName("")
-      setAgentName("")
-      setAgentRepoName("")
-      setAgentRepoNameTouched(false)
-      setManageUsecaseMode("new")
-      setRegistryUsecases([])
-      setRegistryAgents([])
-      setSelectedGovernAgentRepo("")
-    } else {
-      setMetadataMessage("Select existing capability, use case, and agent to govern prompts and contracts.")
-      setCapabilityName("")
-      setAppName("")
-      setRepoName("")
-      setUsecaseName("")
-      setAgentName("")
-      setAgentRepoName("")
-      setRegistryUsecases([])
-      setRegistryAgents([])
-      setSelectedGovernAgentRepo("")
-    }
-  }, [factoryMode])
-
+  // ── Load filesystem agents when configure capability changes ───────────────
   useEffect(() => {
-    if (factoryMode !== "create_capability") return
-    if (createCapabilitySelection === "__new__") {
-      setCapabilityName("")
-      setAppName("")
-      setRepoName("")
-      setRepoNameTouched(false)
-      return
-    }
+    if (!configureCapability) { setFilesystemAgents([]); return }
+    getFilesystemAgents(configureCapability)
+      .then((res) => setFilesystemAgents(res.data.agents || []))
+      .catch(() => setFilesystemAgents([]))
+  }, [configureCapability])
 
-    let cancelled = false
-
-    const loadExistingCapability = async () => {
-      try {
-        const appRes = await getRegistryAppByCapability(createCapabilitySelection)
-        if (cancelled) return
-
-        setCapabilityName(createCapabilitySelection)
-
-        const app = appRes?.data?.app
-        if (app) {
-          setAppName(app.app_name || "")
-          setRepoName(app.app_repo_name || "")
-        } else {
-          setAppName("")
-          setRepoName("")
-        }
-      } catch (err) {
-        console.error(err)
-      }
-    }
-
-    loadExistingCapability()
-    return () => {
-      cancelled = true
-    }
-  }, [factoryMode, createCapabilitySelection])
-
-  useEffect(() => {
-    if (factoryMode !== "manage_usecase_agent" && factoryMode !== "govern_existing") return
-    if (!capabilityName) {
-      setAppName("")
-      setRepoName("")
-      setRegistryUsecases([])
-      setRegistryAgents([])
-      return
-    }
-
-    let cancelled = false
-
-    const loadCapabilityContext = async () => {
-      try {
-        const [appRes, usecasesRes] = await Promise.all([
-          getRegistryAppByCapability(capabilityName),
-          getRegistryUsecases(capabilityName),
-        ])
-
-        if (cancelled) return
-
-        const app = appRes?.data?.app
-        if (app) {
-          setAppName(app.app_name || "")
-          setRepoName(app.app_repo_name || "")
-        } else {
-          setAppName("")
-          setRepoName("")
-        }
-
-        const usecases = usecasesRes?.data?.usecases || []
-        setRegistryUsecases(usecases)
-
-        if (factoryMode === "govern_existing" && usecases.length > 0 && !usecaseName) {
-          setUsecaseName(usecases[0])
-        }
-
-        if (
-          factoryMode === "manage_usecase_agent" &&
-          manageUsecaseMode === "existing" &&
-          usecases.length > 0 &&
-          !usecaseName
-        ) {
-          setUsecaseName(usecases[0])
-        }
-      } catch (err) {
-        console.error(err)
-        if (!cancelled) {
-          setAppName("")
-          setRepoName("")
-          setRegistryUsecases([])
-          setRegistryAgents([])
-        }
-      }
-    }
-
-    loadCapabilityContext()
-    return () => {
-      cancelled = true
-    }
-  }, [factoryMode, capabilityName, manageUsecaseMode])
-
-  useEffect(() => {
-    const shouldLoadAgents =
-      factoryMode === "govern_existing" ||
-      (factoryMode === "manage_usecase_agent" && manageUsecaseMode === "existing")
-
-    if (!shouldLoadAgents) {
-      setRegistryAgents([])
-      return
-    }
-
-    if (!capabilityName || !usecaseName) {
-      setRegistryAgents([])
-      return
-    }
-
-    let cancelled = false
-
-    const loadAgents = async () => {
-      try {
-        const res = await getRegistryAgents(capabilityName, usecaseName)
-        if (cancelled) return
-
-        const agents = res.data.agents || []
-        setRegistryAgents(agents)
-
-        if (factoryMode === "govern_existing") {
-          if (agents.length > 0) {
-            const first = agents[0]
-            setSelectedGovernAgentRepo((prev) => prev || first.agent_repo_name || "")
-            setAgentType(first.agent_type || "chat_agent")
-            applyMemoryDefaults(first.agent_type || "chat_agent")
-            setAgentName(first.agent_name || "")
-            setAgentRepoName(first.agent_repo_name || "")
-          } else {
-            setSelectedGovernAgentRepo("")
-          }
-        }
-      } catch (err) {
-        console.error(err)
-        if (!cancelled) {
-          setRegistryAgents([])
-        }
-      }
-    }
-
-    loadAgents()
-    return () => {
-      cancelled = true
-    }
-  }, [factoryMode, manageUsecaseMode, capabilityName, usecaseName])
-
-  useEffect(() => {
-    if (factoryMode !== "govern_existing" || !selectedGovernAgentRepo) return
-
-    const selected = registryAgents.find(
-      (a) => a.agent_repo_name === selectedGovernAgentRepo
-    )
-    if (!selected) return
-
-    setAgentType(selected.agent_type || "chat_agent")
-    applyMemoryDefaults(selected.agent_type || "chat_agent")
-    setAgentName(selected.agent_name || "")
-    setAgentRepoName(selected.agent_repo_name || "")
-  }, [factoryMode, selectedGovernAgentRepo, registryAgents])
-
-  // Fetch template manifest when agentType changes (to get D2 RAG info)
+  // ── Template manifest when agentType changes ───────────────────────────────
   useEffect(() => {
     let cancelled = false
     setTemplateManifest(null)
@@ -484,463 +209,133 @@ export default function ApplicationForm() {
     return () => { cancelled = true }
   }, [agentType])
 
-  useEffect(() => {
-    if (factoryMode !== "create_capability") return
-    if (createCapabilitySelection !== "__new__") return
-    if (repoNameTouched) return
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  function buildMemoryPayload() {
+    return {
+      enabled: memoryEnabled,
+      write_policies: {
+        conversation: {
+          short_term: { enabled: memoryTypes.shortTerm, max_turns: Number(memoryAdvanced.shortTermWindow) },
+          summary: { enabled: memoryTypes.summary, interval_turns: Number(memoryAdvanced.summaryInterval) },
+        },
+        case: { episodic: { enabled: memoryTypes.episodic } },
+        member: { semantic: { enabled: memoryTypes.semantic } },
+      },
+      retrieval_policies: {
+        conversation: {
+          short_term: { include: memoryTypes.shortTerm, max_turns: Number(memoryAdvanced.shortTermWindow) },
+          summary: { include: memoryTypes.summary, max_items: 1 },
+        },
+        case: { episodic: { include: memoryTypes.episodic, top_k: Number(memoryAdvanced.episodicTopK) } },
+        member: { semantic: { include: memoryTypes.semantic, top_k: Number(memoryAdvanced.semanticTopK) } },
+      },
+    }
+  }
 
-    const base = slugify(appName)
-    if (!base) {
-      setRepoName("")
+  function applyMemoryDefaults(nextAgentType: string) {
+    if (nextAgentType === "workflow_agent") {
+      setMemoryEnabled(true)
+      setMemoryTypes({ shortTerm: false, episodic: true, semantic: false, summary: true })
+      setMemoryAdvanced({ shortTermWindow: "8", summaryInterval: "10", episodicTopK: "5", semanticTopK: "3" })
       return
     }
+    setMemoryEnabled(true)
+    setMemoryTypes({ shortTerm: true, episodic: true, semantic: false, summary: true })
+    setMemoryAdvanced({ shortTermWindow: "12", summaryInterval: "10", episodicTopK: "5", semanticTopK: "3" })
+  }
 
-    getNextAvailableRepoName(base)
-      .then((res) => setRepoName(res.data.suggested || base))
-      .catch(() => setRepoName(base))
-  }, [factoryMode, createCapabilitySelection, appName, repoNameTouched])
-
-  useEffect(() => {
-    if (factoryMode !== "manage_usecase_agent") return
-    if (agentRepoNameTouched) return
-
-    const base = slugify(agentName)
-    if (!base) {
-      setAgentRepoName("")
-      return
-    }
-
-    getNextAvailableRepoName(base)
-      .then((res) => setAgentRepoName(res.data.suggested || base))
-      .catch(() => setAgentRepoName(base))
-  }, [factoryMode, agentName, agentRepoNameTouched])
-
-  const toggleTool = (toolName: string) => {
+  function toggleTool(toolName: string) {
     setSelectedTools((prev) =>
       prev.includes(toolName) ? prev.filter((t) => t !== toolName) : [...prev, toolName]
     )
   }
 
-  const repoExists = async (name: string) => {
-    try {
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPPORT_API}/repo-exists?name=${encodeURIComponent(name)}`
-      )
-      if (!res.ok) return false
-      const data = await res.json()
-      return !!data.exists
-    } catch {
-      return false
-    }
-  }
-
-  const refreshCapabilities = async () => {
-    try {
-      const res = await getRegistryCapabilities()
-      setRegistryCapabilities(res.data.capabilities || [])
-    } catch (err) {
-      console.error(err)
-    }
-  }
-
-  const handleCreateCapability = async () => {
+  const handleScaffoldAgent = async () => {
     try {
       setMessage("")
       setResult(null)
 
-      if (createCapabilitySelection !== "__new__") {
-        setMessage("Capability already exists. Use Manage Usecase / Agent.")
-        return
-      }
-
-      if (!capabilityName || !appName || !repoName) {
-        setMessage("Error: capability, app name, and app repo are required.")
-        return
-      }
-
-      if (registryCapabilities.includes(capabilityName)) {
-        setMessage("Capability already exists. Use Manage Usecase / Agent.")
-        return
-      }
-
-      const appExists = await repoExists(repoName)
-      if (appExists) {
-        setMessage(`Error: App repo name already exists: ${repoName}`)
-        return
-      }
-
-      const res = await createCapability({
-        capability_name: capabilityName,
-        app_name: appName,
-        app_repo_name: repoName,
-        description,
-      })
-
-      if (!res?.data?.ok) {
-        throw new Error(res?.data?.error || "create capability failed")
-      }
-
-      setResult(res.data)
-      setMessage("Capability created successfully.")
-      await refreshCapabilities()
-    } catch (err: any) {
-      console.error(err)
-      setResult(null)
-      setMessage(`Error: ${err?.response?.data?.error || err.message}`)
-    }
-  }
-
-  const handleManageUsecaseAgent = async () => {
-    try {
-      setMessage("")
-      setResult(null)
-
-      if (!capabilityName || !appName || !repoName) {
-        setMessage("Error: select a capability first.")
-        return
-      }
-
-      if (!usecaseName || !agentName || !agentRepoName) {
-        setMessage("Error: use case, agent name, and agent repo are required.")
-        return
-      }
-
-      if (
-        manageUsecaseMode === "new" &&
-        registryUsecases.some((u) => u.toLowerCase() === usecaseName.toLowerCase())
-      ) {
-        setMessage("Error: this use case already exists. Switch to Existing Use Case.")
-        return
-      }
-
-      const agentExists = await repoExists(agentRepoName)
-      if (agentExists) {
-        setMessage(`Error: Agent repo name already exists: ${agentRepoName}`)
-        return
-      }
+      if (!capabilityName) { setMessage("Error: select a capability."); return }
+      if (!agentName || !agentFolder) { setMessage("Error: agent name and folder are required."); return }
 
       const payload = {
-        industry,
-        customer_name: customer,
-        line_of_business: lob,
-        factory_mode: "manage_usecase_agent",
+        factory_mode: "scaffold_agent",
         app: {
-          repo_name: repoName,
-          app_name: appName,
-          ui_type: "end_user_ui",
+          repo_name: agentFolder,
+          app_name: agentName,
           description,
         },
-        agents: [
-          {
-            agent_name: agentName,
+        agents: [{
+          agent_name: agentName,
+          agent_type: agentType,
+          mode: "create_new",
+          capabilities: selectedTools,
+          create_config: {
+            repo_name: agentFolder,
+            capability_name: capabilityName,
+            usecase_name: agentFolder,
             agent_type: agentType,
-            mode: "create_new",
-            capabilities: selectedTools,
-            create_config: {
-              repo_name: agentRepoName,
-              capability_name: capabilityName,
-              usecase_name: usecaseName,
-              agent_type: agentType,
-              persona,
-              tool_policy: {
-                mode: "selected",
-                allowed_tools: selectedTools,
-                allowed_tags: [],
-              },
-              rag: {
-                enabled: localRagEnabled,
-                default_tool: localRagDefaultTool,
-                strategy: availableTools.find((t) => t.name === localRagDefaultTool)?.strategy || "semantic",
-                top_k: Number(localTopK),
-                score_threshold: Number(localScoreThreshold),
-              },
-              model: {
-                provider: "openai",
-                model: modelName,
-                temperature: Number(temperature),
-              },
-              risk: {
-                approval_required: hitlApprovalRequired,
-                risk_levels: hitlRiskLevels,
-              },
-              hitl: {
-                routing_rules: hitlMinRisk === "all"
-                  ? [{ risk_level: "low", requires_approval: true }, { risk_level: "medium", requires_approval: true }, { risk_level: "high", requires_approval: true }]
-                  : hitlMinRisk === "medium_and_above"
-                  ? [{ risk_level: "medium", requires_approval: true }, { risk_level: "high", requires_approval: true }]
-                  : [{ risk_level: "high", requires_approval: true }],
-                sla: { timeout_minutes: Number(hitlTimeoutMinutes) },
-              },
-              memory: buildMemoryPayload(),
-              embeddings: {
-                provider: "openai",
-                model: "text-embedding-3-small",
-              },
-              chunking: {
-                strategy: "fixed",
-                chunk_size: 500,
-                chunk_overlap: 100,
-              },
-              document_ingestion: {
-                enabled: true,
-                upload_via_ui: true,
-                allowed_types: ["txt", "pdf", "docx"],
-                auto_embed_on_upload: true,
-              },
-              prompts: {
-                planner_system_prompt: plannerPrompt,
-                responder_system_prompt: responderPrompt,
-              },
+            persona,
+            tool_policy: { mode: "selected", allowed_tools: selectedTools, allowed_tags: [] },
+            rag: {
+              enabled: localRagEnabled,
+              default_tool: localRagDefaultTool,
+              strategy: availableTools.find((t) => t.name === localRagDefaultTool)?.strategy || "semantic",
+              top_k: Number(localTopK),
+              score_threshold: Number(localScoreThreshold),
             },
+            model: { provider: "openai", model: modelName, temperature: Number(temperature) },
+            risk: { approval_required: hitlApprovalRequired, risk_levels: hitlRiskLevels },
+            hitl: {
+              routing_rules: hitlMinRisk === "all"
+                ? [{ risk_level: "low", requires_approval: true }, { risk_level: "medium", requires_approval: true }, { risk_level: "high", requires_approval: true }]
+                : hitlMinRisk === "medium_and_above"
+                ? [{ risk_level: "medium", requires_approval: true }, { risk_level: "high", requires_approval: true }]
+                : [{ risk_level: "high", requires_approval: true }],
+              sla: { timeout_minutes: Number(hitlTimeoutMinutes) },
+            },
+            memory: buildMemoryPayload(),
+            embeddings: { provider: "openai", model: "text-embedding-3-small" },
+            prompts: { planner_system_prompt: plannerPrompt, responder_system_prompt: responderPrompt },
           },
-        ],
+        }],
       }
 
       const createRes = await createApplication(payload)
-      if (!createRes?.data?.ok) {
-        throw new Error(createRes?.data?.error || "create-application failed")
-      }
+      if (!createRes?.data?.ok) throw new Error(createRes?.data?.error || "scaffold failed")
 
-      const createdAppRepo = createRes.data.app_repo_name || repoName
-      const createdAgentRepo = createRes.data.agents?.[0]?.repo_name || agentRepoName
+      const createdAgentRepo = createRes.data.agents?.[0]?.repo_name || agentFolder
+      await startWorkspace(createdAgentRepo)
+      const statusRes = await getWorkspaceStatus()
 
-      await startWorkspace(createdAgentRepo, createdAppRepo)
-      const workspaceStatusRes = await getWorkspaceStatus()
+      setResult({ ...(createRes.data || {}), workspace: statusRes.data })
+      setMessage("Agent scaffolded successfully.")
 
-      setResult({
-        ...(createRes.data || {}),
-        workspace: workspaceStatusRes.data,
-        workspace_urls: workspaceStatusRes.data?.urls,
-      })
-      setMessage("Use case / agent created successfully.")
-
-      const usecasesRes = await getRegistryUsecases(capabilityName)
-      setRegistryUsecases(usecasesRes.data.usecases || [])
-
-      if (manageUsecaseMode === "existing") {
-        const agentsRes = await getRegistryAgents(capabilityName, usecaseName)
-        setRegistryAgents(agentsRes.data.agents || [])
-      }
+      // Refresh capability list
+      getFilesystemCapabilities().then((r) => setFilesystemCapabilities(r.data.capabilities || []))
     } catch (err: any) {
-      console.error(err)
       setResult(null)
       setMessage(`Error: ${err?.response?.data?.error || err.message}`)
     }
   }
 
-  const loadExistingContract = async () => {
-    if (!capabilityName || !usecaseName || !agentType) {
-      setMetadataMessage("Capability, use case, and agent type are required.")
-      return
-    }
-
-    try {
-      const contractRes = await getUsecaseContract(capabilityName, usecaseName, agentType)
-      const contract = contractRes?.data?.contract
-
-      if (!contractRes?.data?.ok || !contract) {
-        setUsecaseMetadata(null)
-        setMetadataMessage("No persisted contract found.")
-        return
-      }
-
-      const contractAsMetadata: UsecaseMetadata = {
-        capability_name: contract.capability_name,
-        usecase_name: contract.usecase_name,
-        default_agent_type: contract.agent_type,
-        supported_agent_types: [contract.agent_type],
-        components: contract.components || {
-          planner: true,
-          responder: true,
-          workflow: false,
-          router: false,
-        },
-        prompt_types: contract.prompt_types || [],
-        features: {
-          memory: { supported: true, configurable: true, default: !!contract.features?.memory },
-          rag: { supported: true, configurable: true, default: !!contract.features?.rag },
-          hitl: { supported: true, configurable: true, default: !!contract.features?.hitl },
-          model: { supported: true, configurable: true, default: contract.default_model || "gpt-4o-mini" },
-        },
-      }
-
-      setUsecaseMetadata(contractAsMetadata)
-      setMetadataMessage("Existing contract loaded from persisted contract store.")
-    } catch (err: any) {
-      console.error(err)
-      setUsecaseMetadata(null)
-      setMetadataMessage(`Contract load failed: ${err?.response?.data?.error || err.message}`)
-    }
-  }
-
-  function buildMemoryPayload() {
-    if (!memoryEnabled) {
-      return { enabled: false }
-    }
-  
-    return {
-      enabled: true,
-      write_policies: {
-        short_term: {
-          enabled: memoryTypes.shortTerm,
-          retain_last_n_turns: Number(memoryAdvanced.shortTermWindow),
-        },
-        episodic: {
-          enabled: memoryTypes.episodic,
-          allowed_scopes: ["case", "assessment"],
-        },
-        semantic: {
-          enabled: memoryTypes.semantic,
-          allowed_scopes: ["member", "user"],
-        },
-        summary: {
-          enabled: memoryTypes.summary,
-          triggers: {
-            every_n_turns: Number(memoryAdvanced.summaryInterval),
-          },
-        },
-      },
-      retrieval_policies: {
-        conversation: {
-          short_term: {
-            include: memoryTypes.shortTerm,
-            max_turns: Number(memoryAdvanced.shortTermWindow),
-          },
-          summary: {
-            include: memoryTypes.summary,
-            max_items: 1,
-          },
-        },
-        case: {
-          episodic: {
-            include: memoryTypes.episodic,
-            top_k: Number(memoryAdvanced.episodicTopK),
-          },
-        },
-        member: {
-          semantic: {
-            include: memoryTypes.semantic,
-            top_k: Number(memoryAdvanced.semanticTopK),
-          },
-        },
-      },
-    }
-  }
-  
-  function applyMemoryDefaults(nextAgentType: string) {
-    if (nextAgentType === "workflow_agent") {
-      setMemoryEnabled(true)
-      setMemoryTypes({
-        shortTerm: false,
-        episodic: true,
-        semantic: false,
-        summary: true,
-      })
-      setMemoryAdvanced({
-        shortTermWindow: "8",
-        summaryInterval: "10",
-        episodicTopK: "5",
-        semanticTopK: "3",
-      })
-      return
-    }
-  
-    if (nextAgentType === "supervisor_agent") {
-      setMemoryEnabled(true)
-      setMemoryTypes({
-        shortTerm: true,
-        episodic: true,
-        semantic: false,
-        summary: true,
-      })
-      setMemoryAdvanced({
-        shortTermWindow: "12",
-        summaryInterval: "10",
-        episodicTopK: "5",
-        semanticTopK: "3",
-      })
-      return
-    }
-  
-    setMemoryEnabled(true)
-    setMemoryTypes({
-      shortTerm: true,
-      episodic: true,
-      semantic: false,
-      summary: true,
-    })
-    setMemoryAdvanced({
-      shortTermWindow: "12",
-      summaryInterval: "10",
-      episodicTopK: "5",
-      semanticTopK: "3",
-    })
-  }
-
-
-
-  
-
-  const pageStyle: CSSProperties = {
-    minHeight: "100vh",
-    background: "#f8fafc",
-    padding: 20,
-    fontFamily: "Arial, sans-serif",
-    color: "#111827",
-  }
-
-  const containerStyle: CSSProperties = {
-    maxWidth: 1680,
-    margin: "0 auto",
-  }
-
-  const sectionStyle: CSSProperties = {
-    background: "#ffffff",
-    border: "1px solid #e5e7eb",
-    borderRadius: 12,
-    padding: 16,
-    boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
-  }
-
-  const inputStyle: CSSProperties = {
-    width: "100%",
-    padding: "10px 12px",
-    borderRadius: 8,
-    border: "1px solid #d0d7de",
-    fontSize: 14,
-    boxSizing: "border-box",
-  }
-
-  const readonlyInputStyle: CSSProperties = {
-    ...inputStyle,
-    background: "#f9fafb",
-    color: "#6b7280",
-  }
-
-  const labelStyle: CSSProperties = {
-    display: "block",
-    fontSize: 13,
-    fontWeight: 600,
-    marginBottom: 6,
-    color: "#374151",
-  }
-
-  const compactGrid: CSSProperties = {
-    display: "grid",
-    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-    gap: 14,
-  }
-
+  // ── Styles ─────────────────────────────────────────────────────────────────
+  const pageStyle: CSSProperties = { padding: "28px 32px", fontFamily: "Inter, system-ui, sans-serif", fontSize: 14, color: "#111827", maxWidth: 1200, margin: "0 auto" }
+  const sectionStyle: CSSProperties = { background: "white", border: "1px solid #e5e7eb", borderRadius: 12, padding: 20 }
+  const labelStyle: CSSProperties = { display: "block", fontWeight: 600, fontSize: 13, marginBottom: 4, color: "#374151" }
+  const inputStyle: CSSProperties = { width: "100%", padding: "8px 10px", borderRadius: 7, border: "1px solid #d1d5db", fontSize: 13, outline: "none", boxSizing: "border-box", background: "white", color: "#111827" }
+  const readonlyInputStyle: CSSProperties = { ...inputStyle, background: "#f3f4f6", color: "#6b7280", cursor: "default" }
+  const compactGrid: CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 16px" }
   const pillButton = (active: boolean): CSSProperties => ({
-    padding: "8px 12px",
-    borderRadius: 999,
-    border: active ? "1px solid #2563eb" : "1px solid #d1d5db",
-    background: active ? "#eff6ff" : "#ffffff",
+    padding: "6px 14px",
+    borderRadius: 20,
+    border: active ? "1.5px solid #2563eb" : "1.5px solid #d1d5db",
+    background: active ? "#eff6ff" : "white",
     color: active ? "#1d4ed8" : "#374151",
+    fontSize: 13,
     fontWeight: 600,
     cursor: "pointer",
   })
-
   const profileCardStyle = (grayedOut = false): CSSProperties => ({
     border: "1px solid #d1d5db",
     borderRadius: 12,
@@ -953,1168 +348,467 @@ export default function ApplicationForm() {
 
   return (
     <div style={pageStyle}>
-      <div style={containerStyle}>
-        <div style={{ marginBottom: 16 }}>
-          <h1 style={{ margin: 0, fontSize: 30 }}>Agent Factory</h1>
-          <p style={{ marginTop: 8, color: "#4b5563" }}>
-            Create capability apps, manage use cases and agents, and govern existing contracts.
-          </p>
+      <div style={{ marginBottom: 16 }}>
+        <h1 style={{ margin: 0, fontSize: 30 }}>Agent Factory</h1>
+        <p style={{ marginTop: 8, color: "#4b5563" }}>
+          Scaffold new agents under existing capabilities, or configure existing agents.
+        </p>
+      </div>
+
+      {/* Mode tabs */}
+      <div style={{ ...sectionStyle, marginBottom: 18 }}>
+        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          <strong>Mode</strong>
+          <button type="button" onClick={() => { setFactoryMode("scaffold_agent"); setMessage(""); setResult(null) }} style={pillButton(factoryMode === "scaffold_agent")}>
+            Scaffold Agent
+          </button>
+          <button type="button" onClick={() => { setFactoryMode("configure_agent"); setMessage(""); setResult(null) }} style={pillButton(factoryMode === "configure_agent")}>
+            Configure Agent
+          </button>
         </div>
-
-        <div style={{ ...sectionStyle, marginBottom: 18 }}>
-          <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 10, flexWrap: "wrap" }}>
-            <strong>Mode</strong>
-            <button type="button" onClick={() => setFactoryMode("create_capability")} style={pillButton(factoryMode === "create_capability")}>
-              Create Capability
-            </button>
-            <button type="button" onClick={() => setFactoryMode("manage_usecase_agent")} style={pillButton(factoryMode === "manage_usecase_agent")}>
-              Manage Usecase / Agent
-            </button>
-            <button type="button" onClick={() => setFactoryMode("govern_existing")} style={pillButton(factoryMode === "govern_existing")}>
-              Govern Existing
-            </button>
-          </div>
-
-          <div style={{ fontSize: 13, color: "#4b5563" }}>{metadataMessage}</div>
+        <div style={{ marginTop: 8, fontSize: 13, color: "#4b5563" }}>
+          {factoryMode === "scaffold_agent"
+            ? "Select an existing capability (created by developer), configure and scaffold a new agent under it."
+            : "Select an existing capability and agent to view or update its configuration."}
         </div>
+      </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1.45fr 0.95fr",
-            gap: 18,
-            alignItems: "start",
-          }}
-        >
+      {/* ── Scaffold Agent ── */}
+      {factoryMode === "scaffold_agent" && (
+        <div style={{ display: "grid", gridTemplateColumns: "1.45fr 0.95fr", gap: 18, alignItems: "start" }}>
+          {/* Left */}
           <div style={{ display: "grid", gap: 18 }}>
+            {/* Agent Identity */}
             <div style={sectionStyle}>
-              <h2 style={{ marginTop: 0, marginBottom: 12 }}>
-                {factoryMode === "create_capability" ? "Capability" : "Basic Information"}
-              </h2>
-
+              <h2 style={{ marginTop: 0, marginBottom: 12 }}>Agent</h2>
               <div style={compactGrid}>
                 <div>
-                  <label style={labelStyle}>Industry</label>
-                  <input
+                  <label style={labelStyle}>Capability</label>
+                  <select
                     style={inputStyle}
-                    placeholder="healthcare"
-                    value={industry}
-                    onChange={(e) => setIndustry(e.target.value)}
-                  />
-                </div>
-
-                <div>
-                  <label style={labelStyle}>Customer Name</label>
-                  <input
-                    style={inputStyle}
-                    placeholder="Centene"
-                    value={customer}
-                    onChange={(e) => setCustomer(e.target.value)}
-                  />
-                </div>
-
-                <div>
-                  <label style={labelStyle}>Line of Business</label>
-                  <input
-                    style={inputStyle}
-                    placeholder="Medicaid"
-                    value={lob}
-                    onChange={(e) => setLob(e.target.value)}
-                  />
-                </div>
-
-                <div>
-                  <label style={labelStyle}>Capability Name</label>
-                  {factoryMode === "create_capability" ? (
-                    <select
-                      style={inputStyle}
-                      value={createCapabilitySelection}
-                      onChange={(e) => setCreateCapabilitySelection(e.target.value)}
-                    >
-                      <option value="__new__">Create new capability...</option>
-                      {registryCapabilities.map((cap) => (
-                        <option key={cap} value={cap}>
-                          {cap}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <select
-                      style={inputStyle}
-                      value={capabilityName}
-                      onChange={(e) => {
-                        const value = e.target.value
-                        setCapabilityName(value)
-                        setUsecaseName("")
-                        setRegistryUsecases([])
-                        setRegistryAgents([])
-                        setSelectedGovernAgentRepo("")
-                        setUsecaseMetadata(null)
-                      }}
-                    >
-                      <option value="">Select capability</option>
-                      {registryCapabilities.map((cap) => (
-                        <option key={cap} value={cap}>
-                          {cap}
-                        </option>
-                      ))}
-                    </select>
+                    value={capabilityName}
+                    onChange={(e) => setCapabilityName(e.target.value)}
+                  >
+                    <option value="">Select capability...</option>
+                    {filesystemCapabilities.map((cap) => (
+                      <option key={cap} value={cap}>{cap}</option>
+                    ))}
+                  </select>
+                  {filesystemCapabilities.length === 0 && (
+                    <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 4 }}>
+                      No capabilities found. Developer must create capabilities/ directory first.
+                    </div>
                   )}
                 </div>
 
                 <div>
-                  <label style={labelStyle}>Application Name</label>
-                  <input
-                    style={
-                      factoryMode === "create_capability" && !createCapabilityExistingSelected
-                        ? inputStyle
-                        : readonlyInputStyle
-                    }
-                    placeholder="CM Capability App"
-                    value={appName}
-                    onChange={(e) => setAppName(e.target.value)}
-                    readOnly={
-                      factoryMode !== "create_capability" || createCapabilityExistingSelected
-                    }
-                  />
+                  <label style={labelStyle}>Overlay Type</label>
+                  <select
+                    style={inputStyle}
+                    value={agentType}
+                    onChange={(e) => { setAgentType(e.target.value); applyMemoryDefaults(e.target.value) }}
+                  >
+                    {BASE_AGENT_TYPE_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value} disabled={!o.enabled}>
+                        {o.label}{o.enabled ? "" : " (coming soon)"}
+                      </option>
+                    ))}
+                  </select>
+                  {templateManifest?.rag_dimension2 && (
+                    <div style={{ marginTop: 8, padding: "8px 10px", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 6, fontSize: 12 }}>
+                      <span style={{ fontWeight: 700, color: "#15803d" }}>RAG built-in: </span>
+                      <span style={{ fontWeight: 600, color: "#166534" }}>{templateManifest.rag_dimension2.pattern}</span>
+                      <span style={{ color: "#4b5563" }}> · {templateManifest.rag_dimension2.description}</span>
+                    </div>
+                  )}
                 </div>
 
                 <div>
-                  <label style={labelStyle}>App Repo Name</label>
-                  <input
-                    style={
-                      factoryMode === "create_capability" && !createCapabilityExistingSelected
-                        ? inputStyle
-                        : readonlyInputStyle
-                    }
-                    placeholder="cm-capability-app"
-                    value={repoName}
-                    onChange={(e) => {
-                      setRepoNameTouched(true)
-                      setRepoName(e.target.value)
-                    }}
-                    readOnly={
-                      factoryMode !== "create_capability" || createCapabilityExistingSelected
-                    }
-                  />
-                </div>
-
-                <div>
-                  <label style={labelStyle}>App Template Used</label>
-                  <input style={readonlyInputStyle} value="app-template" readOnly />
-                </div>
-              </div>
-
-              {factoryMode === "create_capability" && createCapabilitySelection === "__new__" && (
-                <div style={{ marginTop: 14 }}>
-                  <label style={labelStyle}>New Capability Name</label>
+                  <label style={labelStyle}>Agent Name</label>
                   <input
                     style={inputStyle}
-                    placeholder="care-management"
-                    value={capabilityName}
-                    onChange={(e) => setCapabilityName(e.target.value)}
+                    placeholder="Pre-Call Assessment"
+                    value={agentName}
+                    onChange={(e) => setAgentName(e.target.value)}
                   />
                 </div>
-              )}
+
+                <div>
+                  <label style={labelStyle}>
+                    Agent Folder{" "}
+                    <InfoTooltip text="Folder name under agents/<capability>/. Auto-generated from agent name — edit to override." />
+                  </label>
+                  <input
+                    style={inputStyle}
+                    placeholder="pre-call-assessment"
+                    value={agentFolder}
+                    onChange={(e) => { setAgentFolderTouched(true); setAgentFolder(e.target.value) }}
+                  />
+                </div>
+
+                <div>
+                  <label style={labelStyle}>Persona</label>
+                  <input style={inputStyle} value={persona} onChange={(e) => setPersona(e.target.value)} />
+                </div>
+
+                <div>
+                  <label style={labelStyle}>Model</label>
+                  <select style={inputStyle} value={modelName} onChange={(e) => setModelName(e.target.value)}>
+                    {MODEL_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value} disabled={!o.enabled}>
+                        {o.label}{o.enabled ? "" : " (coming soon)"}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
 
               <div style={{ marginTop: 14 }}>
                 <label style={labelStyle}>Description</label>
                 <textarea
-                  style={{ ...inputStyle, minHeight: 68 }}
-                  placeholder="Care management application for Medicaid"
+                  style={{ ...inputStyle, minHeight: 60 }}
+                  placeholder="What does this agent do?"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                 />
               </div>
             </div>
 
-            {factoryMode === "manage_usecase_agent" && (
-              <>
-                <div style={sectionStyle}>
-                  <h2 style={{ marginTop: 0, marginBottom: 12 }}>Manage Usecase / Agent</h2>
+            {/* Gateway & Tools */}
+            <div style={sectionStyle}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <h2 style={{ margin: 0 }}>Gateway & Tools</h2>
+                <button type="button" onClick={() => setToolsExpanded(!toolsExpanded)} style={pillButton(false)}>
+                  {toolsExpanded ? "Hide Tools" : "Show Tools"} ({selectedTools.length}/{availableTools.length})
+                </button>
+              </div>
+              <div style={compactGrid}>
+                <div>
+                  <label style={labelStyle}>Select Gateway</label>
+                  <select style={inputStyle} value={selectedGateway} onChange={(e) => setSelectedGateway(e.target.value)}>
+                    {availableGateways.map((g) => <option key={g} value={g}>{g}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={labelStyle}>Gateway Status</label>
+                  <input style={readonlyInputStyle} value="Published" readOnly />
+                </div>
+              </div>
+              {toolsExpanded && (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12, marginTop: 14 }}>
+                  {availableTools.map((tool) => (
+                    <label key={tool.name} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: 12, border: "1px solid #e5e7eb", borderRadius: 10, background: "#fafafa" }}>
+                      <input type="checkbox" checked={selectedTools.includes(tool.name)} onChange={() => toggleTool(tool.name)} style={{ marginTop: 2 }} />
+                      <div>
+                        <div style={{ fontWeight: 600 }}>{tool.name} <span style={{ color: "#6b7280", fontWeight: 400 }}>({tool.mode})</span></div>
+                        <div style={{ fontSize: 13, color: "#4b5563" }}>{tool.description || "No description"}</div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
 
-                  <div style={{ marginBottom: 14 }}>
-                    <label style={labelStyle}>Use Case Action</label>
-                    <div style={{ display: "flex", gap: 8 }}>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setManageUsecaseMode("new")
-                          setUsecaseName("")
-                          setRegistryAgents([])
-                        }}
-                        style={pillButton(manageUsecaseMode === "new")}
-                      >
-                        New Use Case + New Agent
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setManageUsecaseMode("existing")
-                          if (registryUsecases.length > 0) {
-                            setUsecaseName(registryUsecases[0])
-                          }
-                        }}
-                        style={pillButton(manageUsecaseMode === "existing")}
-                      >
-                        Existing Use Case + New Agent
-                      </button>
-                    </div>
+            {/* Agent Behavior */}
+            <div style={sectionStyle}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <h2 style={{ margin: 0 }}>Agent Behavior</h2>
+                <div style={{ display: "flex", gap: 8 }}>
+                  {(["settings", "memory", "prompts"] as const).map((tab) => (
+                    <button key={tab} type="button" onClick={() => setAgentBehaviorTab(tab)} style={pillButton(agentBehaviorTab === tab)}>
+                      {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {agentBehaviorTab === "settings" && (
+                <div style={compactGrid}>
+                  <div>
+                    <label style={labelStyle}>Temperature</label>
+                    <input style={inputStyle} value={temperature} onChange={(e) => setTemperature(e.target.value)} />
                   </div>
+                </div>
+              )}
 
-                  <div style={compactGrid}>
-                    <div>
-                      <label style={labelStyle}>Use Case Name</label>
-                      {manageUsecaseMode === "new" ? (
-                        <input
-                          style={inputStyle}
-                          value={usecaseName}
-                          onChange={(e) => setUsecaseName(e.target.value)}
-                        />
-                      ) : (
-                        <select
-                          style={inputStyle}
-                          value={registryUsecases.includes(usecaseName) ? usecaseName : ""}
-                          onChange={(e) => setUsecaseName(e.target.value)}
-                        >
-                          <option value="">Select use case</option>
-                          {registryUsecases.map((u) => (
-                            <option key={u} value={u}>
-                              {u}
-                            </option>
+              {agentBehaviorTab === "memory" && (
+                <div style={{ display: "grid", gap: 14 }}>
+                  <label style={labelStyle}>
+                    <input type="checkbox" checked={memoryEnabled} onChange={(e) => setMemoryEnabled(e.target.checked)} />{" "}
+                    Enable Memory
+                  </label>
+                  {memoryEnabled && (
+                    <>
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>Memory Types</div>
+                        <div style={{ display: "grid", gap: 10 }}>
+                          {(["shortTerm", "episodic", "semantic", "summary"] as const).map((type) => (
+                            <label key={type}>
+                              <input type="checkbox" checked={memoryTypes[type]}
+                                onChange={(e) => setMemoryTypes((p) => ({ ...p, [type]: e.target.checked }))} />{" "}
+                              {type === "shortTerm" ? "Short-Term" : type.charAt(0).toUpperCase() + type.slice(1)} Memory
+                            </label>
                           ))}
-                        </select>
-                      )}
-                    </div>
-
-                    <div>
-                      <label style={labelStyle}>Agent Type</label>
-                      <select
-                        style={inputStyle}
-                        value={agentType}
-                        onChange={(e) => {
-                          const value = e.target.value
-                          setAgentType(value)
-                          applyMemoryDefaults(value)
-                        }}
-                      >
-                        {BASE_AGENT_TYPE_OPTIONS.map((option) => (
-                          <option key={option.value} value={option.value} disabled={!option.enabled}>
-                            {option.label}{option.enabled ? "" : " (coming soon)"}
-                          </option>
-                        ))}
-                      </select>
-
-                      {/* D2 RAG info — shown immediately after agent type is selected */}
-                      {templateManifest?.rag_dimension2 ? (
-                        <div style={{ marginTop: 8, padding: "8px 10px", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 6, fontSize: 12 }}>
-                          <span style={{ fontWeight: 700, color: "#15803d" }}>RAG built-in: </span>
-                          <span style={{ fontWeight: 600, color: "#166534" }}>
-                            Dimension 2 — {templateManifest.rag_dimension2.pattern}
-                          </span>
-                          <span style={{ color: "#4b5563" }}> · {templateManifest.rag_dimension2.description}</span>
                         </div>
-                      ) : templateManifest !== null ? (
-                        <div style={{ marginTop: 8, padding: "8px 10px", background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 12, color: "#6b7280" }}>
-                          No RAG pipeline built into this agent type.
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>Advanced</div>
+                        <div style={compactGrid}>
+                          <div><label style={labelStyle}>Short-Term Window</label><input style={inputStyle} value={memoryAdvanced.shortTermWindow} onChange={(e) => setMemoryAdvanced((p) => ({ ...p, shortTermWindow: e.target.value }))} /></div>
+                          <div><label style={labelStyle}>Summary Interval</label><input style={inputStyle} value={memoryAdvanced.summaryInterval} onChange={(e) => setMemoryAdvanced((p) => ({ ...p, summaryInterval: e.target.value }))} /></div>
+                          <div><label style={labelStyle}>Episodic Top-K</label><input style={inputStyle} value={memoryAdvanced.episodicTopK} onChange={(e) => setMemoryAdvanced((p) => ({ ...p, episodicTopK: e.target.value }))} /></div>
+                          <div><label style={labelStyle}>Semantic Top-K</label><input style={inputStyle} value={memoryAdvanced.semanticTopK} onChange={(e) => setMemoryAdvanced((p) => ({ ...p, semanticTopK: e.target.value }))} /></div>
                         </div>
-                      ) : null}
-                    </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
 
-                    <div>
-                      <label style={labelStyle}>Agent Name</label>
-                      <input
-                        style={inputStyle}
-                        value={agentName}
-                        onChange={(e) => setAgentName(e.target.value)}
-                      />
-                    </div>
+              {agentBehaviorTab === "prompts" && (
+                <div style={{ display: "grid", gap: 14 }}>
+                  <div>
+                    <label style={labelStyle}>Planner System Prompt</label>
+                    <textarea style={{ ...inputStyle, minHeight: 90, fontFamily: "monospace", fontSize: 12 }} value={plannerPrompt} onChange={(e) => setPlannerPrompt(e.target.value)} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Responder System Prompt</label>
+                    <textarea style={{ ...inputStyle, minHeight: 90, fontFamily: "monospace", fontSize: 12 }} value={responderPrompt} onChange={(e) => setResponderPrompt(e.target.value)} />
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
 
-                    <div>
-                      <label style={labelStyle}>Agent Repo Name</label>
-                      <input
-                        style={inputStyle}
-                        value={agentRepoName}
-                        onChange={(e) => {
-                          setAgentRepoNameTouched(true)
-                          setAgentRepoName(e.target.value)
-                        }}
-                      />
-                    </div>
+          {/* Right */}
+          <div style={{ display: "grid", gap: 18, position: "sticky", top: 16 }}>
+            {/* Deployment Profiles */}
+            <div style={sectionStyle}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <h2 style={{ margin: 0 }}>Deployment Profiles</h2>
+                <button type="button" onClick={() => setShowAgentCoreProfile(!showAgentCoreProfile)} style={pillButton(false)}>
+                  {showAgentCoreProfile ? "Hide AgentCore" : "Show AgentCore"}
+                </button>
+              </div>
 
-                    <div>
-                      <label style={labelStyle}>Persona</label>
-                      <input
-                        style={inputStyle}
-                        value={persona}
-                        onChange={(e) => setPersona(e.target.value)}
-                      />
-                    </div>
-
-                    <div>
-                      <label style={labelStyle}>Agent Template Used</label>
-                      <input style={readonlyInputStyle} value="chat-agent-template" readOnly />
-                    </div>
+              <div style={{ display: "grid", gap: 14 }}>
+                {/* Local Profile */}
+                <div style={profileCardStyle(false)}>
+                  <div style={{ marginBottom: 10 }}>
+                    <strong>Local Profile</strong>
+                    <div style={{ fontSize: 12, color: "#4b5563", marginTop: 4 }}>Active — drives generated agent configuration.</div>
                   </div>
 
-                  <div style={{ marginTop: 14 }}>
-                    <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8, color: "#374151" }}>
-                      Existing Use Cases
-                    </div>
-                    {registryUsecases.length > 0 ? (
-                      <div style={{ fontSize: 12, color: "#6b7280" }}>
-                        {registryUsecases.join(" | ")}
+                  {/* HITL */}
+                  <div style={{ marginBottom: 16 }}>
+                    <strong style={{ fontSize: 14 }}>HITL (Human-in-the-Loop)</strong>
+                    {agentType === "summarization_agent" ? (
+                      <div style={{ marginTop: 8, padding: "8px 12px", borderRadius: 6, background: "rgba(100,116,139,0.08)", border: "1px solid rgba(100,116,139,0.2)", color: "#64748b", fontSize: 12 }}>
+                        Not applicable — summarization agents are read-only.
                       </div>
                     ) : (
-                      <div style={{ fontSize: 12, color: "#6b7280" }}>
-                        No existing use cases found for this capability.
+                      <div style={{ marginTop: 8, display: "grid", gap: 14 }}>
+                        <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <input type="checkbox" checked={hitlApprovalRequired} onChange={(e) => setHitlApprovalRequired(e.target.checked)} />
+                          <span style={{ fontWeight: 600, fontSize: 13 }}>Approval Required</span>
+                          <InfoTooltip text="When enabled, the agent pauses and waits for human approval before executing any tool that meets the risk threshold." />
+                        </label>
+                        {hitlApprovalRequired && (
+                          <>
+                            <div>
+                              <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
+                                Risk Level per Tool <InfoTooltip text="Classify how risky each tool call is." />
+                              </div>
+                              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                                <thead>
+                                  <tr style={{ background: "#f3f4f6" }}>
+                                    <th style={{ padding: "5px 8px", textAlign: "left", border: "1px solid #e5e7eb" }}>Tool</th>
+                                    <th style={{ padding: "5px 8px", textAlign: "left", border: "1px solid #e5e7eb" }}>Risk</th>
+                                    <th style={{ padding: "5px 8px", border: "1px solid #e5e7eb" }}></th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {Object.entries(hitlRiskLevels).map(([tool, level]) => (
+                                    <tr key={tool}>
+                                      <td style={{ padding: "5px 8px", border: "1px solid #e5e7eb" }}>
+                                        <input style={{ ...inputStyle, padding: "4px 6px" }} value={tool}
+                                          onChange={(e) => {
+                                            const next: Record<string, string> = {}
+                                            Object.entries(hitlRiskLevels).forEach(([k, v]) => { next[k === tool ? e.target.value : k] = v })
+                                            setHitlRiskLevels(next)
+                                          }} />
+                                      </td>
+                                      <td style={{ padding: "5px 8px", border: "1px solid #e5e7eb" }}>
+                                        <select style={inputStyle} value={level} onChange={(e) => setHitlRiskLevels({ ...hitlRiskLevels, [tool]: e.target.value })}>
+                                          <option value="low">low</option>
+                                          <option value="medium">medium</option>
+                                          <option value="high">high</option>
+                                        </select>
+                                      </td>
+                                      <td style={{ padding: "5px 8px", border: "1px solid #e5e7eb", textAlign: "center" }}>
+                                        <button type="button" style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", fontSize: 14 }}
+                                          onClick={() => { const next = { ...hitlRiskLevels }; delete next[tool]; setHitlRiskLevels(next) }}>✕</button>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                  <tr>
+                                    <td colSpan={3} style={{ padding: "5px 8px", border: "1px solid #e5e7eb" }}>
+                                      <button type="button" style={{ ...pillButton(false), fontSize: 12, padding: "4px 10px" }}
+                                        onClick={() => setHitlRiskLevels({ ...hitlRiskLevels, new_tool: "low" })}>+ Add Tool</button>
+                                    </td>
+                                  </tr>
+                                </tbody>
+                              </table>
+                            </div>
+                            <div>
+                              <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
+                                Minimum Risk for Approval <InfoTooltip text="Sets the approval threshold." />
+                              </div>
+                              <select style={inputStyle} value={hitlMinRisk} onChange={(e) => setHitlMinRisk(e.target.value as typeof hitlMinRisk)}>
+                                <option value="high">High only</option>
+                                <option value="medium_and_above">Medium and above</option>
+                                <option value="all">All tool calls</option>
+                              </select>
+                            </div>
+                            <div>
+                              <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
+                                SLA Timeout (minutes) <InfoTooltip text="How long before the approval request expires." />
+                              </div>
+                              <input style={{ ...inputStyle, width: 100 }} value={hitlTimeoutMinutes} onChange={(e) => setHitlTimeoutMinutes(e.target.value)} />
+                            </div>
+                          </>
+                        )}
                       </div>
                     )}
                   </div>
 
-                  {manageUsecaseMode === "existing" && usecaseName && (
-                    <div style={{ marginTop: 14 }}>
-                      <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8, color: "#374151" }}>
-                        Existing Agents for Selected Use Case
-                      </div>
-                      {registryAgents.length > 0 ? (
-                        <div style={{ fontSize: 12, color: "#6b7280" }}>
-                          {registryAgents.map((agent) => (
-                            <div key={agent.agent_repo_name}>
-                              {agent.agent_name} — {agent.agent_repo_name} ({agent.agent_type})
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div style={{ fontSize: 12, color: "#6b7280" }}>
-                          No existing agents found for this use case.
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                <div style={sectionStyle}>
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      marginBottom: 12,
-                    }}
-                  >
-                    <h2 style={{ margin: 0 }}>Gateway & Tools</h2>
-                    <button
-                      type="button"
-                      onClick={() => setToolsExpanded(!toolsExpanded)}
-                      style={pillButton(false)}
-                    >
-                      {toolsExpanded ? "Hide Tools" : "Show Tools"} ({selectedTools.length}/{availableTools.length})
-                    </button>
-                  </div>
-
-                  <div style={compactGrid}>
+                  {/* RAG */}
+                  {templateManifest?.rag_dimension2 && (
                     <div>
-                      <label style={labelStyle}>Select Gateway</label>
-                      <select
-                        style={inputStyle}
-                        value={selectedGateway}
-                        onChange={(e) => setSelectedGateway(e.target.value)}
-                      >
-                        {availableGateways.map((gateway) => (
-                          <option key={gateway} value={gateway}>
-                            {gateway}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label style={labelStyle}>Gateway Status</label>
-                      <input style={readonlyInputStyle} value="Published" readOnly />
-                    </div>
-                  </div>
-
-                  {toolsExpanded && (
-                    <div
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-                        gap: 12,
-                        marginTop: 14,
-                      }}
-                    >
-                      {availableTools.map((tool) => (
-                        <label
-                          key={tool.name}
-                          style={{
-                            display: "flex",
-                            alignItems: "flex-start",
-                            gap: 10,
-                            padding: 12,
-                            border: "1px solid #e5e7eb",
-                            borderRadius: 10,
-                            background: "#fafafa",
-                          }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selectedTools.includes(tool.name)}
-                            onChange={() => toggleTool(tool.name)}
-                            style={{ marginTop: 2 }}
-                          />
-                          <div>
-                            <div style={{ fontWeight: 600 }}>
-                              {tool.name}{" "}
-                              <span style={{ color: "#6b7280", fontWeight: 400 }}>
-                                ({tool.mode})
-                              </span>
-                            </div>
-                            <div style={{ fontSize: 13, color: "#4b5563" }}>
-                              {tool.description || "No description"}
-                            </div>
-                          </div>
+                      <strong style={{ fontSize: 14 }}>RAG — Dimension 1 (Search Method)</strong>
+                      <div style={{ marginTop: 8, display: "grid", gap: 8 }}>
+                        <label>
+                          <input type="checkbox" checked={localRagEnabled} onChange={(e) => setLocalRagEnabled(e.target.checked)} />{" "}
+                          Enable RAG
                         </label>
-                      ))}
+                        {localRagEnabled && (() => {
+                          const retrievalTools = availableTools.filter((t) => !!t.db_type && selectedTools.includes(t.name))
+                          if (retrievalTools.length === 0) return <div style={{ fontSize: 12, color: "#6b7280" }}>No retrieval tools selected.</div>
+                          return (
+                            <div style={{ display: "grid", gap: 10, paddingTop: 4 }}>
+                              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                                <thead>
+                                  <tr style={{ background: "#f3f4f6" }}>
+                                    <th style={{ padding: "6px 8px", textAlign: "left", border: "1px solid #e5e7eb" }}>Tool / KB</th>
+                                    <th style={{ padding: "6px 8px", textAlign: "left", border: "1px solid #e5e7eb" }}>DB Type</th>
+                                    <th style={{ padding: "6px 8px", textAlign: "left", border: "1px solid #e5e7eb" }}>Strategy</th>
+                                    <th style={{ padding: "6px 8px", textAlign: "center", border: "1px solid #e5e7eb" }}>Default</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {retrievalTools.map((tool) => (
+                                    <tr key={tool.name}>
+                                      <td style={{ padding: "6px 8px", border: "1px solid #e5e7eb", fontWeight: 600 }}>{tool.name}</td>
+                                      <td style={{ padding: "6px 8px", border: "1px solid #e5e7eb", color: "#4b5563" }}>{tool.db_type || "—"}</td>
+                                      <td style={{ padding: "6px 8px", border: "1px solid #e5e7eb" }}>
+                                        <span style={{ background: "#eff6ff", color: "#1d4ed8", borderRadius: 4, padding: "2px 6px", fontSize: 12, fontWeight: 600 }}>
+                                          {tool.strategy || "semantic"}
+                                        </span>
+                                      </td>
+                                      <td style={{ padding: "6px 8px", border: "1px solid #e5e7eb", textAlign: "center" }}>
+                                        <input type="radio" name="ragDefaultTool" checked={localRagDefaultTool === tool.name} onChange={() => setLocalRagDefaultTool(tool.name)} />
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                              <div style={compactGrid}>
+                                <div><label style={labelStyle}>Top K</label><input style={inputStyle} value={localTopK} onChange={(e) => setLocalTopK(e.target.value)} /></div>
+                                <div><label style={labelStyle}>Score Threshold</label><input style={inputStyle} value={localScoreThreshold} onChange={(e) => setLocalScoreThreshold(e.target.value)} /></div>
+                              </div>
+                            </div>
+                          )
+                        })()}
+                      </div>
                     </div>
                   )}
                 </div>
 
-                <div style={sectionStyle}>
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      marginBottom: 12,
-                    }}
-                  >
-                    <h2 style={{ margin: 0 }}>Agent Behavior</h2>
-                   
-                    <div style={{ display: "flex", gap: 8 }}>
-                      <button
-                        type="button"
-                        onClick={() => setAgentBehaviorTab("settings")}
-                        style={pillButton(agentBehaviorTab === "settings")}
-                      >
-                        Settings
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setAgentBehaviorTab("memory")}
-                        style={pillButton(agentBehaviorTab === "memory")}
-                      >
-                        Memory
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setAgentBehaviorTab("prompts")}
-                        style={pillButton(agentBehaviorTab === "prompts")}
-                      >
-                        Prompts
-                      </button>
-                    </div>
-                  </div>
-
-                  {agentBehaviorTab === "memory" && (
-                    <div style={{ display: "grid", gap: 14 }}>
-                      <div>
-                        <label style={labelStyle}>
-                          <input
-                            type="checkbox"
-                            checked={memoryEnabled}
-                            onChange={(e) => setMemoryEnabled(e.target.checked)}
-                          />{" "}
-                          Enable Memory
-                        </label>
-                      </div>
-
-                      {memoryEnabled && (
-                        <>
-                          <div>
-                            <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>
-                              Memory Types
-                            </div>
-
-                            <div style={{ display: "grid", gap: 10 }}>
-                              <label>
-                                <input
-                                  type="checkbox"
-                                  checked={memoryTypes.shortTerm}
-                                  onChange={(e) =>
-                                    setMemoryTypes((prev) => ({
-                                      ...prev,
-                                      shortTerm: e.target.checked,
-                                    }))
-                                  }
-                                />{" "}
-                                Short-Term Memory
-                              </label>
-
-                              <label>
-                                <input
-                                  type="checkbox"
-                                  checked={memoryTypes.episodic}
-                                  onChange={(e) =>
-                                    setMemoryTypes((prev) => ({
-                                      ...prev,
-                                      episodic: e.target.checked,
-                                    }))
-                                  }
-                                />{" "}
-                                Episodic Memory
-                              </label>
-
-                              <label>
-                                <input
-                                  type="checkbox"
-                                  checked={memoryTypes.semantic}
-                                  onChange={(e) =>
-                                    setMemoryTypes((prev) => ({
-                                      ...prev,
-                                      semantic: e.target.checked,
-                                    }))
-                                  }
-                                />{" "}
-                                Semantic Memory
-                              </label>
-
-                              <label>
-                                <input
-                                  type="checkbox"
-                                  checked={memoryTypes.summary}
-                                  onChange={(e) =>
-                                    setMemoryTypes((prev) => ({
-                                      ...prev,
-                                      summary: e.target.checked,
-                                    }))
-                                  }
-                                />{" "}
-                                Summary Memory
-                              </label>
-                            </div>
-                          </div>
-
-                          <div>
-                            <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>
-                              Advanced
-                            </div>
-
-                            <div style={compactGrid}>
-                              <div>
-                                <label style={labelStyle}>Short-Term Window</label>
-                                <input
-                                  style={inputStyle}
-                                  value={memoryAdvanced.shortTermWindow}
-                                  onChange={(e) =>
-                                    setMemoryAdvanced((prev) => ({
-                                      ...prev,
-                                      shortTermWindow: e.target.value,
-                                    }))
-                                  }
-                                />
-                              </div>
-
-                              <div>
-                                <label style={labelStyle}>Summary Every N Turns</label>
-                                <input
-                                  style={inputStyle}
-                                  value={memoryAdvanced.summaryInterval}
-                                  onChange={(e) =>
-                                    setMemoryAdvanced((prev) => ({
-                                      ...prev,
-                                      summaryInterval: e.target.value,
-                                    }))
-                                  }
-                                />
-                              </div>
-
-                              <div>
-                                <label style={labelStyle}>Episodic Top K</label>
-                                <input
-                                  style={inputStyle}
-                                  value={memoryAdvanced.episodicTopK}
-                                  onChange={(e) =>
-                                    setMemoryAdvanced((prev) => ({
-                                      ...prev,
-                                      episodicTopK: e.target.value,
-                                    }))
-                                  }
-                                />
-                              </div>
-
-                              <div>
-                                <label style={labelStyle}>Semantic Top K</label>
-                                <input
-                                  style={inputStyle}
-                                  value={memoryAdvanced.semanticTopK}
-                                  onChange={(e) =>
-                                    setMemoryAdvanced((prev) => ({
-                                      ...prev,
-                                      semanticTopK: e.target.value,
-                                    }))
-                                  }
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  )}
-
-
-                  {agentBehaviorTab === "settings" && (
-                    <div style={compactGrid}>
-                      <div>
-                        <label style={labelStyle}>Model</label>
-                        <select
-                          style={inputStyle}
-                          value={modelName}
-                          onChange={(e) => setModelName(e.target.value)}
-                        >
-                          {MODEL_OPTIONS.map((option) => (
-                            <option key={option.value} value={option.value} disabled={!option.enabled}>
-                              {option.label}{option.enabled ? "" : " (coming soon)"}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div>
-                        <label style={labelStyle}>Temperature</label>
-                        <input
-                          style={inputStyle}
-                          value={temperature}
-                          onChange={(e) => setTemperature(e.target.value)}
-                        />
-                      </div>
-
-                      <div>
-                        <label style={labelStyle}>Persona</label>
-                        <input
-                          style={inputStyle}
-                          value={persona}
-                          onChange={(e) => setPersona(e.target.value)}
-                        />
-                      </div>
-
-                      <div>
-                        <label style={labelStyle}>Use Case Name</label>
-                        <input style={readonlyInputStyle} value={usecaseName} readOnly />
-                      </div>
-                    </div>
-                  )}
-
-                  {agentBehaviorTab === "prompts" && (
-                    <div>
-                      <div style={{ marginBottom: 14 }}>
-                        <label style={labelStyle}>Tool Planning Instructions</label>
-                        <textarea
-                          style={{ ...inputStyle, minHeight: 72 }}
-                          value={plannerPrompt}
-                          onChange={(e) => setPlannerPrompt(e.target.value)}
-                        />
-                      </div>
-
-                      <div>
-                        <label style={labelStyle}>Response Instructions</label>
-                        <textarea
-                          style={{ ...inputStyle, minHeight: 72 }}
-                          value={responderPrompt}
-                          onChange={(e) => setResponderPrompt(e.target.value)}
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
-
-            {factoryMode === "govern_existing" && (
-              <div style={sectionStyle}>
-                <h2 style={{ marginTop: 0, marginBottom: 12 }}>Govern Existing</h2>
-
-                <div style={compactGrid}>
-                  <div>
-                    <label style={labelStyle}>Use Case</label>
-                    <select
-                      style={inputStyle}
-                      value={registryUsecases.includes(usecaseName) ? usecaseName : ""}
-                      onChange={(e) => {
-                        setUsecaseName(e.target.value)
-                        setSelectedGovernAgentRepo("")
-                      }}
-                    >
-                      <option value="">Select use case</option>
-                      {registryUsecases.map((u) => (
-                        <option key={u} value={u}>
-                          {u}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label style={labelStyle}>Agent</label>
-                    <select
-                      style={inputStyle}
-                      value={
-                        registryAgents.some((a) => a.agent_repo_name === selectedGovernAgentRepo)
-                          ? selectedGovernAgentRepo
-                          : ""
-                      }
-                      onChange={(e) => setSelectedGovernAgentRepo(e.target.value)}
-                    >
-                      <option value="">Select agent</option>
-                      {registryAgents.map((agent) => (
-                        <option key={agent.agent_repo_name} value={agent.agent_repo_name}>
-                          {agent.agent_name} ({agent.agent_type})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div style={{ marginTop: 14 }}>
-                  <button
-                    type="button"
-                    onClick={loadExistingContract}
-                    style={pillButton(false)}
-                  >
-                    Load Existing Contract
-                  </button>
-                </div>
-
-                {usecaseMetadata && (
-                  <div style={{ marginTop: 14, fontSize: 12, color: "#6b7280" }}>
-                    <div style={{ fontWeight: 600, color: "#374151", marginBottom: 6 }}>
-                      Contract Loaded
-                    </div>
-                    <div>
-                      Components: planner={String(usecaseMetadata.components?.planner)} | responder=
-                      {String(usecaseMetadata.components?.responder)} | workflow=
-                      {String(usecaseMetadata.components?.workflow)} | router=
-                      {String(usecaseMetadata.components?.router)}
-                    </div>
+                {/* AgentCore Profile */}
+                {showAgentCoreProfile && (
+                  <div style={profileCardStyle(true)}>
+                    <strong>AgentCore Profile</strong>
+                    <div style={{ fontSize: 12, color: "#4b5563", marginTop: 4 }}>Teaser only — coming soon.</div>
                   </div>
                 )}
               </div>
-            )}
-          </div>
+            </div>
 
-          <div style={{ display: "grid", gap: 18, position: "sticky", top: 16 }}>
-            {factoryMode === "create_capability" && (
-              <>
-                <div style={sectionStyle}>
-                  <button
-                    onClick={handleCreateCapability}
-                    style={{
-                      width: "100%",
-                      padding: "14px 18px",
-                      borderRadius: 10,
-                      border: "none",
-                      background: "#2563eb",
-                      color: "white",
-                      fontWeight: 700,
-                      cursor: "pointer",
-                      fontSize: 15,
-                    }}
-                  >
-                    Create Capability
-                  </button>
+            {/* Scaffold button */}
+            <div style={sectionStyle}>
+              <button
+                onClick={handleScaffoldAgent}
+                style={{ width: "100%", padding: "14px 18px", borderRadius: 10, border: "none", background: "#2563eb", color: "white", fontWeight: 700, cursor: "pointer", fontSize: 15 }}
+              >
+                Scaffold Agent
+              </button>
+              <div style={{ marginTop: 14, color: message.startsWith("Error") ? "#b91c1c" : "#374151", fontSize: 14 }}>
+                {message}
+              </div>
+            </div>
 
-                  <div
-                    style={{
-                      marginTop: 14,
-                      color: message.startsWith("Error") ? "#b91c1c" : "#374151",
-                      fontSize: 14,
-                    }}
-                  >
-                    {message}
-                  </div>
-                </div>
-
-                {result && (
-                  <div style={sectionStyle}>
-                    <h2 style={{ marginTop: 0, marginBottom: 12 }}>Capability Result</h2>
-                    <div><strong>Status:</strong> {result.status}</div>
-                    <div><strong>Capability:</strong> {result.capability_name}</div>
-                    <div><strong>App Name:</strong> {result.app_name}</div>
-                    <div><strong>App Repo:</strong> {result.app_repo_name}</div>
-                    <div><strong>App Created:</strong> {String(result.app_created)}</div>
-                    <div><strong>App Reused:</strong> {String(result.app_reused)}</div>
-                    <div><strong>App Path:</strong> {result.app_repo_url}</div>
-                  </div>
-                )}
-              </>
-            )}
-
-            {factoryMode === "manage_usecase_agent" && (
-              <>
-                <div style={sectionStyle}>
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      marginBottom: 12,
-                    }}
-                  >
-                    <h2 style={{ margin: 0 }}>Deployment Profiles</h2>
-                    <button
-                      type="button"
-                      onClick={() => setShowAgentCoreProfile(!showAgentCoreProfile)}
-                      style={pillButton(false)}
-                    >
-                      {showAgentCoreProfile ? "Hide AgentCore" : "Show AgentCore"}
-                    </button>
-                  </div>
-
-                  <div style={{ display: "grid", gap: 14 }}>
-                    <div style={profileCardStyle(false)}>
-                      <div style={{ marginBottom: 10 }}>
-                        <strong>Local Profile</strong>
-                        <div style={{ fontSize: 12, color: "#4b5563", marginTop: 4 }}>
-                          This profile is active and drives the current generated repo configuration.
-                        </div>
-                      </div>
-
-                      {/* ── HITL ── */}
-                      <div style={{ marginBottom: 16 }}>
-                        <strong style={{ fontSize: 14 }}>HITL (Human-in-the-Loop)</strong>
-                        {agentType === "summarization_agent" && (
-                          <div style={{ marginTop: 8, padding: "8px 12px", borderRadius: 6, background: "rgba(100,116,139,0.08)", border: "1px solid rgba(100,116,139,0.2)", color: "#64748b", fontSize: 12 }}>
-                            Not applicable — summarization agents are read-only and do not call write tools.
-                          </div>
-                        )}
-                        {agentType !== "summarization_agent" && (
-                        <div style={{ marginTop: 8, display: "grid", gap: 14 }}>
-
-                          {/* Approval Required */}
-                          <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                            <input
-                              type="checkbox"
-                              checked={hitlApprovalRequired}
-                              onChange={(e) => setHitlApprovalRequired(e.target.checked)}
-                            />
-                            <span style={{ fontWeight: 600, fontSize: 13 }}>Approval Required</span>
-                            <InfoTooltip text="Master on/off switch. When enabled, the agent will pause and wait for a human to approve before executing any tool that meets the risk threshold." />
-                          </label>
-
-                          {hitlApprovalRequired && (
-                            <>
-                              {/* Risk Levels per Tool */}
-                              <div>
-                                <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
-                                  Risk Level per Tool
-                                  <InfoTooltip text="Classify how risky each tool call is. Read-only tools like get_member are low risk. Write tools like write_case_note that modify data are high risk." />
-                                </div>
-                                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                                  <thead>
-                                    <tr style={{ background: "#f3f4f6" }}>
-                                      <th style={{ padding: "5px 8px", textAlign: "left", border: "1px solid #e5e7eb" }}>Tool</th>
-                                      <th style={{ padding: "5px 8px", textAlign: "left", border: "1px solid #e5e7eb" }}>Risk Level</th>
-                                      <th style={{ padding: "5px 8px", border: "1px solid #e5e7eb" }}></th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {Object.entries(hitlRiskLevels).map(([tool, level]) => (
-                                      <tr key={tool}>
-                                        <td style={{ padding: "5px 8px", border: "1px solid #e5e7eb" }}>
-                                          <input
-                                            style={{ ...inputStyle, padding: "4px 6px" }}
-                                            value={tool}
-                                            onChange={(e) => {
-                                              const next: Record<string, string> = {}
-                                              Object.entries(hitlRiskLevels).forEach(([k, v]) => { next[k === tool ? e.target.value : k] = v })
-                                              setHitlRiskLevels(next)
-                                            }}
-                                          />
-                                        </td>
-                                        <td style={{ padding: "5px 8px", border: "1px solid #e5e7eb" }}>
-                                          <select style={inputStyle} value={level} onChange={(e) => setHitlRiskLevels({ ...hitlRiskLevels, [tool]: e.target.value })}>
-                                            <option value="low">low</option>
-                                            <option value="medium">medium</option>
-                                            <option value="high">high</option>
-                                          </select>
-                                        </td>
-                                        <td style={{ padding: "5px 8px", border: "1px solid #e5e7eb", textAlign: "center" }}>
-                                          <button type="button" style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", fontSize: 14 }}
-                                            onClick={() => { const next = { ...hitlRiskLevels }; delete next[tool]; setHitlRiskLevels(next) }}>✕</button>
-                                        </td>
-                                      </tr>
-                                    ))}
-                                    <tr>
-                                      <td colSpan={3} style={{ padding: "5px 8px", border: "1px solid #e5e7eb" }}>
-                                        <button type="button" style={{ ...pillButton(false), fontSize: 12, padding: "4px 10px" }}
-                                          onClick={() => setHitlRiskLevels({ ...hitlRiskLevels, new_tool: "low" })}>
-                                          + Add Tool
-                                        </button>
-                                      </td>
-                                    </tr>
-                                  </tbody>
-                                </table>
-                              </div>
-
-                              {/* Min Risk for Approval */}
-                              <div>
-                                <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
-                                  Minimum Risk for Approval
-                                  <InfoTooltip text="Sets the threshold. 'High only' means only high-risk tools trigger approval. 'Medium and above' means both medium and high do. 'All' means every tool call needs approval." />
-                                </div>
-                                <select
-                                  style={inputStyle}
-                                  value={hitlMinRisk}
-                                  onChange={(e) => setHitlMinRisk(e.target.value as typeof hitlMinRisk)}
-                                >
-                                  <option value="high">High only — only high-risk tools require approval</option>
-                                  <option value="medium_and_above">Medium and above — medium + high require approval</option>
-                                  <option value="all">All — every tool call requires approval</option>
-                                </select>
-                              </div>
-
-                              {/* SLA */}
-                              <div>
-                                <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
-                                  SLA Timeout (minutes)
-                                  <InfoTooltip text="How long the agent waits for a human to approve before the request expires. After this time, the action is rejected and the agent moves on." />
-                                </div>
-                                <input
-                                  style={{ ...inputStyle, width: 100 }}
-                                  value={hitlTimeoutMinutes}
-                                  onChange={(e) => setHitlTimeoutMinutes(e.target.value)}
-                                />
-                              </div>
-                            </>
-                          )}
-                        </div>
-                        )}
-                      </div>
-
-                      {/* ── RAG (only shown when agent type has RAG built in) ── */}
-                      {templateManifest?.rag_dimension2 && (
-                      <div>
-                        <strong style={{ fontSize: 14 }}>RAG — Dimension 1 (Search Method)</strong>
-                        <div style={{ marginTop: 8, display: "grid", gap: 8 }}>
-                          <label>
-                            <input
-                              type="checkbox"
-                              checked={localRagEnabled}
-                              onChange={(e) => setLocalRagEnabled(e.target.checked)}
-                            />{" "}
-                            Enable RAG
-                          </label>
-
-                          {localRagEnabled && (() => {
-                            const retrievalTools = availableTools.filter((t) => !!t.db_type && selectedTools.includes(t.name))
-                            return (
-                              <div style={{ display: "grid", gap: 10, paddingTop: 4 }}>
-                                {retrievalTools.length === 0 ? (
-                                  <div style={{ fontSize: 12, color: "#6b7280" }}>
-                                    No retrieval tools selected above. Enable a KB tool (e.g. search_kb) to configure RAG.
-                                  </div>
-                                ) : (
-                                  <>
-                                    <div>
-                                      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6, color: "#374151" }}>
-                                        Knowledge Bases (from selected tools)
-                                      </div>
-                                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                                        <thead>
-                                          <tr style={{ background: "#f3f4f6" }}>
-                                            <th style={{ padding: "6px 8px", textAlign: "left", border: "1px solid #e5e7eb" }}>Tool / KB</th>
-                                            <th style={{ padding: "6px 8px", textAlign: "left", border: "1px solid #e5e7eb" }}>DB Type</th>
-                                            <th style={{ padding: "6px 8px", textAlign: "left", border: "1px solid #e5e7eb" }}>Search Strategy</th>
-                                            <th style={{ padding: "6px 8px", textAlign: "center", border: "1px solid #e5e7eb" }}>Default</th>
-                                          </tr>
-                                        </thead>
-                                        <tbody>
-                                          {retrievalTools.map((tool) => (
-                                            <tr key={tool.name}>
-                                              <td style={{ padding: "6px 8px", border: "1px solid #e5e7eb", fontWeight: 600 }}>{tool.name}</td>
-                                              <td style={{ padding: "6px 8px", border: "1px solid #e5e7eb", color: "#4b5563" }}>{tool.db_type || "—"}</td>
-                                              <td style={{ padding: "6px 8px", border: "1px solid #e5e7eb" }}>
-                                                <span style={{
-                                                  background: "#eff6ff",
-                                                  color: "#1d4ed8",
-                                                  borderRadius: 4,
-                                                  padding: "2px 6px",
-                                                  fontSize: 12,
-                                                  fontWeight: 600,
-                                                }}>
-                                                  {tool.strategy || "semantic"}
-                                                </span>
-                                              </td>
-                                              <td style={{ padding: "6px 8px", border: "1px solid #e5e7eb", textAlign: "center" }}>
-                                                <input
-                                                  type="radio"
-                                                  name="ragDefaultTool"
-                                                  checked={localRagDefaultTool === tool.name}
-                                                  onChange={() => setLocalRagDefaultTool(tool.name)}
-                                                />
-                                              </td>
-                                            </tr>
-                                          ))}
-                                        </tbody>
-                                      </table>
-                                      <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 4 }}>
-                                        Strategy is determined by DB type — one-to-one mapping, auto-populated from tool gateway.
-                                      </div>
-                                    </div>
-
-                                    <div style={compactGrid}>
-                                      <div>
-                                        <label style={labelStyle}>Top K</label>
-                                        <input
-                                          style={inputStyle}
-                                          value={localTopK}
-                                          onChange={(e) => setLocalTopK(e.target.value)}
-                                        />
-                                      </div>
-                                      <div>
-                                        <label style={labelStyle}>Score Threshold</label>
-                                        <input
-                                          style={inputStyle}
-                                          value={localScoreThreshold}
-                                          onChange={(e) => setLocalScoreThreshold(e.target.value)}
-                                        />
-                                      </div>
-                                    </div>
-                                  </>
-                                )}
-                              </div>
-                            )
-                          })()}
-                        </div>
-                      </div>
-                      )}
-                    </div>
-
-                    {showAgentCoreProfile && (
-                      <div style={profileCardStyle(true)}>
-                        <div style={{ marginBottom: 10 }}>
-                          <strong>AgentCore Profile</strong>
-                          <div style={{ fontSize: 12, color: "#4b5563", marginTop: 4 }}>
-                            Teaser only for now.
-                          </div>
-                        </div>
-
-                        <div style={{ marginBottom: 12 }}>
-                          <strong style={{ fontSize: 14 }}>Human Review</strong>
-                          <div style={{ marginTop: 8 }}>
-                            <label>
-                              <input type="checkbox" checked={agentCoreHumanReviewEnabled} readOnly /> Require human review for selected write tools
-                            </label>
-                          </div>
-                        </div>
-
-  
-                        <div>
-                          <strong style={{ fontSize: 14 }}>RAG</strong>
-                          <div style={{ marginTop: 8, display: "grid", gap: 8 }}>
-                            <label>
-                              <input type="checkbox" checked={agentCoreRagEnabled} readOnly /> Enable RAG
-                            </label>
-
-                            {agentCoreRagEnabled && (
-                              <div style={{ display: "grid", gap: 10, paddingTop: 4 }}>
-                                <div style={compactGrid}>
-                                  <div>
-                                    <label style={labelStyle}>Top K</label>
-                                    <input style={readonlyInputStyle} value={agentCoreTopK} readOnly />
-                                  </div>
-                                  <div>
-                                    <label style={labelStyle}>Score Threshold</label>
-                                    <input style={readonlyInputStyle} value={agentCoreScoreThreshold} readOnly />
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div style={sectionStyle}>
-                  <button
-                    onClick={handleManageUsecaseAgent}
-                    style={{
-                      width: "100%",
-                      padding: "14px 18px",
-                      borderRadius: 10,
-                      border: "none",
-                      background: "#2563eb",
-                      color: "white",
-                      fontWeight: 700,
-                      cursor: "pointer",
-                      fontSize: 15,
-                    }}
-                  >
-                    Create Usecase / Agent
-                  </button>
-
-                  <div
-                    style={{
-                      marginTop: 14,
-                      color: message.startsWith("Error") ? "#b91c1c" : "#374151",
-                      fontSize: 14,
-                    }}
-                  >
-                    {message}
-                  </div>
-                </div>
-
-                {result && (
-                  <div style={sectionStyle}>
-                    <h2 style={{ marginTop: 0, marginBottom: 12 }}>Generation Result</h2>
-                    <div><strong>Status:</strong> {result.status}</div>
-                    <div><strong>Capability:</strong> {result.capability_name}</div>
-                    <div><strong>Use Case:</strong> {result.usecase_name}</div>
-                    <div><strong>App Repo:</strong> {result.app_repo_name}</div>
-                    <div><strong>App Reused:</strong> {String(result.app_reused)}</div>
-                    <div><strong>App Created:</strong> {String(result.app_created)}</div>
-
-                    <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid #e5e7eb" }}>
-                      <div><strong>Workspace Ready:</strong> {String(result.workspace?.ok)}</div>
-                      <div><strong>Tool Gateway Ready:</strong> {String(!!result.workspace_urls?.tool_gateway_url)}</div>
-                      <div><strong>Agent Runtime Ready:</strong> {String(!!result.workspace_urls?.agent_runtime_url)}</div>
-                      <div><strong>App UI Ready:</strong> {String(!!result.workspace_urls?.app_ui_url)}</div>
-                    </div>
-
-                    <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid #e5e7eb" }}>
-                      <div><strong>App UI:</strong> {result.workspace_urls?.app_ui_url}</div>
-                      <div><strong>Agent Runtime:</strong> {result.workspace_urls?.agent_runtime_url}</div>
-                      <div><strong>Tool Gateway:</strong> {result.workspace_urls?.tool_gateway_url}</div>
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-
-            {factoryMode === "govern_existing" && (
+            {/* Result */}
+            {result && (
               <div style={sectionStyle}>
-                <h2 style={{ marginTop: 0, marginBottom: 12 }}>Governance Actions</h2>
-                <div style={{ fontSize: 13, color: "#4b5563", marginBottom: 14 }}>
-                  Prompt lifecycle and evaluation can be plugged in here later.
-                </div>
-
-                <div style={{ display: "grid", gap: 10 }}>
-                  <button type="button" style={pillButton(false)}>View Prompt Governance</button>
-                  <button type="button" style={pillButton(false)}>Create Prompt Version</button>
-                  <button type="button" style={pillButton(false)}>Run Prompt Evaluation</button>
-                </div>
-
-                <div style={{ marginTop: 14, fontSize: 12, color: "#6b7280" }}>
-                  These actions are placeholders for the next lifecycle step.
-                </div>
+                <h2 style={{ marginTop: 0, marginBottom: 12 }}>Scaffold Result</h2>
+                <div><strong>Status:</strong> {result.status}</div>
+                <div><strong>Capability:</strong> {result.capability_name}</div>
+                <div><strong>Agent:</strong> {result.agent_name}</div>
+                <div><strong>Folder:</strong> {result.agent_repo_name}</div>
+                <div><strong>Path:</strong> {result.agent_repo_url}</div>
+                {result.workspace && (
+                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #e5e7eb" }}>
+                    <div><strong>Workspace:</strong> {result.workspace.status}</div>
+                    <div><strong>Agent Runtime:</strong> {result.workspace.agent_runtime_url}</div>
+                  </div>
+                )}
               </div>
             )}
           </div>
         </div>
-      </div>
+      )}
+
+      {/* ── Configure Agent ── */}
+      {factoryMode === "configure_agent" && (
+        <div style={sectionStyle}>
+          <h2 style={{ marginTop: 0, marginBottom: 16 }}>Configure Agent</h2>
+          <div style={{ ...compactGrid, maxWidth: 600, marginBottom: 20 }}>
+            <div>
+              <label style={labelStyle}>Capability</label>
+              <select style={inputStyle} value={configureCapability} onChange={(e) => { setConfigureCapability(e.target.value); setConfigureAgent("") }}>
+                <option value="">Select capability...</option>
+                {filesystemCapabilities.map((cap) => <option key={cap} value={cap}>{cap}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={labelStyle}>Agent</label>
+              <select style={inputStyle} value={configureAgent} onChange={(e) => setConfigureAgent(e.target.value)} disabled={!configureCapability}>
+                <option value="">Select agent...</option>
+                {filesystemAgents.map((a) => <option key={a} value={a}>{a}</option>)}
+              </select>
+            </div>
+          </div>
+          {configureAgent ? (
+            <div style={{ padding: "14px 16px", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 8, fontSize: 13, color: "#166534" }}>
+              Selected: <strong>{configureCapability} / {configureAgent}</strong> — full config editing is available in Agent Registry.
+            </div>
+          ) : (
+            <div style={{ fontSize: 13, color: "#6b7280" }}>
+              Select a capability and agent to configure. Full config editing (HITL, RAG, memory, prompts) is in the Agent Registry tab.
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
-} 
+}

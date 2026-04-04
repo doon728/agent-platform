@@ -703,8 +703,12 @@ def create_application(payload: dict[str, Any]):
         capability_name = create_cfg.get("capability_name", "care-management")
         usecase_name = create_cfg.get("usecase_name", "cm_assistant")
 
-        if not app_repo_name or not agent_repo_name:
-            return {"ok": False, "error": "Missing repo names"}
+        if not agent_repo_name:
+            return {"ok": False, "error": "Missing agent repo name"}
+
+        # app_repo_name is no longer required — UI is in capabilities/, not generated
+        if not app_repo_name:
+            app_repo_name = agent_repo_name
 
         # ======================================================
         # STRUCTURE: agents/<capability>/<agent-name>/
@@ -807,11 +811,9 @@ def create_application(payload: dict[str, Any]):
             "ok": True,
             "status": "application_generated",
             "capability_name": capability_name,
-            "usecase_name": usecase_name,
-            "app_repo_name": app_repo_name,
-            "app_repo_url": str(app_repo_root),
-            "app_created": app_result.get("app_created"),
-            "app_reused": app_result.get("app_reused"),
+            "agent_name": agent_name,
+            "agent_repo_name": agent_repo_name,
+            "agent_repo_url": str(agent_repo_root),
             "agents": [
                 {
                     "agent_name": agent_name,
@@ -1115,7 +1117,7 @@ def app_start(repo_name: str, port: int = 3000, runtime_url: str = "http://local
 @app.post("/workspace/start")
 def workspace_start(
     agent_repo: str,
-    app_repo: str,
+    app_repo: str = "",
     runtime_port: int = 8081,
     app_port: int = 3000,
 ):
@@ -1715,3 +1717,26 @@ def get_agent_status():
         })
 
     return {"ok": True, "agents": result}
+
+# =========================================================
+# FILESYSTEM DISCOVERY — reads capabilities/ and agents/ directories
+# =========================================================
+
+@app.get("/filesystem/capabilities")
+def filesystem_capabilities():
+    """List capabilities that developers have created under capabilities/"""
+    caps_root = PLATFORM_ROOT / "capabilities"
+    if not caps_root.exists():
+        return {"ok": True, "capabilities": []}
+    caps = sorted([d.name for d in caps_root.iterdir() if d.is_dir()])
+    return {"ok": True, "capabilities": caps}
+
+
+@app.get("/filesystem/agents")
+def filesystem_agents(capability_name: str):
+    """List agent folders under agents/<capability>/"""
+    agents_dir = AGENTS_ROOT / capability_name
+    if not agents_dir.exists():
+        return {"ok": True, "agents": []}
+    agents = sorted([d.name for d in agents_dir.iterdir() if d.is_dir()])
+    return {"ok": True, "agents": agents}
