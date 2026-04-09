@@ -752,73 +752,94 @@ Status key: ✅ Done | ⚠ Partial / Limitation | 🔲 Not Started
 
    **Step-by-step breakdown per strategy — LLM calls vs tool execution:**
 
+   > **Scope:** all steps below are **in-graph only** — the planner loop. Pre-graph (RAG retrieval before graph runs) and post-graph (memory writes after graph finishes) are outside this entirely and do not change per strategy.
+   >
+   > **"Internal state"** = no LLM call, no tool call. The graph stores the previous step's output into LangGraph state so the next node can read it. Pure data passing — zero cost.
+   >
+   > Every step is exactly one of three things: **LLM call**, **Tool execution**, or **Internal state**.
+
    **`simple`** — 2 LLM calls, 1 tool call
-   | Step | Term | Type |
-   |---|---|---|
-   | 1 | **Plan** — pick one tool | LLM — planner |
-   | 2 | **Act** — run the tool | Tool execution |
-   | 3 | **Respond** — generate answer from tool output | LLM — responder |
+   | Step | Term | Type | What happens | Internal state detail |
+   |---|---|---|---|---|
+   | 1 | **Plan** | LLM — planner | picks one tool and argument | — |
+   | 2 | **Act** | Tool execution | runs the tool | — |
+   | 3 | **Respond** | LLM — responder | generates answer from tool output | — |
+
+   **Prompt needed:** `planner_system_prompt` — "pick exactly one tool, return tool name and argument. No thought field needed."
+
+   **Rule:** CoT-style prompt is wasted on `simple` — the graph has no `thought` field. Do not use a Thought/Action format here.
+
+   ---
 
    **`react`** — 2+ LLM calls per loop iteration, 1 tool call per iteration
-   | Step | Term | Type |
-   |---|---|---|
-   | 1 | **Think** — reason about what to do next, pick tool | LLM — react planner |
-   | 2 | **Act** — run the tool | Tool execution |
-   | 3 | **Observe** — store tool output, feed into next step | Internal state |
-   | 4 | **Think** — reason again with observation in context | LLM — react planner ← loop |
-   | 5 | **Act** — run next tool | Tool execution ← loop |
-   | 6 | **Observe** — store output | Internal state ← loop |
-   | ... | repeats until DONE or max_steps | |
-   | N | **Respond** — only if max_steps hit. If DONE, Think step carries the answer directly | LLM — responder |
+   | Step | Term | Type | What happens | Internal state detail |
+   |---|---|---|---|---|
+   | 1 | **Think** | LLM — react planner | reasons about what to do next, outputs Thought + Action | — |
+   | 2 | **Act** | Tool execution | runs the chosen tool | — |
+   | 3 | **Observe** | Internal state | stores tool output | graph writes `observation` field into state so next Think sees it in context |
+   | 4→ | **Think** | LLM — react planner ← loop | reasons again with observation in context | — |
+   | 5→ | **Act** | Tool execution ← loop | runs next tool | — |
+   | 6→ | **Observe** | Internal state ← loop | stores output | same as step 3 |
+   | ... | repeats until DONE signal or max_steps | | | |
+   | N | **Respond** | LLM — responder | only triggered if max_steps hit. If DONE signal: Think carries the answer directly, no separate Respond call | — |
+
+   **Prompt needed:** `react_planner_system_prompt` — must instruct `Thought: <reasoning> / Action: <tool>(<arg>)` format. Loop continues until LLM outputs `DONE` in Thought.
+
+   ---
 
    **`plan_execute`** — 2 LLM calls total regardless of tool count
-   | Step | Term | Type |
-   |---|---|---|
-   | 1 | **Plan** — decide ALL tools and order upfront in one shot | LLM — planner |
-   | 2 | **Act** — run tool 1 | Tool execution |
-   | 3 | **Act** — run tool 2 | Tool execution ← no LLM between acts |
-   | ... | **Act** — run remaining tools in planned order | Tool execution |
-   | N | **Respond** — synthesize all tool outputs | LLM — responder |
+   | Step | Term | Type | What happens | Internal state detail |
+   |---|---|---|---|---|
+   | 1 | **Plan** | LLM — planner | decides ALL tools and order upfront in one shot | — |
+   | 2 | **Observe** | Internal state | stores the plan as ordered list | graph writes `plan: [{tool, arg}, ...]` into state |
+   | 3 | **Act ×N** | Tool execution | runs each tool in planned order — no LLM between acts | — |
+   | 4 | **Observe ×N** | Internal state | stores each tool output | graph appends each result to `results[]` in state |
+   | N | **Respond** | LLM — responder | synthesizes all tool outputs into final answer | — |
 
-   **`multi_hop`** — 3+ LLM calls
-   | Step | Term | Type |
-   |---|---|---|
-   | 1 | **Decompose** — break question into sub-questions | LLM — decomposer |
-   | 2 | **Plan** — pick tool for sub-question 1 | LLM — sub-planner |
-   | 3 | **Act** — run tool for sub-question 1 | Tool execution |
-   | 4 | **Observe** — store sub-answer 1 | Internal state |
-   | 5 | **Plan** — pick tool for sub-question 2 | LLM — sub-planner ← loop per sub-question |
-   | 6 | **Act** — run tool for sub-question 2 | Tool execution ← loop |
-   | 7 | **Observe** — store sub-answer 2 | Internal state ← loop |
-   | ... | repeats per sub-question | |
-   | N | **Synthesize** — combine all sub-answers into one coherent response | LLM — synthesizer |
+   **Prompt needed:** `plan_execute_planner_system_prompt` — "output a full ordered plan as a JSON list before executing anything. Format: [{tool, argument}, ...]"
 
-   **`reflection`** — 3–5 LLM calls
-   | Step | Term | Type |
-   |---|---|---|
-   | 1 | **Plan** — pick tool | LLM — planner |
-   | 2 | **Act** — run the tool | Tool execution |
-   | 3 | **Observe** — store tool output | Internal state |
-   | 4 | **Respond** — generate answer | LLM — responder |
-   | 5 | **Reflect** — critique the reasoning and answer — was the approach correct? | LLM — reflector |
-   | 6 | **Plan** — re-plan based on reflection ← only if reflection found issues | LLM — planner |
-   | 7 | **Act** — run tool again | Tool execution ← only if re-plan triggered |
-   | 8 | **Respond** — final answer | LLM — responder |
+   ---
 
-   **`tree_of_thought`** — most LLM calls, highest cost
-   | Step | Term | Type |
-   |---|---|---|
-   | 1 | **Branch** — generate N different reasoning approaches in parallel | LLM — branch generator |
-   | 2 | **Evaluate** — score each branch, pick the best one | LLM — evaluator |
-   | 3 | **Act** — run tool for winning branch | Tool execution |
-   | 4 | **Observe** — store tool output | Internal state |
-   | 5 | **Respond** — generate final answer | LLM — responder |
+   **`multi_hop`** — 3+ LLM calls (roadmap)
+   | Step | Term | Type | What happens | Internal state detail |
+   |---|---|---|---|---|
+   | 1 | **Decompose** | LLM — decomposer | breaks question into N sub-questions | — |
+   | 2 | **Observe** | Internal state | stores sub-question list | graph writes `sub_questions: [...]` into state |
+   | 3 | **Plan** | LLM — sub-planner ← loop per sub-question | picks tool for sub-question 1 | — |
+   | 4 | **Act** | Tool execution ← loop | runs tool for sub-question 1 | — |
+   | 5 | **Observe** | Internal state ← loop | stores sub-answer 1 | graph appends `{question, answer}` to `sub_answers[]` |
+   | ... | repeats steps 3–5 per sub-question | | | |
+   | N | **Synthesize** | LLM — synthesizer | combines all sub-answers into one coherent response | reads full `sub_answers[]` from state |
+
+   **Prompts needed:** `decomposer_system_prompt` + `sub_planner_system_prompt` + `synthesizer_system_prompt` — three distinct prompts, each for a different LLM role in the graph.
+
+   ---
+
+   **`reflection`** — 3–5 LLM calls (roadmap)
+   | Step | Term | Type | What happens | Internal state detail |
+   |---|---|---|---|---|
+   | 1 | **Plan** | LLM — planner | picks tool | — |
+   | 2 | **Act** | Tool execution | runs it | — |
+   | 3 | **Observe** | Internal state | stores tool output | graph writes `tool_output` into state |
+   | 4 | **Respond** | LLM — responder | generates answer | — |
+   | 5 | **Reflect** | LLM — reflector | critiques: was the approach right? Was anything missed? | reads both `tool_output` and `answer` from state |
+   | 6 | **Plan** (conditional) | LLM — planner | re-plans only if reflection found issues | reads `reflection` from state |
+   | 7 | **Act** (conditional) | Tool execution | re-runs only if re-plan triggered | — |
+   | 8 | **Respond** (final) | LLM — responder | final answer | — |
+
+   **Prompts needed:** `planner_system_prompt` + `responder_system_prompt` + `reflector_system_prompt` — reflector prompt must say "critique the reasoning and answer. Identify gaps or errors. Output: {issues_found: bool, critique: str, suggested_correction: str}"
+
+   ---
 
    **`self_corrective` post-processing** — appended as last steps to any strategy above
-   | Step | Term | Type |
-   |---|---|---|
-   | +1 | **Grade** — score answer quality against tool output (0.0–1.0) | LLM — grader |
-   | +2 | **Retry** — re-run Respond with grader feedback injected ← only if score < threshold | LLM — responder |
+   | Step | Term | Type | What happens | Internal state detail |
+   |---|---|---|---|---|
+   | +1 | **Grade** | LLM — grader | scores answer quality 0.0–1.0 against tool output | reads `answer` and `tool_output` from state |
+   | +2 | **Retry** (conditional) | LLM — responder | re-runs Respond with grader feedback injected ← only if score < threshold | reads `grade` and `grader_feedback` from state |
+
+   **Prompt needed:** `grader_system_prompt` — "score this answer 0.0–1.0 for groundedness and completeness against the tool output. Output: {score: float, feedback: str}"
+
+   > **UI — help panel:** Agent Registry → Overview tab should display the active strategy's step table (read from `reasoning.strategy` in agent config). When an admin hovers the strategy name, the help panel shows: graph shape, step-by-step breakdown, which prompts are required, and cost profile. This is the same contextual help pattern used in Memory and RAG tabs.
 
    **Cost summary:**
    | Strategy | Min LLM calls | Tool calls | Notes |
