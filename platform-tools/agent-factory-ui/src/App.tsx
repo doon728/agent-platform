@@ -16,10 +16,12 @@ import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline"
 import AccountTreeIcon from "@mui/icons-material/AccountTree"
 import TuneIcon from "@mui/icons-material/Tune"
 import DesktopWindowsIcon from "@mui/icons-material/DesktopWindows"
+import SchemaIcon from "@mui/icons-material/Schema"
 import ApplicationForm from "./components/ApplicationForm"
 import PromptLifecycle from "./pages/PromptLifecycle"
 import AgentRegistry from "./pages/AgentRegistry"
 import Workspaces from "./pages/Workspaces"
+import PipelineBuilder from "./pages/PipelineBuilder"
 
 const DRAWER_WIDTH = 220
 
@@ -34,6 +36,7 @@ const theme = createTheme({
 
 const NAV_ITEMS = [
   { label: "Create Agent", icon: <AddCircleOutlineIcon />, path: "/" },
+  { label: "Pipeline Builder", icon: <SchemaIcon />, path: "/pipeline" },
   { label: "Agent Registry", icon: <AccountTreeIcon />, path: "/registry" },
   { label: "Prompt Governance", icon: <TuneIcon />, path: "/prompts" },
   { label: "Workspaces", icon: <DesktopWindowsIcon />, path: "/workspaces" },
@@ -107,6 +110,7 @@ function Layout() {
       <Box component="main" sx={{ flexGrow: 1, bgcolor: "background.default", minHeight: "100vh", overflow: "auto" }}>
         <Routes>
           <Route path="/" element={<ApplicationForm />} />
+          <Route path="/pipeline" element={<PipelineBuilder />} />
           <Route path="/registry" element={<AgentRegistry />} />
           <Route path="/prompts" element={<PromptLifecycle />} />
           <Route path="/workspaces" element={<Workspaces />} />

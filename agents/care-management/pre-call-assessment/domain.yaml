@@ -14,6 +14,32 @@ domains:
   - id: utilization
     description: Utilization monitoring and intervention
 
+scopes:
+  - name: member
+    id_field: member_id
+    parent: null
+    summary_tools:
+      - tool: get_member
+        arg_field: member_id
+      - tool: get_member_summary
+        arg_field: member_id
+  - name: case
+    id_field: case_id
+    parent: member
+    summary_tools:
+      - tool: get_member
+        arg_field: member_id
+      - tool: get_member_summary
+        arg_field: member_id
+  - name: assessment
+    id_field: assessment_id
+    parent: case
+    summary_tools:
+      - tool: get_assessment_summary
+        arg_field: assessment_id
+      - tool: get_assessment_tasks
+        arg_field: assessment_id
+
 agents:
   - name: pre-call-assessment
     standalone: true

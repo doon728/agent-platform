@@ -7,18 +7,18 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
 
-from src.platform.config import load_config
-from src.platform.usecase_config_loader import load_agent_config
-from src.platform.context import build_context
-from src.platform.auth import authenticate_request
-from src.platform.authorization import enforce_tenant_isolation
-from src.platform.tools.bootstrap import register_tools
-from src.platform.tools.discovery import load_tools_from_gateway
-from src.platform.tools.registry import registry
-from src.platform.observability.tracer import list_traces
-from src.platform.usecase_contract import execute
-from src.platform.hitl import approval_store
-from src.platform.hitl.memory_writer import write_hitl_decision, write_hitl_tool_executed
+from platform_core.config import load_config
+from platform_core.usecase_config_loader import load_agent_config
+from platform_core.context import build_context
+from platform_core.auth import authenticate_request
+from platform_core.authorization import enforce_tenant_isolation
+from platform_core.tools.bootstrap import register_tools
+from platform_core.tools.discovery import load_tools_from_gateway
+from platform_core.tools.registry import registry
+from platform_core.observability.tracer import list_traces
+from platform_core.usecase_contract import execute
+from platform_core.hitl import approval_store
+from platform_core.hitl.memory_writer import write_hitl_decision, write_hitl_tool_executed
 
 load_dotenv()
 
@@ -40,6 +40,23 @@ app = FastAPI(title="Agent Runtime", version="v1")
 @app.get("/health")
 def health() -> dict:
     return {"ok": True, "service": "agent-runtime", "version": "v1"}
+
+
+@app.get("/config/scopes")
+def config_scopes() -> dict:
+    """Return scope definitions from domain.yaml. Generic UI uses this to render context input fields."""
+    from platform_core.usecase_config_loader import load_domain_config
+    domain = load_domain_config()
+    scopes = domain.get("scopes") or []
+    return {
+        "ok": True,
+        "capability": domain.get("capability"),
+        "capability_name": domain.get("name"),
+        "scopes": [
+            {"name": s.get("name"), "id_field": s.get("id_field"), "parent": s.get("parent")}
+            for s in scopes
+        ],
+    }
 
 
 @app.get("/config-flags")
@@ -84,9 +101,9 @@ async def debug_memory(request: Request) -> JSONResponse:
     cfg = load_config()
     usecase_cfg = load_agent_config(cfg.prompt_service.agent_type)
 
-    from src.platform.memory.config_loader import load_memory_config
-    from src.platform.memory.scope_resolver import resolve_scopes
-    from src.platform.memory.context_builder import build_memory_context
+    from platform_core.memory.config_loader import load_memory_config
+    from platform_core.memory.scope_resolver import resolve_scopes
+    from platform_core.memory.context_builder import build_memory_context
 
     memory_cfg = load_memory_config(usecase_cfg)
     scopes = resolve_scopes(ctx, memory_cfg)
@@ -110,32 +127,36 @@ async def debug_memory(request: Request) -> JSONResponse:
 
 
 def hydrate_active_domain_context(ctx: dict) -> dict:
-    assessment_id = ctx.get("assessment_id")
-    if assessment_id:
+    """Patch missing scope IDs into ctx by reading recent thread history.
+    Reads id_fields from domain.yaml — no hardcoded scope names."""
+    from platform_core.usecase_config_loader import load_domain_config
+
+    domain = load_domain_config()
+    scopes = domain.get("scopes") or []
+
+    # Check if all scope IDs are already present
+    if scopes and all(ctx.get(s.get("id_field") or "") for s in scopes):
         return ctx
 
     thread_id = ctx.get("thread_id")
     tenant_id = ctx.get("tenant_id") or "default-tenant"
-
-    if not thread_id:
+    if not thread_id or not scopes:
         return ctx
 
     try:
-        from src.platform.memory.memory_store import FileMemoryStore
+        from platform_core.memory.backend_factory import get_backend
+        store = get_backend({})
+        recent = store.list_recent_turns(tenant_id=tenant_id, thread_id=thread_id, max_turns=12)
 
-        store = FileMemoryStore()
-        recent = store.list_recent_turns(
-            tenant_id=tenant_id,
-            thread_id=thread_id,
-            max_turns=12,
-        )
-
-        for record in reversed(recent):
-            metadata = record.get("metadata") or {}
-            candidate = metadata.get("assessment_id")
-            if candidate:
-                ctx["assessment_id"] = candidate
-                break
+        for scope in scopes:
+            id_field = scope.get("id_field") or ""
+            if not id_field or ctx.get(id_field):
+                continue
+            for record in reversed(recent):
+                candidate = (record.get("metadata") or {}).get(id_field)
+                if candidate:
+                    ctx[id_field] = candidate
+                    break
     except Exception:
         pass
 
@@ -241,8 +262,8 @@ async def summarize_scope(request: Request) -> JSONResponse:
 
     CACHE_TTL_SECONDS = 1800  # 30 minutes
 
-    from src.platform.memory.memory_store import FileMemoryStore
-    store = FileMemoryStore()
+    from platform_core.memory.backend_factory import get_backend
+    store = get_backend({})
 
     # Check cache
     if not force_refresh:

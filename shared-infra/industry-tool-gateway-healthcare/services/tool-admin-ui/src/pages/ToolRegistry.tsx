@@ -136,8 +136,12 @@ export default function ToolRegistry() {
         setReminderTool({ name: payload.name, isNew })
       }
     } catch (e: unknown) {
-      const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
-      setFormError(msg ?? "Save failed")
+      const data = (e as any)?.response?.data
+      const msg = data?.error
+        ?? (Array.isArray(data?.detail) ? data.detail[0]?.msg : data?.detail)
+        ?? (e as any)?.message
+        ?? "Save failed"
+      setFormError(msg)
     } finally {
       setSaving(false)
     }
@@ -156,8 +160,12 @@ export default function ToolRegistry() {
   }
 
   const handleToggleEnabled = async (tool: Tool) => {
-    await updateTool(tool.name, { enabled: !tool.enabled })
-    await load()
+    try {
+      await updateTool(tool.name, { enabled: !tool.enabled })
+      await load()
+    } catch {
+      setError(`Failed to toggle ${tool.name}`)
+    }
   }
 
   return (
@@ -305,7 +313,15 @@ export default function ToolRegistry() {
               />
               <FormControl size="small" sx={{ minWidth: 120 }}>
                 <InputLabel>Mode</InputLabel>
-                <Select value={form.mode} label="Mode" onChange={e => setForm(f => ({ ...f, mode: e.target.value }))}>
+                <Select value={form.mode} label="Mode" onChange={e => {
+                  const mode = e.target.value
+                  setForm(f => ({
+                    ...f,
+                    mode,
+                    db_type: mode === "write" && (f.db_type === "vector_db" || f.db_type === "graph_db") ? null : f.db_type,
+                    strategy: mode === "write" ? null : f.strategy,
+                  }))
+                }}>
                   <MenuItem value="read">read</MenuItem>
                   <MenuItem value="write">write</MenuItem>
                 </Select>
@@ -364,33 +380,49 @@ export default function ToolRegistry() {
               </Select>
             </FormControl>
 
-            <Stack direction="row" spacing={2}>
-              <FormControl size="small" sx={{ minWidth: 140 }}>
-                <InputLabel>DB Type</InputLabel>
-                <Select
-                  value={form.db_type ?? ""}
-                  label="DB Type"
-                  onChange={e => setForm(f => ({ ...f, db_type: e.target.value || null }))}
-                >
-                  <MenuItem value="">(none)</MenuItem>
-                  <MenuItem value="vector_db">vector_db</MenuItem>
-                  <MenuItem value="relational">relational</MenuItem>
-                  <MenuItem value="graph_db">graph_db</MenuItem>
-                </Select>
-              </FormControl>
-              <FormControl size="small" sx={{ minWidth: 140 }}>
-                <InputLabel>Strategy</InputLabel>
-                <Select
-                  value={form.strategy ?? ""}
-                  label="Strategy"
-                  onChange={e => setForm(f => ({ ...f, strategy: e.target.value || null }))}
-                >
-                  <MenuItem value="">(none)</MenuItem>
-                  <MenuItem value="semantic">semantic</MenuItem>
-                  <MenuItem value="hybrid">hybrid</MenuItem>
-                  <MenuItem value="keyword">keyword</MenuItem>
-                </Select>
-              </FormControl>
+            <Stack direction="column" spacing={1}>
+              <Stack direction="row" spacing={2} alignItems="center">
+                <FormControl size="small" sx={{ minWidth: 140 }}>
+                  <InputLabel>DB Type</InputLabel>
+                  <Select
+                    value={form.db_type ?? ""}
+                    label="DB Type"
+                    onChange={e => {
+                      const val = e.target.value || null
+                      setForm(f => ({ ...f, db_type: val, strategy: val === "vector_db" ? f.strategy : null }))
+                    }}
+                  >
+                    <MenuItem value="">(none)</MenuItem>
+                    <MenuItem value="vector_db" disabled={form.mode === "write"}>vector_db — semantic/vector search (e.g. search_kb)</MenuItem>
+                    <MenuItem value="relational">relational — SQL query tool (e.g. get_member)</MenuItem>
+                    <MenuItem value="graph_db" disabled={form.mode === "write"}>graph_db — graph traversal query</MenuItem>
+                  </Select>
+                </FormControl>
+                {form.db_type === "vector_db" ? (
+                  <FormControl size="small" sx={{ minWidth: 140 }}>
+                    <InputLabel>Strategy</InputLabel>
+                    <Select
+                      value={form.strategy ?? ""}
+                      label="Strategy"
+                      onChange={e => setForm(f => ({ ...f, strategy: e.target.value || null }))}
+                    >
+                      <MenuItem value="">(none)</MenuItem>
+                      <MenuItem value="semantic">semantic</MenuItem>
+                      <MenuItem value="hybrid">hybrid</MenuItem>
+                      <MenuItem value="keyword">keyword</MenuItem>
+                    </Select>
+                  </FormControl>
+                ) : (
+                  <Typography variant="caption" color="text.disabled" sx={{ fontStyle: "italic" }}>
+                    Strategy only applies to vector_db
+                  </Typography>
+                )}
+              </Stack>
+              {form.mode === "write" && (form.db_type === "vector_db" || form.db_type === "graph_db") && (
+                <Typography variant="caption" color="warning.main">
+                  ⚠ {form.db_type} is not valid for write-mode tools — the gateway does not write to search databases. Use relational.
+                </Typography>
+              )}
             </Stack>
 
             <TextField
@@ -431,12 +463,11 @@ export default function ToolRegistry() {
       {/* Developer Action Reminder */}
       <Dialog open={!!reminderTool} onClose={() => setReminderTool(null)} maxWidth="sm" fullWidth>
         <DialogTitle>
-          Tool {reminderTool?.isNew ? "registered" : "updated"} — developer action required
+          Tool {reminderTool?.isNew ? "registered" : "updated"} — save successful ✓
         </DialogTitle>
         <DialogContent dividers>
-          <Alert severity="info" sx={{ mb: 2 }}>
-            <b>{reminderTool?.name}</b> uses a dev endpoint (localhost/internal).
-            The following steps are needed before agents can invoke it.
+          <Alert severity="success" sx={{ mb: 2 }}>
+            <b>{reminderTool?.name}</b> was saved. Since it uses a dev endpoint (localhost/internal), these one-time setup steps are needed if not already done.
           </Alert>
           <List dense disablePadding>
             {reminderTool?.isNew && (
@@ -467,7 +498,7 @@ export default function ToolRegistry() {
             <ListItem disableGutters>
               <ListItemIcon sx={{ minWidth: 32 }}><CheckBoxOutlineBlankIcon fontSize="small" /></ListItemIcon>
               <ListItemText
-                primary="Restart the gateway"
+                primary="Restart the gateway (only if handler code changed)"
                 secondary="docker compose restart tool-gateway"
               />
             </ListItem>

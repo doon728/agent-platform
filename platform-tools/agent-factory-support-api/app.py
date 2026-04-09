@@ -304,18 +304,27 @@ def materialize_usecase_pack(
         },
     }
 
+    # Build generic prompts from capability + tool names — no hardcoded domain language
+    tool_list = ", ".join(allowed_tools) if allowed_tools else "search_kb"
+    capability_label = capability_name.replace("-", " ").title()
+    persona_label = create_cfg.get("persona", "assistant").replace("_", " ")
+
     prompt_defaults_yaml = {
         "planner_system_prompt": prompts_cfg.get("planner_system_prompt")
         or (
-            "You are a care management planner.\n"
-            "Use get_member_summary for member ids like m-100001.\n"
-            "Use get_assessment_summary only for assessment ids like asmt-100001.\n"
-            "If no direct member or assessment lookup fits, use search_kb."
+            f"You are a {capability_label} planning agent acting as a {persona_label}.\n"
+            f"Your job is to decide which tool to call based on the user's message and the active context.\n"
+            f"Available tools: {tool_list}.\n"
+            f"Hard routing rules are defined in agent.yaml under hard_routes — follow those first.\n"
+            f"If no hard route matches, use your best judgment based on tool descriptions.\n"
+            f"Use the search tool for knowledge base questions. Return exactly one tool call."
         ),
         "responder_system_prompt": prompts_cfg.get("responder_system_prompt")
         or (
-            "You are a care management nurse assistant.\n"
-            "Answer clearly and briefly using tool output only."
+            f"You are a {capability_label} {persona_label}.\n"
+            f"Answer using only the information from the tool output provided.\n"
+            f"Be concise and relevant. Use bullet points where appropriate.\n"
+            f"Do not invent facts. If the tool output is insufficient, say so clearly."
         ),
     }
 
@@ -724,12 +733,13 @@ def create_application(payload: dict[str, Any]):
         if not agent_copy["ok"]:
             return agent_copy
 
-        # ---------- copy platform runtime ----------
-        platform_copy = copy_platform_assets_into_agent_repo(agent_repo_root)
-        if not platform_copy["ok"]:
-            shutil.rmtree(agent_repo_root, ignore_errors=True)
-            return platform_copy
-
+        # ---------- copy domain.yaml from capability ----------
+        domain_src = PLATFORM_ROOT / "capabilities" / capability_name / "domain.yaml"
+        if domain_src.exists():
+            shutil.copy2(domain_src, agent_repo_root / "domain.yaml")
+            print(f"[scaffold] copied domain.yaml from {domain_src}", flush=True)
+        else:
+            print(f"[scaffold] no domain.yaml found at {domain_src} — agent will run without domain scope", flush=True)
 
         materialize_usecase_pack(
             repo_root=agent_repo_root,

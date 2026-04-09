@@ -42,6 +42,23 @@ def health() -> dict:
     return {"ok": True, "service": "agent-runtime", "version": "v1"}
 
 
+@app.get("/config/scopes")
+def config_scopes() -> dict:
+    """Return scope definitions from domain.yaml. Generic UI uses this to render context input fields."""
+    from src.platform.usecase_config_loader import load_domain_config
+    domain = load_domain_config()
+    scopes = domain.get("scopes") or []
+    return {
+        "ok": True,
+        "capability": domain.get("capability"),
+        "capability_name": domain.get("name"),
+        "scopes": [
+            {"name": s.get("name"), "id_field": s.get("id_field"), "parent": s.get("parent")}
+            for s in scopes
+        ],
+    }
+
+
 @app.get("/config-flags")
 def config_flags() -> dict:
     """Return feature flags derived from the agent config. Used by the UI to lock/unlock toggles."""
@@ -110,32 +127,36 @@ async def debug_memory(request: Request) -> JSONResponse:
 
 
 def hydrate_active_domain_context(ctx: dict) -> dict:
-    assessment_id = ctx.get("assessment_id")
-    if assessment_id:
+    """Patch missing scope IDs into ctx by reading recent thread history.
+    Reads id_fields from domain.yaml — no hardcoded scope names."""
+    from src.platform.usecase_config_loader import load_domain_config
+
+    domain = load_domain_config()
+    scopes = domain.get("scopes") or []
+
+    # Check if all scope IDs are already present
+    if scopes and all(ctx.get(s.get("id_field") or "") for s in scopes):
         return ctx
 
     thread_id = ctx.get("thread_id")
     tenant_id = ctx.get("tenant_id") or "default-tenant"
-
-    if not thread_id:
+    if not thread_id or not scopes:
         return ctx
 
     try:
         from src.platform.memory.memory_store import FileMemoryStore
-
         store = FileMemoryStore()
-        recent = store.list_recent_turns(
-            tenant_id=tenant_id,
-            thread_id=thread_id,
-            max_turns=12,
-        )
+        recent = store.list_recent_turns(tenant_id=tenant_id, thread_id=thread_id, max_turns=12)
 
-        for record in reversed(recent):
-            metadata = record.get("metadata") or {}
-            candidate = metadata.get("assessment_id")
-            if candidate:
-                ctx["assessment_id"] = candidate
-                break
+        for scope in scopes:
+            id_field = scope.get("id_field") or ""
+            if not id_field or ctx.get(id_field):
+                continue
+            for record in reversed(recent):
+                candidate = (record.get("metadata") or {}).get(id_field)
+                if candidate:
+                    ctx[id_field] = candidate
+                    break
     except Exception:
         pass
 

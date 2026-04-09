@@ -1,25 +1,12 @@
 [
   {
     "capability_name": "care-management",
-    "usecase_name": "__capability__",
-    "agent_type": "__app__",
-    "app_name": "CM hero Fl APP",
-    "app_repo_name": "cm-hero-fl-app",
-    "agent_name": "",
-    "agent_repo_name": "",
-    "components": {},
-    "prompt_types": [],
-    "features": {},
-    "default_model": ""
-  },
-  {
-    "capability_name": "care-management",
-    "usecase_name": "UC_PreCall_Assess",
+    "usecase_name": "pre-call-assessment",
     "agent_type": "chat_agent",
-    "app_name": "CM hero Fl APP",
-    "app_repo_name": "cm-hero-fl-app",
-    "agent_name": "CM-chat-buddy-Assess",
-    "agent_repo_name": "cm-chat-buddy-assess",
+    "app_name": "Pre-Call Assessment",
+    "app_repo_name": "",
+    "agent_name": "Pre-Call Assessment",
+    "agent_repo_name": "pre-call-assessment",
     "components": {
       "planner": true,
       "responder": true,
@@ -41,12 +28,12 @@
   },
   {
     "capability_name": "care-management",
-    "usecase_name": "UC_PreCall_Assess",
+    "usecase_name": "pre-call-assessment",
     "agent_type": "summary_agent",
-    "app_name": "CM hero Fl APP",
-    "app_repo_name": "cm-hero-fl-app",
-    "agent_name": "CM-summary-buddy-Assess",
-    "agent_repo_name": "cm-chat-buddy-assess",
+    "app_name": "Pre-Call Assessment",
+    "app_repo_name": "",
+    "agent_name": "Pre-Call Assessment Summary",
+    "agent_repo_name": "pre-call-assessment",
     "components": {
       "planner": false,
       "responder": true,
@@ -63,7 +50,38 @@
       "observability": true,
       "prompt_versioning": true
     },
-    "locked_features": ["hitl", "memory", "rag"],
+    "locked_features": [
+      "hitl",
+      "memory",
+      "rag"
+    ],
     "default_model": "gpt-4o-mini"
+  },
+  {
+    "capability_name": "care-management",
+    "usecase_name": "test",
+    "agent_type": "chat_agent",
+    "app_name": "test",
+    "app_repo_name": "test",
+    "agent_name": "test",
+    "agent_repo_name": "test",
+    "components": {
+      "planner": true,
+      "responder": true,
+      "workflow": false,
+      "router": false
+    },
+    "prompt_types": [
+      "planner",
+      "responder"
+    ],
+    "features": {
+      "memory": false,
+      "rag": false,
+      "hitl": false,
+      "observability": true,
+      "prompt_versioning": true
+    },
+    "default_model": "gpt-4o"
   }
 ]

@@ -1,9 +1,12 @@
 {
-  "agent_repo": "pre-call-assessment",
+  "agent_repo": "test",
+  "app_repo": "",
   "status": "running",
   "requested_runtime_port": 8081,
-  "resolved_runtime_port": 8081,
+  "requested_app_port": 3000,
+  "resolved_runtime_port": 8082,
+  "resolved_app_port": 3001,
   "tool_gateway_url": "http://localhost:8080",
-  "agent_runtime_url": "http://localhost:8081",
-  "app_ui_url": "http://localhost:3000"
+  "agent_runtime_url": "http://localhost:8082",
+  "app_ui_url": "http://localhost:3001"
 }

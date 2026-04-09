@@ -62,10 +62,8 @@ function OverviewTab({ agent, manifest }: { agent: AgentRecord; manifest: any })
       <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
         {[
           ["Capability", agent.capability_name],
-          ["Usecase", agent.usecase_name],
-          ["Agent Type", agent.agent_type],
-          ["Agent Repo", agent.agent_repo_name],
-          ["App Repo", agent.app_repo_name],
+          ["Agent", agent.agent_repo_name],
+          ["Overlay", agent.agent_type],
           ["Runtime URL", agent.runtime_url],
         ].map(([label, val]) => (
           <Box key={label}>
@@ -353,18 +351,53 @@ function HitlTab({ config, onSave }: { config: AgentConfig; onSave: (section: st
   )
 }
 
+const MEMORY_TYPES = [
+  { key: "short_term", label: "Short-Term",  description: "Conversation history — written every turn" },
+  { key: "episodic",   label: "Episodic",    description: "Event log — tool calls, assessments, decisions" },
+  { key: "semantic",   label: "Semantic",    description: "Persistent facts — member preferences, diagnoses" },
+  { key: "summary",    label: "Summary",     description: "Conversation summary — written by summary_agent" },
+]
+const MEMORY_BACKENDS   = [
+  { value: "file",      label: "File (local)",  roadmap: false },
+  { value: "s3",        label: "S3",            roadmap: true },
+  { value: "dynamodb",  label: "DynamoDB",      roadmap: true },
+  { value: "redis",     label: "Redis",         roadmap: true },
+]
+const TRUNCATION_OPTS   = ["tail", "head", "smart"]
+const SUMMARY_TRIGGERS  = ["explicit", "turn_count", "token_threshold", "never"]
+const SUMMARY_TRIGGER_LABELS: Record<string, string> = {
+  explicit: "Explicit (manual only)",
+  turn_count: "Turn count threshold",
+  token_threshold: "Token threshold",
+  never: "Never",
+}
+
+const MEMORY_HELP: Record<string, { title: string; body: string; example?: string }> = {
+  read:                  { title: "Read", body: "Controls whether the agent retrieves this memory type at the start of each turn. Disable to stop injecting this memory into context — the data is still stored, just not retrieved.", example: "Disable episodic read on a simple FAQ agent that doesn't need past event history." },
+  write:                 { title: "Write", body: "Controls whether the agent writes to this memory type after each turn or tool call. Fully independent from read — you can read without writing (read-only mode) or write without reading (audit-only mode).", example: "Disable episodic write in a demo environment to keep the store clean." },
+  write_locked:          { title: "Write Locked", body: "Set by the platform based on agent type — not editable. Prevents this agent from ever writing this memory type regardless of other settings.", example: "summary_agent has write_locked=true on episodic and semantic — it can only read them, never write." },
+  backend:               { title: "Backend", body: "Where memory records are stored. 'File' stores JSON files on disk — suitable for dev and single-instance deployments. Cloud backends (S3, DynamoDB, Redis) are roadmap items for production multi-instance deployments." },
+  max_content_tokens:    { title: "Max Content Tokens", body: "Hard cap on the size of a single memory entry at write time. Any content exceeding this limit is truncated before storage. Prevents one large tool result from consuming the entire context budget when retrieved.", example: "get_care_plan returns 2000 tokens. With max 500, only 500 tokens are stored — the rest is cut." },
+  truncation:            { title: "Truncation Strategy", body: "How content is cut when it exceeds max_content_tokens.\n\ntail — keep the first N tokens, cut the end. Fast and cheap. Best for structured data where the key info is at the start.\n\nhead — keep the last N tokens, cut the beginning. Best for conversations where the most recent content matters.\n\nsmart — LLM call to compress the content to fit within budget. Preserves meaning but adds latency and cost." },
+  retain_last_n_turns:   { title: "Retain Last N Turns", body: "How many recent conversation turns to keep in short-term memory. Older turns beyond this window are dropped. Trades full context for token efficiency.", example: "retain_last_n_turns: 12 means the agent sees the last 12 user/assistant exchanges." },
+  write_intermediate:    { title: "Write Intermediate Steps", body: "Write each reasoning loop iteration (thought → tool call → observation) as short-term memory entries. Only relevant for iterative reasoning strategies.\n\nWhen enabled: full reasoning trace is preserved in memory and visible in context for the next turn.\n\nWhen disabled: only the final user/assistant pair is written.", example: "Nurse asks a complex question. ReAct loops 3 times. With this on, all 3 iterations are stored and visible next turn." },
+  write_on_tool_call:    { title: "Write on Tool Call", body: "Automatically write an episodic event after each tool call completes. Creates a permanent record of what the agent did and what the outcome was.", example: "write_case_note executes → episodic entry: 'Tool write_case_note executed. Result: note saved for case C-001.'" },
+  tools_trigger:         { title: "Tools That Trigger Write", body: "Which tool calls produce episodic writes.\n\nWrite tools only — only tools with mode=write (e.g. write_case_note). Read tools (get_member, search_kb) produce no episodic trace.\n\nAll tools — every tool call produces an episodic entry including reads. More complete history, higher storage volume." },
+  dedup:                 { title: "Deduplication", body: "When the semantic engine extracts a fact that already exists for this scope (same fact_type), update it in place instead of creating a duplicate entry.", example: "Turn 3: member prefers Spanish → stored. Turn 8: same fact extracted again → updates existing entry instead of adding a second 'member prefers Spanish'." },
+  summary_trigger:       { title: "Summary Write Trigger", body: "When the summary agent writes a conversation summary.\n\nExplicit — only when manually triggered from the UI.\n\nTurn count — automatically after N turns.\n\nToken threshold — automatically when the short-term store exceeds ~N tokens.\n\nNever — summary writing disabled for this agent." },
+  turn_count_threshold:  { title: "Turn Count Threshold", body: "Number of conversation turns after which a summary is automatically written. Each user+assistant exchange counts as one turn.", example: "threshold: 20 → after 20 exchanges, the summary agent writes a summary of the conversation so far." },
+  token_threshold:       { title: "Token Threshold", body: "Approximate token count at which the short-term store triggers a summary write. Tokens are estimated at 4 characters per token.", example: "threshold: 8000 → when the conversation history exceeds ~8000 tokens, write a summary." },
+}
+
 function MemoryTab({ config, onSave }: { config: AgentConfig; onSave: (section: string, changes: any) => Promise<void> }) {
-  const [memoryCfg, setMemoryCfg] = useState<any>({})
-  const [saving, setSaving] = useState(false)
+  const [memoryCfg, setMemoryCfg]   = useState<any>({})
+  const [saving, setSaving]         = useState(false)
+  const [helpKey, setHelpKey]       = useState<string>("read")
+
+  const reasoningStrategy: string = config.agent?.reasoning?.strategy || "simple"
+  const supportsIntermediate = ["react", "multi_hop"].includes(reasoningStrategy)
 
   useEffect(() => { setMemoryCfg(config.memory || {}) }, [config])
-
-  const setWriteEnabled = (type: string, val: boolean) => {
-    setMemoryCfg((prev: any) => ({
-      ...prev,
-      write_policies: { ...prev.write_policies, [type]: { ...prev.write_policies?.[type], enabled: val } },
-    }))
-  }
 
   const save = async () => {
     setSaving(true)
@@ -372,58 +405,260 @@ function MemoryTab({ config, onSave }: { config: AgentConfig; onSave: (section: 
     setSaving(false)
   }
 
-  const types = ["short_term", "episodic", "semantic", "summary"]
+  const setReadEnabled = (type: string, val: boolean) =>
+    setMemoryCfg((p: any) => ({ ...p, read_policies: { ...(p.read_policies || {}), [type]: { ...(p.read_policies?.[type] || {}), enabled: val } } }))
+
+  const setWriteField = (type: string, field: string, val: any) =>
+    setMemoryCfg((p: any) => ({ ...p, write_policies: { ...(p.write_policies || {}), [type]: { ...(p.write_policies?.[type] || {}), [field]: val } } }))
+
+  const setNestedWriteField = (type: string, parent: string, field: string, val: any) =>
+    setMemoryCfg((p: any) => {
+      const tc = p.write_policies?.[type] || {}
+      return { ...p, write_policies: { ...(p.write_policies || {}), [type]: { ...tc, [parent]: { ...(tc[parent] || {}), [field]: val } } } }
+    })
+
+  const help = (key: string) => ({ onMouseEnter: () => setHelpKey(key), onFocus: () => setHelpKey(key) })
+
+  // Config summary chips
+  const summaryChips = MEMORY_TYPES.map(({ key, label }) => {
+    const r = memoryCfg?.read_policies?.[key]
+    const w = memoryCfg?.write_policies?.[key]
+    const readOn  = r?.enabled !== false
+    const writeOn = !!w?.enabled
+    const locked  = !!w?.write_locked
+    const parts   = [readOn ? "R" : null, locked ? "W🔒" : writeOn ? "W" : null].filter(Boolean)
+    if (!parts.length) return null
+    return { label, text: parts.join("/"), active: readOn || writeOn }
+  }).filter(Boolean)
+
+  const helpContent = MEMORY_HELP[helpKey]
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-      <FormControlLabel
-        control={<Switch checked={!!memoryCfg.enabled} onChange={e => setMemoryCfg({ ...memoryCfg, enabled: e.target.checked })} />}
-        label="Memory Enabled"
-      />
+    <Box sx={{ display: "flex", gap: 3, alignItems: "flex-start" }}>
+      {/* ── Left: config cards ── */}
+      <Box sx={{ flex: 1, display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+        <FormControlLabel
+          control={<Switch checked={!!memoryCfg.enabled} onChange={e => setMemoryCfg({ ...memoryCfg, enabled: e.target.checked })} />}
+          label={<Typography fontWeight={700}>Memory Enabled</Typography>}
+        />
 
-      <Box>
-        <Typography variant="body2" fontWeight={600} sx={{ mb: 1 }}>Write Policies</Typography>
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell>Memory Type</TableCell>
-              <TableCell>Enabled</TableCell>
-              <TableCell>Trigger</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {types.map(type => {
-              const policy = memoryCfg?.write_policies?.[type] || {}
-              return (
-                <TableRow key={type}>
-                  <TableCell sx={{ fontWeight: 500 }}>{type.replace("_", " ")}</TableCell>
-                  <TableCell>
-                    <Switch size="small" checked={!!policy.enabled} onChange={e => setWriteEnabled(type, e.target.checked)} />
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" color="text.secondary">
-                      {Array.isArray(policy.triggers) ? policy.triggers.join(", ") : (policy.trigger || "—")}
-                    </Typography>
-                  </TableCell>
-                </TableRow>
-              )
-            })}
-          </TableBody>
-        </Table>
+        {MEMORY_TYPES.map(({ key, label, description }) => {
+          const rc     = memoryCfg?.read_policies?.[key]  || {}
+          const wc     = memoryCfg?.write_policies?.[key] || {}
+          const locked = !!wc.write_locked
+
+          return (
+            <Paper key={key} variant="outlined" sx={{ borderRadius: 2, overflow: "hidden" }}>
+              {/* Type header */}
+              <Box sx={{ px: 2, py: 1.5, bgcolor: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
+                <Typography fontWeight={700} fontSize={14}>{label}</Typography>
+                <Typography variant="caption" color="text.secondary">{description}</Typography>
+              </Box>
+
+              <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", divide: "vertical" }}>
+                {/* READ section */}
+                <Box sx={{ p: 2, borderRight: "1px solid #e2e8f0" }}>
+                  <Typography fontSize={11} fontWeight={700} color="text.secondary" sx={{ mb: 1.5, textTransform: "uppercase", letterSpacing: 0.5 }}>Read</Typography>
+                  <FormControlLabel
+                    {...help("read")}
+                    control={<Switch size="small" checked={rc.enabled !== false} onChange={e => setReadEnabled(key, e.target.checked)} />}
+                    label={<Typography fontSize={13}>{rc.enabled !== false ? "Enabled" : "Disabled"}</Typography>}
+                  />
+                </Box>
+
+                {/* WRITE section */}
+                <Box sx={{ p: 2 }}>
+                  <Typography fontSize={11} fontWeight={700} color="text.secondary" sx={{ mb: 1.5, textTransform: "uppercase", letterSpacing: 0.5 }}>Write</Typography>
+
+                  {locked ? (
+                    <Tooltip title="Write locked — set by platform based on agent type. Cannot be overridden.">
+                      <Box {...help("write_locked")} sx={{ display: "flex", alignItems: "center", gap: 0.5, color: "#94a3b8", cursor: "default", width: "fit-content" }}>
+                        <LockIcon sx={{ fontSize: 14 }} />
+                        <Typography fontSize={13} color="#94a3b8">Locked by platform</Typography>
+                      </Box>
+                    </Tooltip>
+                  ) : (
+                    <FormControlLabel
+                      {...help("write")}
+                      control={<Switch size="small" checked={!!wc.enabled} onChange={e => setWriteField(key, "enabled", e.target.checked)} />}
+                      label={<Typography fontSize={13}>{wc.enabled ? "Enabled" : "Disabled"}</Typography>}
+                    />
+                  )}
+
+                  {!locked && (
+                    <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, mt: 2 }}>
+                      <FormControl size="small" fullWidth {...help("backend")}>
+                        <InputLabel>Backend</InputLabel>
+                        <Select value={wc.backend || "file"} label="Backend" onChange={e => setWriteField(key, "backend", e.target.value)}>
+                          {MEMORY_BACKENDS.map(b => (
+                            <MenuItem key={b.value} value={b.value} disabled={b.roadmap}>
+                              {b.label}{b.roadmap ? " (roadmap)" : ""}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+
+                      <TextField
+                        {...help("max_content_tokens")}
+                        size="small" label="Max content tokens" type="number" fullWidth
+                        value={wc.max_content_tokens || ""} placeholder="unlimited"
+                        onChange={e => setWriteField(key, "max_content_tokens", e.target.value ? Number(e.target.value) : undefined)}
+                      />
+
+                      <FormControl size="small" fullWidth {...help("truncation")}>
+                        <InputLabel>Truncation</InputLabel>
+                        <Select value={wc.truncation || "tail"} label="Truncation" onChange={e => setWriteField(key, "truncation", e.target.value)}>
+                          {TRUNCATION_OPTS.map(s => (
+                            <MenuItem key={s} value={s}>
+                              {s === "tail" ? "Tail — keep start, cut end" : s === "head" ? "Head — keep end, cut start" : "Smart — LLM compress (slow)"}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+
+                      {/* Type-specific write controls */}
+                      {key === "short_term" && (
+                        <>
+                          <TextField
+                            {...help("retain_last_n_turns")}
+                            size="small" label="Retain last N turns" type="number" fullWidth
+                            value={wc.retain_last_n_turns || ""} placeholder="e.g. 12"
+                            onChange={e => setWriteField(key, "retain_last_n_turns", e.target.value ? Number(e.target.value) : undefined)}
+                          />
+                          <Tooltip title={supportsIntermediate ? "" : `Not applicable — current strategy is '${reasoningStrategy}'. Enable ReAct or multi-hop to use this.`}>
+                            <span>
+                              <FormControlLabel
+                                {...help("write_intermediate")}
+                                disabled={!supportsIntermediate}
+                                control={<Switch size="small" checked={!!wc.write_intermediate_steps} onChange={e => setWriteField(key, "write_intermediate_steps", e.target.checked)} />}
+                                label={
+                                  <Typography fontSize={13} color={supportsIntermediate ? "inherit" : "text.disabled"}>
+                                    Write intermediate steps
+                                    {!supportsIntermediate && <Typography component="span" fontSize={11} sx={{ ml: 0.5 }} color="text.disabled">(ReAct / multi-hop only)</Typography>}
+                                  </Typography>
+                                }
+                              />
+                            </span>
+                          </Tooltip>
+                        </>
+                      )}
+
+                      {key === "episodic" && (
+                        <>
+                          <FormControlLabel
+                            {...help("write_on_tool_call")}
+                            control={<Switch size="small" checked={!!wc.write_on_tool_call?.enabled} onChange={e => setNestedWriteField(key, "write_on_tool_call", "enabled", e.target.checked)} />}
+                            label={<Typography fontSize={13}>Write on tool call</Typography>}
+                          />
+                          <FormControl size="small" fullWidth disabled={!wc.write_on_tool_call?.enabled} {...help("tools_trigger")}>
+                            <InputLabel>Tools that trigger write</InputLabel>
+                            <Select value={wc.write_on_tool_call?.tools || "write_only"} label="Tools that trigger write"
+                              onChange={e => setNestedWriteField(key, "write_on_tool_call", "tools", e.target.value)}>
+                              <MenuItem value="write_only">Write tools only</MenuItem>
+                              <MenuItem value="all">All tools</MenuItem>
+                            </Select>
+                          </FormControl>
+                        </>
+                      )}
+
+                      {key === "semantic" && (
+                        <FormControlLabel
+                          {...help("dedup")}
+                          control={<Switch size="small" checked={!!wc.dedup?.enabled} onChange={e => setNestedWriteField(key, "dedup", "enabled", e.target.checked)} />}
+                          label={<Typography fontSize={13}>Deduplication</Typography>}
+                        />
+                      )}
+
+                      {key === "summary" && (
+                        <>
+                          <FormControl size="small" fullWidth {...help("summary_trigger")}>
+                            <InputLabel>Write trigger</InputLabel>
+                            <Select value={wc.trigger || "explicit"} label="Write trigger" onChange={e => setWriteField(key, "trigger", e.target.value)}>
+                              {SUMMARY_TRIGGERS.map(t => <MenuItem key={t} value={t}>{SUMMARY_TRIGGER_LABELS[t]}</MenuItem>)}
+                            </Select>
+                          </FormControl>
+                          {wc.trigger === "turn_count" && (
+                            <TextField {...help("turn_count_threshold")} size="small" label="Turn threshold" type="number" fullWidth
+                              value={wc.turn_count_threshold || 20} onChange={e => setWriteField(key, "turn_count_threshold", Number(e.target.value))} />
+                          )}
+                          {wc.trigger === "token_threshold" && (
+                            <TextField {...help("token_threshold")} size="small" label="Token threshold" type="number" fullWidth
+                              value={wc.token_threshold || 8000} onChange={e => setWriteField(key, "token_threshold", Number(e.target.value))} />
+                          )}
+                        </>
+                      )}
+                    </Box>
+                  )}
+                </Box>
+              </Box>
+            </Paper>
+          )
+        })}
+
+        {/* Config summary */}
+        {summaryChips.length > 0 && (
+          <Box sx={{ p: 2, bgcolor: "#f8fafc", borderRadius: 2, border: "1px solid #e2e8f0" }}>
+            <Typography fontSize={12} fontWeight={600} color="text.secondary" sx={{ mb: 1 }}>Active configuration</Typography>
+            <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+              {summaryChips.map((c: any) => (
+                <Chip key={c.label} label={`${c.label}: ${c.text}`} size="small"
+                  variant={c.active ? "filled" : "outlined"}
+                  color={c.active ? "primary" : "default"}
+                  sx={{ fontSize: 12 }}
+                />
+              ))}
+            </Box>
+          </Box>
+        )}
+
+        <Button variant="contained" size="small" onClick={save} disabled={saving} sx={{ alignSelf: "flex-start" }}>
+          {saving ? "Saving…" : "Save Memory Config"}
+        </Button>
       </Box>
 
-      <Button variant="contained" size="small" onClick={save} disabled={saving} sx={{ alignSelf: "flex-start" }}>
-        {saving ? "Saving…" : "Save Memory"}
-      </Button>
+      {/* ── Right: contextual help panel ── */}
+      <Box sx={{ width: 260, flexShrink: 0, position: "sticky", top: 0 }}>
+        <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, bgcolor: "#fafafa" }}>
+          <Typography fontSize={12} fontWeight={700} color="primary.main" sx={{ mb: 1 }}>
+            {helpContent?.title || "Hover any field for help"}
+          </Typography>
+          {helpContent && (
+            <>
+              <Typography fontSize={12} color="text.secondary" sx={{ whiteSpace: "pre-line", lineHeight: 1.6 }}>
+                {helpContent.body}
+              </Typography>
+              {helpContent.example && (
+                <Box sx={{ mt: 1.5, p: 1.5, bgcolor: "#f0f4ff", borderRadius: 1, borderLeft: "3px solid #6366f1" }}>
+                  <Typography fontSize={11} color="#4338ca" sx={{ lineHeight: 1.5 }}>
+                    <strong>Example:</strong> {helpContent.example}
+                  </Typography>
+                </Box>
+              )}
+            </>
+          )}
+          <Divider sx={{ my: 1.5 }} />
+          <Typography fontSize={11} color="text.disabled">
+            Reasoning strategy: <strong>{reasoningStrategy}</strong>
+          </Typography>
+        </Paper>
+      </Box>
     </Box>
   )
 }
 
 const DIM1_ALL_STRATEGIES = [
-  { value: "semantic", label: "Semantic / Vector", db_type: "vector_db", db_label: "Vector DB", description: "Search by meaning using embeddings. Requires a vector DB (pgvector, Pinecone, Weaviate)." },
-  { value: "hybrid", label: "Hybrid (Vector + BM25)", db_type: "hybrid", db_label: "Vector DB + Keyword index", description: "Combines dense vector search with sparse keyword matching. Best of both worlds." },
-  { value: "keyword", label: "Keyword (BM25)", db_type: "search_engine", db_label: "Elasticsearch / OpenSearch", description: "Exact and fuzzy word matching. Fast for exact lookups." },
-  { value: "graph", label: "Graph RAG", db_type: "graph_db", db_label: "Graph DB (Neo4j)", description: "Traverses entity relationships to find connected nodes. Good for relationship questions." },
+  { value: "semantic",  label: "Semantic (vector similarity)",       roadmap: false, description: "Search by meaning using embeddings via pgvector." },
+  { value: "keyword",   label: "Keyword (BM25 full-text)",           roadmap: false, description: "PostgreSQL full-text search. Fast for exact/fuzzy word matching." },
+  { value: "hybrid",    label: "Hybrid (vector + BM25, RRF merge)",  roadmap: false, description: "Combines dense vector and sparse keyword search. Best of both worlds." },
+  { value: "graph",     label: "Graph RAG (Neo4j)",                  roadmap: true,  description: "Traverses entity relationships to find connected nodes. Requires Neo4j." },
+]
+
+const DIM3_ALL_PATTERNS = [
+  { value: "naive",           label: "Naive",           roadmap: false, description: "Single retrieve → inject → respond. No retry." },
+  { value: "self_corrective", label: "Self-Corrective", roadmap: false, description: "Retrieve → grade quality → re-query with refined query if poor." },
+  { value: "multi_hop",       label: "Multi-Hop",       roadmap: true,  description: "Decompose query → retrieve per sub-question → synthesize." },
+  { value: "hyde",            label: "HyDE",            roadmap: true,  description: "Generate hypothetical answer first → embed → retrieve." },
+  { value: "agentic",         label: "Agentic",         roadmap: true,  description: "LLM decides when and how many times to retrieve mid-reasoning." },
 ]
 
 function RagTab({ config, onSave }: { config: AgentConfig; onSave: (section: string, changes: any) => Promise<void>; agent: AgentRecord }) {
@@ -446,7 +681,7 @@ function RagTab({ config, onSave }: { config: AgentConfig; onSave: (section: str
   const assignedRetrievalTools = retrievalTools.filter(t => allowedTools.includes(t.name))
   // Active strategy from config
   const activeStrategy = retrieval.strategy || "semantic"
-  const activeDim1 = DIM1_ALL_STRATEGIES.find(s => s.value === activeStrategy)
+  void DIM1_ALL_STRATEGIES.find(s => s.value === activeStrategy) // active strategy reference
 
   const save = async () => {
     setSaving(true)
@@ -461,121 +696,221 @@ function RagTab({ config, onSave }: { config: AgentConfig; onSave: (section: str
         label="RAG Enabled"
       />
 
-      {/* Dimension 1 — active KB/strategy */}
+      {/* Dimension 1 — Strategy */}
       <Box>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
-          <Typography variant="body2" fontWeight={700}>Knowledge Bases (Dimension 1 — Search Method)</Typography>
-          <Chip label="Dimension 1" size="small" sx={{ bgcolor: "#dcfce7", color: "#166534", fontWeight: 600, fontSize: 11 }} />
+          <Typography variant="body2" fontWeight={700}>Dimension 1 — Search Strategy</Typography>
+          <Chip label="Dim 1" size="small" sx={{ bgcolor: "#dcfce7", color: "#166534", fontWeight: 600, fontSize: 11 }} />
         </Box>
+        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1.5 }}>
+          How documents are retrieved from the KB. All three strategies are supported today (semantic via pgvector, keyword via PostgreSQL full-text, hybrid via RRF merge).
+        </Typography>
+        <FormControl size="small" sx={{ minWidth: 280, mb: 2 }}>
+          <InputLabel>Strategy</InputLabel>
+          <Select
+            value={retrieval.strategy || "semantic"}
+            label="Strategy"
+            onChange={e => setRetrieval({ ...retrieval, strategy: e.target.value })}
+          >
+            {DIM1_ALL_STRATEGIES.map(s => (
+              <MenuItem key={s.value} value={s.value} disabled={s.roadmap}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <Box>
+                    <Typography variant="body2" fontWeight={500} sx={{ color: s.roadmap ? "#9ca3af" : "inherit" }}>{s.label}</Typography>
+                    <Typography variant="caption" color="text.secondary">{s.description}</Typography>
+                  </Box>
+                  {s.roadmap && <Chip label="roadmap" size="small" sx={{ ml: "auto", fontSize: 10, height: 18, bgcolor: "#f3f4f6", color: "#9ca3af" }} />}
+                </Box>
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
 
-        {assignedRetrievalTools.length > 0 ? (
-          <Table size="small" sx={{ mb: 2 }}>
+        {assignedRetrievalTools.length > 0 && (
+          <Table size="small" sx={{ mb: 1 }}>
             <TableHead>
               <TableRow>
-                <TableCell>Tool (KB)</TableCell>
+                <TableCell>Assigned KB Tool</TableCell>
                 <TableCell>DB Type</TableCell>
-                <TableCell>Strategy</TableCell>
+                <TableCell>Tool Strategy</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {assignedRetrievalTools.map(t => (
                 <TableRow key={t.name}>
                   <TableCell sx={{ fontWeight: 500 }}>{t.name}</TableCell>
-                  <TableCell>
-                    <Chip label={t.db_type || "—"} size="small" variant="outlined" />
-                  </TableCell>
-                  <TableCell>
-                    <Chip label={t.strategy || "—"} size="small" sx={{ bgcolor: "#dcfce7", color: "#166534", fontWeight: 600 }} />
-                  </TableCell>
+                  <TableCell><Chip label={t.db_type || "—"} size="small" variant="outlined" /></TableCell>
+                  <TableCell><Chip label={t.strategy || "—"} size="small" sx={{ bgcolor: "#dcfce7", color: "#166534", fontWeight: 600 }} /></TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
-        ) : (
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            No retrieval tools assigned. Add a retrieval tool in the Tools tab.
-          </Typography>
         )}
-
-        {/* Education: what the active strategy means */}
-        {activeDim1 && (
-          <Box sx={{ p: 2, borderRadius: 1.5, bgcolor: "#f0fdf4", border: "1px solid #bbf7d0", mb: 2 }}>
-            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>Active strategy: {activeDim1.label}</Typography>
-            <Typography variant="body2">{activeDim1.description}</Typography>
-            <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: "block" }}>
-              Requires: {activeDim1.db_label}
-            </Typography>
-          </Box>
-        )}
-
-        {/* Education: other strategies */}
-        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1 }}>
-          Strategy is determined by your KB type — other strategies require a different database:
-        </Typography>
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.75 }}>
-          {DIM1_ALL_STRATEGIES.filter(s => s.value !== activeStrategy).map(s => (
-            <Box key={s.value} sx={{ display: "flex", gap: 1.5, p: 1.25, borderRadius: 1, bgcolor: "#f9fafb", border: "1px solid #e5e7eb" }}>
-              <Chip label={s.label} size="small" variant="outlined" sx={{ flexShrink: 0, fontSize: 11 }} />
-              <Box>
-                <Typography variant="caption" color="text.secondary">{s.description}</Typography>
-                <Typography variant="caption" sx={{ display: "block", color: "#6b7280" }}>Requires: {s.db_label}</Typography>
-              </Box>
-            </Box>
-          ))}
-        </Box>
       </Box>
 
       <Divider />
 
-      {/* Pre-graph RAG */}
+      {/* Dimension 3 — Pattern */}
       <Box>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
-          <Typography variant="body2" fontWeight={700}>Pre-Graph RAG</Typography>
-          <Chip label="Ambient Enrichment" size="small" sx={{ bgcolor: "#ede9fe", color: "#5b21b6", fontWeight: 600, fontSize: 11 }} />
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
+          <Typography variant="body2" fontWeight={700}>Dimension 3 — Retrieval Pattern</Typography>
+          <Chip label="Dim 3" size="small" sx={{ bgcolor: "#ede9fe", color: "#5b21b6", fontWeight: 600, fontSize: 11 }} />
         </Box>
         <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1.5 }}>
-          Retrieves KB chunks before the planner runs and injects them into context. The planner and responder both see this silently — no explicit tool call needed.
+          Controls the retrieval loop behavior — how many times to retrieve and whether to self-evaluate results.
+        </Typography>
+        <FormControl size="small" sx={{ minWidth: 280 }}>
+          <InputLabel>Pattern</InputLabel>
+          <Select
+            value={retrieval.pattern || "naive"}
+            label="Pattern"
+            onChange={e => setRetrieval({ ...retrieval, pattern: e.target.value })}
+          >
+            {DIM3_ALL_PATTERNS.map(p => (
+              <MenuItem key={p.value} value={p.value} disabled={p.roadmap}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <Box>
+                    <Typography variant="body2" fontWeight={500} sx={{ color: p.roadmap ? "#9ca3af" : "inherit" }}>{p.label}</Typography>
+                    <Typography variant="caption" color="text.secondary">{p.description}</Typography>
+                  </Box>
+                  {p.roadmap && <Chip label="roadmap" size="small" sx={{ ml: "auto", fontSize: 10, height: 18, bgcolor: "#f3f4f6", color: "#9ca3af" }} />}
+                </Box>
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Box>
+
+      <Divider />
+
+      {/* Pre-graph RAG — fully independent config */}
+      <Box>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
+          <Typography variant="body2" fontWeight={700}>Pre-Graph RAG</Typography>
+          <Chip label="Dim 2 — Stage 1" size="small" sx={{ bgcolor: "#ede9fe", color: "#5b21b6", fontWeight: 600, fontSize: 11 }} />
+        </Box>
+        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1.5 }}>
+          Retrieves KB chunks BEFORE the planner runs. Injected silently into context — no tool call needed. Best for: chat_agent, workflow_agent. Not for: react_agent.
         </Typography>
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
           <FormControlLabel
             control={<Switch checked={!!retrieval.pre_graph?.enabled}
               onChange={e => setRetrieval({ ...retrieval, pre_graph: { ...retrieval.pre_graph, enabled: e.target.checked } })} />}
-            label="Pre-Graph RAG Enabled"
+            label="Enabled"
           />
-          <TextField size="small" label="Top K" type="number"
-            value={retrieval.pre_graph?.top_k ?? 3}
-            onChange={e => setRetrieval({ ...retrieval, pre_graph: { ...retrieval.pre_graph, top_k: Number(e.target.value) } })}
-            sx={{ maxWidth: 160 }} helperText="Chunks to inject (keep low — ambient context only)" />
-          <TextField size="small" label="Similarity Threshold" type="number" inputProps={{ step: 0.05, min: 0, max: 1 }}
-            value={retrieval.pre_graph?.similarity_threshold ?? 0.5}
-            onChange={e => setRetrieval({ ...retrieval, pre_graph: { ...retrieval.pre_graph, similarity_threshold: Number(e.target.value) } })}
-            sx={{ maxWidth: 200 }} helperText="Higher threshold — only inject if highly relevant" />
+          {retrieval.pre_graph?.enabled && <>
+            <FormControl size="small" sx={{ maxWidth: 280 }}>
+              <InputLabel>KB Tool</InputLabel>
+              <Select value={retrieval.pre_graph?.tool || "search_kb"} label="KB Tool"
+                onChange={e => setRetrieval({ ...retrieval, pre_graph: { ...retrieval.pre_graph, tool: e.target.value } })}>
+                {assignedRetrievalTools.length > 0
+                  ? assignedRetrievalTools.map(t => <MenuItem key={t.name} value={t.name}>{t.name}</MenuItem>)
+                  : <MenuItem value="search_kb">search_kb</MenuItem>}
+              </Select>
+            </FormControl>
+            <FormControl size="small" sx={{ maxWidth: 280 }}>
+              <InputLabel>Strategy (Dim 1)</InputLabel>
+              <Select value={retrieval.pre_graph?.strategy || "semantic"} label="Strategy (Dim 1)"
+                onChange={e => setRetrieval({ ...retrieval, pre_graph: { ...retrieval.pre_graph, strategy: e.target.value } })}>
+                {DIM1_ALL_STRATEGIES.map(s => <MenuItem key={s.value} value={s.value} disabled={s.roadmap}>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <Typography variant="body2" sx={{ color: s.roadmap ? "#9ca3af" : "inherit" }}>{s.label}</Typography>
+                    {s.roadmap && <Chip label="roadmap" size="small" sx={{ fontSize: 10, height: 18, bgcolor: "#f3f4f6", color: "#9ca3af" }} />}
+                  </Box>
+                </MenuItem>)}
+              </Select>
+            </FormControl>
+            <FormControl size="small" sx={{ maxWidth: 280 }}>
+              <InputLabel>Pattern (Dim 3)</InputLabel>
+              <Select value={retrieval.pre_graph?.pattern || "naive"} label="Pattern (Dim 3)"
+                onChange={e => setRetrieval({ ...retrieval, pre_graph: { ...retrieval.pre_graph, pattern: e.target.value } })}>
+                {DIM3_ALL_PATTERNS.map(p => <MenuItem key={p.value} value={p.value} disabled={p.roadmap}>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <Typography variant="body2" sx={{ color: p.roadmap ? "#9ca3af" : "inherit" }}>{p.label}</Typography>
+                    {p.roadmap && <Chip label="roadmap" size="small" sx={{ fontSize: 10, height: 18, bgcolor: "#f3f4f6", color: "#9ca3af" }} />}
+                  </Box>
+                </MenuItem>)}
+              </Select>
+            </FormControl>
+            <Box sx={{ display: "flex", gap: 2 }}>
+              <TextField size="small" label="Top K" type="number" sx={{ maxWidth: 120 }}
+                value={retrieval.pre_graph?.top_k ?? 3}
+                onChange={e => setRetrieval({ ...retrieval, pre_graph: { ...retrieval.pre_graph, top_k: Number(e.target.value) } })}
+                helperText="Keep low (2–4)" />
+              <TextField size="small" label="Threshold" type="number" inputProps={{ step: 0.05, min: 0, max: 1 }} sx={{ maxWidth: 140 }}
+                value={retrieval.pre_graph?.similarity_threshold ?? 0.5}
+                onChange={e => setRetrieval({ ...retrieval, pre_graph: { ...retrieval.pre_graph, similarity_threshold: Number(e.target.value) } })}
+                helperText="Higher = more selective" />
+            </Box>
+          </>}
         </Box>
       </Box>
 
       <Divider />
 
-      {/* Planner tool RAG */}
+      {/* Planner tool RAG — fully independent config */}
       <Box>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
           <Typography variant="body2" fontWeight={700}>Planner Tool RAG</Typography>
-          <Chip label="Explicit Query" size="small" sx={{ bgcolor: "#dcfce7", color: "#166534", fontWeight: 600, fontSize: 11 }} />
+          <Chip label="Dim 2 — Stage 2" size="small" sx={{ bgcolor: "#dcfce7", color: "#166534", fontWeight: 600, fontSize: 11 }} />
         </Box>
         <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1.5 }}>
-          Planner calls the retrieval tool explicitly when the user asks a KB question (e.g. "what is the protocol for X"). This is the primary response for that turn.
+          Exposes search_kb as a tool the planner LLM calls explicitly when the user asks a KB question. Best for: chat_agent, react_agent. Not for: summary_agent.
         </Typography>
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <TextField size="small" label="Default Tool" value={retrieval.default_tool || ""} onChange={e => setRetrieval({ ...retrieval, default_tool: e.target.value })} sx={{ maxWidth: 240 }}
-            helperText="Which tool to call for retrieval" />
-          <TextField size="small" label="Top K" type="number" value={retrieval.top_k ?? 5} onChange={e => setRetrieval({ ...retrieval, top_k: Number(e.target.value) })} sx={{ maxWidth: 160 }}
-            helperText="Number of results to retrieve" />
-          <TextField size="small" label="Similarity Threshold" type="number" inputProps={{ step: 0.05, min: 0, max: 1 }}
-            value={retrieval.similarity_threshold ?? 0.35} onChange={e => setRetrieval({ ...retrieval, similarity_threshold: Number(e.target.value) })} sx={{ maxWidth: 200 }}
-            helperText="Minimum similarity score (0–1)" />
           <FormControlLabel
-            control={<Switch checked={!!retrieval.fallback?.allow_no_results_response} onChange={e => setRetrieval({ ...retrieval, fallback: { ...retrieval.fallback, allow_no_results_response: e.target.checked } })} />}
-            label="Allow No-Results Response"
+            control={<Switch checked={!!retrieval.planner_tool?.enabled}
+              onChange={e => setRetrieval({ ...retrieval, planner_tool: { ...retrieval.planner_tool, enabled: e.target.checked } })} />}
+            label="Enabled"
           />
+          {retrieval.planner_tool?.enabled && <>
+            <FormControl size="small" sx={{ maxWidth: 280 }}>
+              <InputLabel>KB Tool</InputLabel>
+              <Select value={retrieval.planner_tool?.tool || "search_kb"} label="KB Tool"
+                onChange={e => setRetrieval({ ...retrieval, planner_tool: { ...retrieval.planner_tool, tool: e.target.value } })}>
+                {assignedRetrievalTools.length > 0
+                  ? assignedRetrievalTools.map(t => <MenuItem key={t.name} value={t.name}>{t.name}</MenuItem>)
+                  : <MenuItem value="search_kb">search_kb</MenuItem>}
+              </Select>
+            </FormControl>
+            <FormControl size="small" sx={{ maxWidth: 280 }}>
+              <InputLabel>Strategy (Dim 1)</InputLabel>
+              <Select value={retrieval.planner_tool?.strategy || "semantic"} label="Strategy (Dim 1)"
+                onChange={e => setRetrieval({ ...retrieval, planner_tool: { ...retrieval.planner_tool, strategy: e.target.value } })}>
+                {DIM1_ALL_STRATEGIES.map(s => <MenuItem key={s.value} value={s.value} disabled={s.roadmap}>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <Typography variant="body2" sx={{ color: s.roadmap ? "#9ca3af" : "inherit" }}>{s.label}</Typography>
+                    {s.roadmap && <Chip label="roadmap" size="small" sx={{ fontSize: 10, height: 18, bgcolor: "#f3f4f6", color: "#9ca3af" }} />}
+                  </Box>
+                </MenuItem>)}
+              </Select>
+            </FormControl>
+            <FormControl size="small" sx={{ maxWidth: 280 }}>
+              <InputLabel>Pattern (Dim 3)</InputLabel>
+              <Select value={retrieval.planner_tool?.pattern || "naive"} label="Pattern (Dim 3)"
+                onChange={e => setRetrieval({ ...retrieval, planner_tool: { ...retrieval.planner_tool, pattern: e.target.value } })}>
+                {DIM3_ALL_PATTERNS.map(p => <MenuItem key={p.value} value={p.value} disabled={p.roadmap}>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <Typography variant="body2" sx={{ color: p.roadmap ? "#9ca3af" : "inherit" }}>{p.label}</Typography>
+                    {p.roadmap && <Chip label="roadmap" size="small" sx={{ fontSize: 10, height: 18, bgcolor: "#f3f4f6", color: "#9ca3af" }} />}
+                  </Box>
+                </MenuItem>)}
+              </Select>
+            </FormControl>
+            <Box sx={{ display: "flex", gap: 2 }}>
+              <TextField size="small" label="Top K" type="number" sx={{ maxWidth: 120 }}
+                value={retrieval.planner_tool?.top_k ?? 5}
+                onChange={e => setRetrieval({ ...retrieval, planner_tool: { ...retrieval.planner_tool, top_k: Number(e.target.value) } })} />
+              <TextField size="small" label="Threshold" type="number" inputProps={{ step: 0.05, min: 0, max: 1 }} sx={{ maxWidth: 140 }}
+                value={retrieval.planner_tool?.similarity_threshold ?? 0.35}
+                onChange={e => setRetrieval({ ...retrieval, planner_tool: { ...retrieval.planner_tool, similarity_threshold: Number(e.target.value) } })} />
+            </Box>
+            <FormControlLabel
+              control={<Switch checked={!!retrieval.planner_tool?.fallback?.allow_no_results_response}
+                onChange={e => setRetrieval({ ...retrieval, planner_tool: { ...retrieval.planner_tool, fallback: { allow_no_results_response: e.target.checked } } })} />}
+              label="Allow No-Results Response"
+            />
+          </>}
         </Box>
       </Box>
 
@@ -625,6 +960,94 @@ function PromptsTab({ config, onSave }: { config: AgentConfig; onSave: (section:
   )
 }
 
+function RoutingTab({ config, onSave }: { config: AgentConfig; onSave: (section: string, changes: any) => Promise<void> }) {
+  const agentCfg = config.agent || {}
+  type HardRoute = { phrases: string[]; scope: string; tool: string; argument_template?: string }
+  const [routes, setRoutes] = useState<HardRoute[]>([])
+  const [gatewayTools, setGatewayTools] = useState<string[]>([])
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    setRoutes(agentCfg?.hard_routes || [])
+  }, [config])
+
+  useEffect(() => {
+    getGatewayTools().then(res => setGatewayTools((res.data?.tools || []).map((t: any) => t.name))).catch(() => {})
+  }, [])
+
+  const updateRoute = (i: number, field: keyof HardRoute, value: any) => {
+    const next = [...routes]
+    next[i] = { ...next[i], [field]: value }
+    setRoutes(next)
+  }
+
+  const addRoute = () => setRoutes([...routes, { phrases: [], scope: "", tool: "", argument_template: "{scope_id}" }])
+  const removeRoute = (i: number) => setRoutes(routes.filter((_, j) => j !== i))
+
+  const save = async () => {
+    setSaving(true)
+    await onSave("agent", { hard_routes: routes })
+    setSaving(false)
+  }
+
+  return (
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+      <Typography variant="body2" color="text.secondary">
+        Hard routes fire before the LLM — deterministic phrase matching → tool call. No LLM cost for matched queries.
+      </Typography>
+
+      {routes.map((route, i) => (
+        <Box key={i} sx={{ p: 2, border: "1px solid", borderColor: "divider", borderRadius: 1.5, display: "flex", flexDirection: "column", gap: 1.5 }}>
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <Typography variant="body2" fontWeight={600}>Route {i + 1}</Typography>
+            <IconButton size="small" onClick={() => removeRoute(i)}><DeleteIcon fontSize="small" /></IconButton>
+          </Box>
+
+          <TextField
+            size="small"
+            label="Phrases (comma-separated)"
+            fullWidth
+            value={(route.phrases || []).join(", ")}
+            onChange={e => updateRoute(i, "phrases", e.target.value.split(",").map(s => s.trim()).filter(Boolean))}
+            helperText="If any phrase is found in the user message, this route fires"
+          />
+
+          <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 1.5 }}>
+            <TextField
+              size="small"
+              label="Scope"
+              value={route.scope}
+              onChange={e => updateRoute(i, "scope", e.target.value)}
+              helperText="e.g. assessment, case, member"
+            />
+            <FormControl size="small">
+              <InputLabel>Tool</InputLabel>
+              <Select value={route.tool} label="Tool" onChange={e => updateRoute(i, "tool", e.target.value)}>
+                {gatewayTools.map(t => <MenuItem key={t} value={t}>{t}</MenuItem>)}
+              </Select>
+            </FormControl>
+            <TextField
+              size="small"
+              label="Argument template"
+              value={route.argument_template || "{scope_id}"}
+              onChange={e => updateRoute(i, "argument_template", e.target.value)}
+              helperText="{scope_id} = active scope ID, {prompt} = user message"
+            />
+          </Box>
+        </Box>
+      ))}
+
+      <Button size="small" startIcon={<AddIcon />} onClick={addRoute} sx={{ alignSelf: "flex-start" }}>
+        Add Route
+      </Button>
+
+      <Button variant="contained" size="small" onClick={save} disabled={saving} sx={{ alignSelf: "flex-start" }}>
+        {saving ? "Saving…" : "Save Routing"}
+      </Button>
+    </Box>
+  )
+}
+
 // ── Detail panel ──────────────────────────────────────────────────────────────
 
 function AgentDetail({ agent }: { agent: AgentRecord }) {
@@ -640,8 +1063,8 @@ function AgentDetail({ agent }: { agent: AgentRecord }) {
     setManifest(null)
     setSaveAlert(null)
     Promise.all([
-      getAgentConfig(agent.capability_name, agent.usecase_name, agent.agent_type),
-      getAgentManifest(agent.capability_name, agent.usecase_name, agent.agent_type),
+      getAgentConfig(agent.capability_name, agent.agent_repo_name, agent.agent_type),
+      getAgentManifest(agent.capability_name, agent.agent_repo_name, agent.agent_type),
     ])
       .then(([configRes, manifestRes]) => {
         setConfig(configRes.data.config)
@@ -655,7 +1078,7 @@ function AgentDetail({ agent }: { agent: AgentRecord }) {
     try {
       await patchAgentConfig({
         capability_name: agent.capability_name,
-        usecase_name: agent.usecase_name,
+        usecase_name: agent.agent_repo_name,
         agent_type: agent.agent_type,
         section,
         changes,
@@ -672,11 +1095,11 @@ function AgentDetail({ agent }: { agent: AgentRecord }) {
       {/* Header */}
       <Box sx={{ px: 3, pt: 3, pb: 1.5, borderBottom: "1px solid", borderColor: "divider" }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 0.5 }}>
-          <Typography variant="h6" fontWeight={700}>{agent.agent_type}</Typography>
+          <Typography variant="h6" fontWeight={700}>{agent.agent_repo_name}</Typography>
           <StatusBadge status={agent.status} />
         </Box>
         <Typography variant="body2" color="text.secondary">
-          {agent.capability_name} / {agent.usecase_name}
+          {agent.capability_name} / {agent.agent_type}
         </Typography>
       </Box>
 
@@ -694,6 +1117,7 @@ function AgentDetail({ agent }: { agent: AgentRecord }) {
           { label: "Memory", feature: "memory" },
           { label: "RAG", feature: "rag" },
           { label: "Prompts", feature: null },
+          { label: "Routing", feature: null },
         ].map(({ label, feature }, i) => {
           const locked = feature ? (agent.locked_features || []).includes(feature) : false
           return (
@@ -726,6 +1150,7 @@ function AgentDetail({ agent }: { agent: AgentRecord }) {
             {tab === 3 && <MemoryTab config={config} onSave={handleSave} />}
             {tab === 4 && <RagTab config={config} onSave={handleSave} agent={agent} />}
             {tab === 5 && <PromptsTab config={config} onSave={handleSave} />}
+            {tab === 6 && <RoutingTab config={config} onSave={handleSave} />}
           </>
         )}
       </Box>
@@ -742,12 +1167,11 @@ function AgentList({ agents, selected, onSelect }: {
 }) {
   const [openCapabilities, setOpenCapabilities] = useState<Record<string, boolean>>({})
 
-  // Group by capability → usecase
-  const tree: Record<string, Record<string, AgentRecord[]>> = {}
+  // Group by capability → agents
+  const tree: Record<string, AgentRecord[]> = {}
   for (const a of agents) {
-    if (!tree[a.capability_name]) tree[a.capability_name] = {}
-    if (!tree[a.capability_name][a.usecase_name]) tree[a.capability_name][a.usecase_name] = []
-    tree[a.capability_name][a.usecase_name].push(a)
+    if (!tree[a.capability_name]) tree[a.capability_name] = []
+    tree[a.capability_name].push(a)
   }
 
   // Auto-open all by default
@@ -759,7 +1183,7 @@ function AgentList({ agents, selected, onSelect }: {
 
   return (
     <Box sx={{ overflow: "auto", height: "100%" }}>
-      {Object.entries(tree).map(([cap, usecases]) => (
+      {Object.entries(tree).map(([cap, capAgents]) => (
         <Box key={cap}>
           <ListItemButton
             onClick={() => setOpenCapabilities(p => ({ ...p, [cap]: !p[cap] }))}
@@ -772,30 +1196,27 @@ function AgentList({ agents, selected, onSelect }: {
             {openCapabilities[cap] ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
           </ListItemButton>
           <Collapse in={!!openCapabilities[cap]}>
-            {Object.entries(usecases).map(([uc, ucAgents]) => (
-              <Box key={uc}>
-                <Typography variant="caption" sx={{ pl: 3, py: 0.5, display: "block", color: "text.secondary" }}>{uc}</Typography>
-                {ucAgents.map(a => {
-                  const isSelected = selected?.agent_type === a.agent_type && selected?.usecase_name === a.usecase_name && selected?.capability_name === a.capability_name
-                  return (
-                    <ListItemButton
-                      key={a.agent_type}
-                      selected={isSelected}
-                      onClick={() => onSelect(a)}
-                      sx={{ pl: 4, py: 0.75, "&.Mui-selected": { bgcolor: "primary.50" } }}
-                    >
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 1, width: "100%" }}>
-                        <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: a.status === "running" ? "#22c55e" : "#94a3b8", flexShrink: 0 }} />
-                        <ListItemText
-                          primary={a.agent_type}
-                          primaryTypographyProps={{ fontSize: 13, fontWeight: isSelected ? 600 : 400 }}
-                        />
-                      </Box>
-                    </ListItemButton>
-                  )
-                })}
-              </Box>
-            ))}
+            {capAgents.map(a => {
+              const isSelected = selected?.agent_repo_name === a.agent_repo_name && selected?.capability_name === a.capability_name
+              return (
+                <ListItemButton
+                  key={a.agent_repo_name}
+                  selected={isSelected}
+                  onClick={() => onSelect(a)}
+                  sx={{ pl: 3, py: 0.75, "&.Mui-selected": { bgcolor: "primary.50" } }}
+                >
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1, width: "100%" }}>
+                    <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: a.status === "running" ? "#22c55e" : "#94a3b8", flexShrink: 0 }} />
+                    <ListItemText
+                      primary={a.agent_repo_name}
+                      secondary={a.agent_type}
+                      primaryTypographyProps={{ fontSize: 13, fontWeight: isSelected ? 600 : 400 }}
+                      secondaryTypographyProps={{ fontSize: 11 }}
+                    />
+                  </Box>
+                </ListItemButton>
+              )
+            })}
           </Collapse>
         </Box>
       ))}

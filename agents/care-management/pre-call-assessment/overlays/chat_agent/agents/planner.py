@@ -1,12 +1,12 @@
 from __future__ import annotations
-from src.platform.prompt.prompt_client import PromptServiceClient
-from src.platform.config import load_config
+from platform_core.prompt.prompt_client import PromptServiceClient
+from platform_core.config import load_config
 import os
 
 import re
 from typing import List, Dict, Any
 
-from src.platform.tools.registry import registry
+from platform_core.tools.registry import registry
 
 
 MEMBER_ID_RE = re.compile(r"\b(m-\d{6})\b", re.IGNORECASE)

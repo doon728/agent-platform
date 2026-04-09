@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from typing import List
 
 import jsonschema
+from psycopg.types.json import Jsonb
 from src.tools.db_registry import load_registry, get_registry, reload_registry
 from src.tools.registry import (
     search_kb_handler, SearchKBInput,
@@ -297,7 +298,9 @@ def create_tool(req: ToolCreateRequest):
                 """,
                 (req.name, req.description, req.endpoint_url, req.primary_arg,
                  req.mode, req.tags, req.db_type, req.strategy,
-                 req.input_schema, req.output_schema, req.status),
+                 Jsonb(req.input_schema) if req.input_schema else None,
+                 Jsonb(req.output_schema) if req.output_schema else None,
+                 req.status),
             )
             result = cur.fetchone()
 
@@ -312,6 +315,7 @@ def create_tool(req: ToolCreateRequest):
 def update_tool(name: str, req: ToolUpdateRequest):
     fields = []
     values = []
+    sent = req.model_fields_set  # fields explicitly included in the request
 
     if req.description is not None:
         fields.append("description = %s"); values.append(req.description)
@@ -323,16 +327,16 @@ def update_tool(name: str, req: ToolUpdateRequest):
         fields.append("mode = %s"); values.append(req.mode)
     if req.tags is not None:
         fields.append("tags = %s"); values.append(req.tags)
-    if req.db_type is not None:
+    if "db_type" in sent:  # allow explicit null to clear the field
         fields.append("db_type = %s"); values.append(req.db_type)
-    if req.strategy is not None:
+    if "strategy" in sent:  # allow explicit null to clear the field
         fields.append("strategy = %s"); values.append(req.strategy)
     if req.enabled is not None:
         fields.append("enabled = %s"); values.append(req.enabled)
     if req.input_schema is not None:
-        fields.append("input_schema = %s"); values.append(req.input_schema)
+        fields.append("input_schema = %s"); values.append(Jsonb(req.input_schema))
     if req.output_schema is not None:
-        fields.append("output_schema = %s"); values.append(req.output_schema)
+        fields.append("output_schema = %s"); values.append(Jsonb(req.output_schema))
     if req.status is not None:
         fields.append("status = %s"); values.append(req.status)
 

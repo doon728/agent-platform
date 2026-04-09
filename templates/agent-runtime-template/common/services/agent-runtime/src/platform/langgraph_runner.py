@@ -20,6 +20,46 @@ from src.platform.memory.scope_resolver import resolve_scopes
 from src.platform.memory.context_builder import build_memory_context
 
 
+_PLATFORM_ID_KEYS = {"tenant_id", "user_id", "thread_id", "correlation_id", "run_id"}
+
+
+def _build_scope_metadata(ctx: Dict[str, Any], domain: Dict[str, Any]) -> Dict[str, Any]:
+    """Build dict of active scope IDs from domain.yaml scopes."""
+    metadata: Dict[str, Any] = {}
+    domain_scopes = domain.get("scopes") or []
+    if domain_scopes:
+        for scope_def in domain_scopes:
+            id_field = scope_def.get("id_field") or ""
+            if id_field and ctx.get(id_field):
+                metadata[id_field] = ctx[id_field]
+    else:
+        for key, val in ctx.items():
+            if key.endswith("_id") and key not in _PLATFORM_ID_KEYS and val:
+                metadata[key] = val
+    return metadata
+
+
+def _register_scope_relationships(
+    memory_store: Any, tenant_id: str, ctx: Dict[str, Any], domain: Dict[str, Any]
+) -> None:
+    """Register parent-child scope relationships based on domain.yaml hierarchy."""
+    scopes_def = domain.get("scopes") or []
+    for scope_def in scopes_def:
+        child_name = scope_def.get("name")
+        child_id_field = scope_def.get("id_field")
+        parent_name = scope_def.get("parent")
+        if not (child_name and child_id_field and parent_name):
+            continue
+        parent_def = next((s for s in scopes_def if s.get("name") == parent_name), None)
+        if not parent_def:
+            continue
+        parent_id_field = parent_def.get("id_field")
+        child_id = ctx.get(child_id_field)
+        parent_id = ctx.get(parent_id_field)
+        if child_id and parent_id:
+            memory_store.register_child_scope(tenant_id, parent_name, parent_id, child_name, child_id)
+
+
 class LangGraphRunner:
     def __init__(self, build_graph_fn=None):
         self._build_graph_fn = build_graph_fn or build_graph
@@ -36,7 +76,6 @@ class LangGraphRunner:
     def run(self, prompt: str, ctx: Dict[str, Any]) -> Any:
         tenant_id = ctx.get("tenant_id") or "default-tenant"
         thread_id = ctx.get("thread_id") or "default-thread"
-        case_id = ctx.get("case_id")
 
         memory_store = FileMemoryStore()
 
@@ -59,14 +98,20 @@ class LangGraphRunner:
         ctx["retrieval"] = usecase_cfg.get("retrieval", {})
         ctx["workflow_rules"] = usecase_cfg.get("workflow_rules", {})
         ctx["hitl"] = usecase_cfg.get("hitl", {})
+        ctx["domain"] = usecase_cfg.get("domain", {})
+        ctx["hard_routes"] = usecase_cfg.get("hard_routes", [])
+        ctx["reasoning"] = usecase_cfg.get("reasoning", {"strategy": "simple"})
 
         memory_cfg = load_memory_config(usecase_cfg)
         active_scopes = resolve_scopes(ctx, memory_cfg)
+
+        domain = ctx.get("domain") or {}
 
         memory_context = build_memory_context(
             active_scopes,
             memory_cfg,
             tenant_id=tenant_id,
+            domain=domain,
         )
 
         memory_trace = {
@@ -155,18 +200,25 @@ class LangGraphRunner:
 
         if pre_graph_cfg.get("enabled", False):
             try:
-                from src.platform.tools.registry import registry as _registry
-                _default_tool = retrieval_cfg.get("default_tool", "search_kb")
-                _top_k = pre_graph_cfg.get("top_k", 3)
-                _threshold = pre_graph_cfg.get("similarity_threshold", 0.5)
-                _rag_result = _registry.invoke(
-                    _default_tool,
-                    {"query": prompt, "top_k": _top_k, "threshold": _threshold},
-                    ctx,
+                from src.platform.tools.bindings import search_kb as _search_kb
+                from src.platform.rag.runner import run_rag
+
+                # Pre-graph has its own independent Dim 1/2/3 config
+                _pre_graph_retrieval_cfg = {
+                    "tool": pre_graph_cfg.get("tool", "search_kb"),
+                    "strategy": pre_graph_cfg.get("strategy", "semantic"),
+                    "pattern": pre_graph_cfg.get("pattern", "naive"),
+                    "top_k": pre_graph_cfg.get("top_k", 3),
+                    "similarity_threshold": pre_graph_cfg.get("similarity_threshold", 0.5),
+                }
+                _chunks = run_rag(
+                    query=prompt,
+                    retrieval_cfg=_pre_graph_retrieval_cfg,
+                    search_fn=_search_kb,
+                    ctx=ctx,
                 )
-                _chunks = _rag_result.get("results") or []
                 ctx["rag_context"] = _chunks
-                print(f"[pre_graph_rag] retrieved {len(_chunks)} chunks for query: {prompt[:60]}", flush=True)
+                print(f"[pre_graph_rag] tool={_pre_graph_retrieval_cfg['tool']} strategy={_pre_graph_retrieval_cfg['strategy']} pattern={_pre_graph_retrieval_cfg['pattern']} chunks={len(_chunks)}", flush=True)
             except Exception as _e:
                 print(f"[pre_graph_rag] retrieval failed (non-fatal): {_e}", flush=True)
                 ctx["rag_context"] = []
@@ -184,8 +236,11 @@ class LangGraphRunner:
 
         print(f"[thread_history_count] {len(thread_history or [])}", flush=True)
         print(f"[thread_history_raw] {thread_history}", flush=True)
-        print(f"[ctx_assessment] {ctx.get('assessment_id')}", flush=True)
-        print(f"[ctx_member] {ctx.get('member_id')}", flush=True)
+        # Log active domain scope IDs
+        for _sd in (domain.get("scopes") or []):
+            _fld = _sd.get("id_field") or ""
+            if _fld and ctx.get(_fld):
+                print(f"[ctx_{_fld}] {ctx[_fld]}", flush=True)
 
         initial_state = {
             "prompt": prompt,
@@ -243,6 +298,8 @@ class LangGraphRunner:
         else:
             memory_response = str(result)
 
+        scope_metadata = _build_scope_metadata(ctx, domain)
+
         if memory_policy_state["short_term"]:
             write_raw_turns(
                 store=memory_store,
@@ -250,12 +307,7 @@ class LangGraphRunner:
                 thread_id=thread_id,
                 user_prompt=prompt,
                 assistant_response=memory_response,
-                metadata={
-                    "case_id": case_id,
-                    "member_id": ctx.get("member_id"),
-                    "assessment_id": ctx.get("assessment_id"),
-                    "care_plan_id": ctx.get("care_plan_id"),
-                },
+                metadata=scope_metadata,
             )
 
         memory_trace["written"]["short_term"] = {
@@ -285,14 +337,21 @@ class LangGraphRunner:
 
         episodic_cfg = ((memory_cfg.get("write_policies") or {}).get("episodic") or {})
         if episodic_cfg.get("enabled", False) and memory_policy_state["episodic"]:
-            # Only write episodic on clinical tool execution (tool_success trigger),
-            # not on every read/search query. Check which tool the planner chose.
-            _episodic_write_tools = {"write_case_note", "complete_assessment", "update_care_plan"}
+            # Trigger episodic on any write-mode tool (mode="write" in registry spec)
+            # Overlay-specific tool lists can also be configured via agent.yaml episodic_write_tools
             _tool_used = (planner_trace or {}).get("tool", "")
-            _is_tool_success = (
-                _tool_used in _episodic_write_tools
-                and not _is_approval_required(result)
-            )
+            _configured_tools = set(usecase_cfg.get("episodic_write_tools") or [])
+            _is_write_tool = False
+            if _tool_used:
+                try:
+                    from src.platform.tools.registry import registry as _reg
+                    _spec = _reg.get_spec(_tool_used)
+                    _is_write_tool = (_spec.mode == "write") or (_tool_used in _configured_tools)
+                except Exception:
+                    _is_write_tool = _tool_used in _configured_tools
+
+            _is_tool_success = _is_write_tool and not _is_approval_required(result)
+
             if _is_tool_success:
                 write_episodic_event(
                     store=memory_store,
@@ -300,24 +359,15 @@ class LangGraphRunner:
                     scopes=active_scopes,
                     content=f"User asked: {prompt}\nAssistant answered: {str(result)}",
                     metadata={
-                        "case_id": case_id,
-                        "member_id": ctx.get("member_id"),
-                        "assessment_id": ctx.get("assessment_id"),
-                        "care_plan_id": ctx.get("care_plan_id"),
+                        **scope_metadata,
                         "source": "tool_success",
                         "tool": _tool_used,
                     },
                 )
-                # Register scope relationships for rollup
-                _assessment_id = ctx.get("assessment_id")
-                _member_id = ctx.get("member_id")
-                if _assessment_id and case_id:
-                    memory_store.register_child_scope(tenant_id, "case", case_id, "assessment", _assessment_id)
-                if case_id and _member_id:
-                    memory_store.register_child_scope(tenant_id, "member", _member_id, "case", case_id)
+                # Register parent-child scope relationships for memory rollup
+                _register_scope_relationships(memory_store, tenant_id, ctx, domain)
                 memory_trace["written"]["episodic"] = {
                     "status": "written",
-                    "scope": "case_or_assessment",
                     "trigger": "tool_success",
                     "tool": _tool_used,
                 }
@@ -359,10 +409,7 @@ class LangGraphRunner:
             "ctx": {
                 "tenant_id": ctx.get("tenant_id"),
                 "thread_id": ctx.get("thread_id"),
-                "member_id": ctx.get("member_id"),
-                "case_id": ctx.get("case_id"),
-                "assessment_id": ctx.get("assessment_id"),
-                "care_plan_id": ctx.get("care_plan_id"),
+                **scope_metadata,
             },
             "memory_policy": memory_policy_state,
             "memory_trace": memory_trace,

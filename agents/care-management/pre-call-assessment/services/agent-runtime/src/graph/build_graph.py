@@ -2,7 +2,7 @@ import importlib
 
 
 def _load_overlay_module():
-    from src.platform.config import load_config
+    from platform_core.config import load_config
 
     cfg = load_config()
     agent_type = getattr(cfg.app, "agent_type", "chat_agent")

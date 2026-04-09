@@ -49,11 +49,15 @@ export default function KnowledgeBase() {
 
     try {
       const res = await ingestDocument(file)
-      setUploadResult({ title: res.data.title, chunks: res.data.chunks_ingested })
-      await load()
+      if (!res.data.ok) {
+        setUploadError((res.data as any).error ?? "Upload failed")
+      } else {
+        setUploadResult({ title: res.data.title, chunks: res.data.chunks_ingested })
+        await load()
+      }
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
-      setUploadError(msg ?? "Upload failed")
+      const msg = (err as any)?.response?.data?.error ?? (err as any)?.message ?? "Upload failed"
+      setUploadError(msg)
     } finally {
       setUploading(false)
       if (fileInputRef.current) fileInputRef.current.value = ""
@@ -64,9 +68,15 @@ export default function KnowledgeBase() {
     if (!deleteTarget) return
     setDeleting(true)
     try {
-      await deleteKBDocument(deleteTarget.doc_id)
-      setDeleteTarget(null)
-      await load()
+      const res = await deleteKBDocument(deleteTarget.doc_id)
+      if (!(res.data as any).ok) {
+        setError((res.data as any).error ?? "Delete failed")
+      } else {
+        setDeleteTarget(null)
+        await load()
+      }
+    } catch (err: unknown) {
+      setError((err as any)?.message ?? "Delete failed")
     } finally {
       setDeleting(false)
     }

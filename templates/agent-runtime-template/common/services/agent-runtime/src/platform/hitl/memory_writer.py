@@ -6,6 +6,48 @@ from datetime import datetime, timezone
 from src.platform.memory.memory_store import FileMemoryStore
 from src.platform.memory.write_engine import write_episodic_event
 
+_PLATFORM_ID_KEYS = {"tenant_id", "user_id", "thread_id", "correlation_id", "run_id"}
+
+
+def _build_scopes(ctx: Dict[str, Any]) -> list:
+    """Build scope list from active domain scope IDs in ctx."""
+    scopes = []
+    domain = ctx.get("domain") or {}
+    domain_scopes = domain.get("scopes") or []
+
+    if domain_scopes:
+        for scope_def in domain_scopes:
+            id_field = scope_def.get("id_field") or ""
+            scope_name = scope_def.get("name") or ""
+            if id_field and scope_name and ctx.get(id_field):
+                scopes.append({"scope_type": scope_name, "scope_id": ctx[id_field]})
+    else:
+        # Fallback: infer from *_id keys in ctx
+        for key, val in ctx.items():
+            if key.endswith("_id") and key not in _PLATFORM_ID_KEYS and val:
+                scopes.append({"scope_type": key[:-3], "scope_id": str(val)})
+
+    return scopes
+
+
+def _scope_metadata(ctx: Dict[str, Any]) -> Dict[str, Any]:
+    """Build metadata dict of all active scope IDs from domain.yaml."""
+    metadata: Dict[str, Any] = {}
+    domain = ctx.get("domain") or {}
+    domain_scopes = domain.get("scopes") or []
+
+    if domain_scopes:
+        for scope_def in domain_scopes:
+            id_field = scope_def.get("id_field") or ""
+            if id_field and ctx.get(id_field):
+                metadata[id_field] = ctx[id_field]
+    else:
+        for key, val in ctx.items():
+            if key.endswith("_id") and key not in _PLATFORM_ID_KEYS and val:
+                metadata[key] = val
+
+    return metadata
+
 
 def write_hitl_requested(
     approval_id: str,
@@ -26,7 +68,7 @@ def write_hitl_requested(
             "approval_id": approval_id,
             "tool": tool_name,
             "risk_level": risk_level,
-            "requested_by": ctx.get("user_id", "nurse"),
+            "requested_by": ctx.get("user_id", "unknown"),
             "timestamp": datetime.now(timezone.utc).isoformat(),
         },
     )
@@ -81,14 +123,11 @@ def write_hitl_tool_executed(
     tool_result: Any,
     ctx: Dict[str, Any],
 ):
-    """Write a clean clinical episodic event after a HITL-approved tool executes.
-    This is separate from the audit trail written by write_hitl_decision and mirrors
-    what langgraph_runner would have written for a non-HITL tool_success."""
+    """Write a clean episodic event after a HITL-approved tool executes."""
     store = FileMemoryStore()
     tenant_id = ctx.get("tenant_id", "default")
     scopes = _build_scopes(ctx)
 
-    # Build a readable clinical summary from the tool input
     input_summary = ", ".join(f"{k}: {v}" for k, v in tool_input.items() if k not in ("tenant_id",))
     content = (
         f"Tool '{tool_name}' executed after supervisor approval. "
@@ -107,19 +146,6 @@ def write_hitl_tool_executed(
             "tool_input": tool_input,
             "source": "tool_success",
             "timestamp": datetime.now(timezone.utc).isoformat(),
-            "case_id": ctx.get("case_id"),
-            "member_id": ctx.get("member_id"),
-            "assessment_id": ctx.get("assessment_id"),
+            **_scope_metadata(ctx),
         },
     )
-
-
-def _build_scopes(ctx: Dict[str, Any]) -> list:
-    scopes = []
-    if ctx.get("assessment_id"):
-        scopes.append({"scope_type": "assessment", "scope_id": ctx["assessment_id"]})
-    if ctx.get("case_id"):
-        scopes.append({"scope_type": "case", "scope_id": ctx["case_id"]})
-    if ctx.get("member_id"):
-        scopes.append({"scope_type": "member", "scope_id": ctx["member_id"]})
-    return scopes

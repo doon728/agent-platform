@@ -35,6 +35,7 @@ class SearchKBInput(BaseModel):
     query: str
     top_k: Optional[int] = None
     threshold: Optional[float] = None
+    strategy: Optional[str] = None   # semantic | keyword | hybrid (Dim 1)
 
 
 class SearchKBResult(BaseModel):
@@ -141,7 +142,7 @@ def search_kb_handler(inp: SearchKBInput) -> SearchKBOutput:
     if not q:
         return SearchKBOutput(results=[])
 
-    results = retrieve(q, top_k=inp.top_k, threshold=inp.threshold)
+    results = retrieve(q, top_k=inp.top_k, threshold=inp.threshold, strategy=inp.strategy)
 
     return SearchKBOutput(
         results=[

@@ -1,15 +1,36 @@
 from __future__ import annotations
 
 import os
-import re
 from typing import List, Dict, Any
-from src.platform.config import load_config
-from src.platform.prompt.prompt_client import PromptServiceClient
+from platform_core.config import load_config
+from platform_core.prompt.prompt_client import PromptServiceClient
 
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
 
-from src.platform.tools.registry import registry
+from platform_core.tools.registry import registry
+
+
+def _build_domain_context(ctx: Dict[str, Any]) -> str:
+    """Build a domain scope block from domain.yaml — injected into planner prompt."""
+    domain = ctx.get("domain") or {}
+    if not domain:
+        return ""
+
+    capability = domain.get("capability") or ""
+    name = domain.get("name") or capability
+    description = domain.get("description") or ""
+    domains = domain.get("domains") or []
+
+    lines = [f"You operate within the {name} capability."]
+    if description:
+        lines.append(description)
+    if domains:
+        domain_ids = ", ".join(d.get("id", "") for d in domains if d.get("id"))
+        lines.append(f"In-scope domains: {domain_ids}.")
+    lines.append("Only answer questions and use tools relevant to these domains.")
+
+    return "\n".join(lines)
 
 
 def _get_planner_prompt(ctx: Dict[str, Any]) -> str:
@@ -27,37 +48,42 @@ def _get_planner_prompt(ctx: Dict[str, Any]) -> str:
         environment=cfg.prompt_service.environment,
     )
 
+    base_prompt = resolved_prompt or local_prompt or "You are an AI planning agent. Choose the best tool."
+
     if resolved_prompt:
         print("[planner] using prompt from prompt service")
-        return resolved_prompt
-    if local_prompt:
-        return local_prompt
 
-    # Minimal fallback — full prompt should be in prompt-defaults.yaml
-    return "You are an AI planning agent. Choose the best tool. Return exactly one tool call in format: tool_name: argument"
+    domain_ctx = _build_domain_context(ctx)
+    if domain_ctx:
+        return f"{domain_ctx}\n\n{base_prompt}"
 
-
-def _extract_latest_assessment_id(history: List[Dict[str, Any]]) -> str | None:
-    for item in reversed(history or []):
-        content = str(item.get("content") or "")
-        m = re.search(r"\b(asmt-\d+)\b", content, re.IGNORECASE)
-        if m:
-            return m.group(1)
-    return None
+    return base_prompt
 
 
-def _extract_assessment_id(text: str) -> str | None:
-    m = re.search(r"\b(asmt-\d+)\b", text or "", re.IGNORECASE)
-    if m:
-        return m.group(1)
-    return None
+def _resolve_scope_id(scope: str, ctx: Dict[str, Any], history: List[Dict[str, Any]]) -> str | None:
+    """Get the active ID for a given scope name from ctx or history."""
+    domain = ctx.get("domain") or {}
+    scopes = domain.get("scopes") or []
 
+    id_field = None
+    for s in scopes:
+        if s.get("name") == scope:
+            id_field = s.get("id_field")
+            break
 
-def _extract_member_id(text: str) -> str | None:
-    m = re.search(r"\b(m-\d+)\b", text or "", re.IGNORECASE)
-    if m:
-        return m.group(1)
-    return None
+    if not id_field:
+        id_field = f"{scope}_id"
+
+    scope_id = str(ctx.get(id_field) or "").strip() or None
+
+    if not scope_id and history:
+        for item in reversed(history):
+            content = str(item.get("metadata", {}).get(id_field) or "")
+            if content:
+                scope_id = content
+                break
+
+    return scope_id or None
 
 
 def _history_text(history: List[Dict[str, Any]]) -> str:
@@ -71,56 +97,52 @@ def _history_text(history: List[Dict[str, Any]]) -> str:
 
 
 def _get_allowed_tools(ctx: Dict[str, Any]) -> List[str]:
-
-
     tool_policy = ctx.get("tool_policy") or {}
     retrieval_cfg = ctx.get("retrieval") or {}
 
     mode = tool_policy.get("mode", "selected")
 
     if mode == "selected":
-        tools = tool_policy.get("allowed_tools") or []
-        return tools
-
-    if mode == "auto":
+        tools = list(tool_policy.get("allowed_tools") or [])
+    elif mode == "auto":
         allowed_tags = set(tool_policy.get("allowed_tags") or [])
         specs = registry.list_specs()
-
-        matched = []
+        tools = []
         for spec in specs:
-            if not allowed_tags:
-                matched.append(spec.name)
-            elif allowed_tags.intersection(set(spec.tags or [])):
-                matched.append(spec.name)
-
-        if retrieval_cfg.get("enabled"):
-            default_tool = retrieval_cfg.get("default_tool", "search_kb")
-            if default_tool not in matched:
-                matched.append(default_tool)
-
-        return matched
-
-    return []
-
-
-def _filter_tools_by_context(
-    allowed_tools: List[str],
-    ctx_member_id: str | None,
-    ctx_case_id: str | None,
-    active_assessment_id: str | None,
-) -> List[str]:
-    """Reduce allowed_tools to only those valid for the current context."""
-    if active_assessment_id:
-        context_valid = {"get_assessment_summary", "get_assessment_tasks", "write_case_note", "search_kb", "get_member"}
-    elif ctx_case_id:
-        context_valid = {"get_case_summary", "write_case_note", "search_kb", "get_member"}
-    elif ctx_member_id:
-        context_valid = {"get_member_summary", "get_member", "search_kb"}
+            if not allowed_tags or allowed_tags.intersection(set(spec.tags or [])):
+                tools.append(spec.name)
     else:
-        context_valid = {"search_kb"}
+        tools = []
 
-    filtered = [t for t in allowed_tools if t in context_valid]
-    return filtered if filtered else allowed_tools  # fallback: never return empty
+    # Gate search_kb (or configured planner tool) based on retrieval.planner_tool.enabled
+    planner_tool_cfg = retrieval_cfg.get("planner_tool") or {}
+    planner_tool_name = planner_tool_cfg.get("tool", "search_kb")
+    if not planner_tool_cfg.get("enabled", True):
+        tools = [t for t in tools if t != planner_tool_name]
+        print(f"[planner] planner_tool.enabled=false — removed {planner_tool_name} from allowed tools", flush=True)
+
+    # Always available — allows planner to skip tool invocation for general questions
+    if "direct_answer" not in tools:
+        tools.append("direct_answer")
+
+    return tools
+
+
+def _active_scope_context(ctx: Dict[str, Any], history: List[Dict[str, Any]]) -> Dict[str, str]:
+    """Build a dict of scope_name → active_id for all scopes present in ctx."""
+    domain = ctx.get("domain") or {}
+    scopes = domain.get("scopes") or []
+    result = {}
+    for s in scopes:
+        name = s.get("name") or ""
+        scope_id = _resolve_scope_id(name, ctx, history)
+        if scope_id:
+            result[name] = scope_id
+    if not result:
+        for k, v in ctx.items():
+            if k.endswith("_id") and v and isinstance(v, str):
+                result[k.replace("_id", "")] = v
+    return result
 
 
 def _build_tool_call_schema(allowed_tools: List[str]):
@@ -143,6 +165,15 @@ def _get_tool_descriptions(allowed_tools: List[str]) -> str:
     desc_lines = []
 
     for tool_name in allowed_tools:
+        if tool_name == "direct_answer":
+            desc_lines.append(
+                "tool: direct_answer\n"
+                "purpose: Answer the user directly from memory, context, or general knowledge — no tool call needed\n"
+                "argument: the user's question or a brief restatement of it\n"
+                "tags: general"
+            )
+            continue
+
         spec = spec_map.get(tool_name)
 
         if not spec:
@@ -167,200 +198,54 @@ tags: {tags}
 
 def plan(prompt: str, history: List[Dict[str, Any]], ctx: Dict[str, Any]) -> List[str]:
     p = (prompt or "").strip()
-    lower_p = p.lower()
 
     planner_prompt = _get_planner_prompt(ctx)
     allowed_tools = _get_allowed_tools(ctx)
-
-    explicit_assessment_id = _extract_assessment_id(p)
-    ctx_assessment_id = str(ctx.get("assessment_id") or "").strip() or None
-    latest_assessment_id = _extract_latest_assessment_id(history)
-    active_assessment_id = explicit_assessment_id or ctx_assessment_id or latest_assessment_id
-    ctx_member_id = str(ctx.get("member_id") or "").strip() or None
-    ctx_case_id = str(ctx.get("case_id") or "").strip() or None
-
-    print(f"[planner] allowed_tools={allowed_tools} explicit_assessment_id={explicit_assessment_id} prompt={p}", flush=True)
-
-    history_text = _history_text(history)
-
-    print(f"[planner_history_count] {len(history or [])}", flush=True)
-    print(f"[planner_history_text] {history_text}", flush=True)
-    print(f"[planner_latest_assessment_id] {latest_assessment_id}", flush=True)
-    print(f"[planner_active_assessment_id] {active_assessment_id}", flush=True)
-
-    prompt_member_id = _extract_member_id(p)
-
-    # --------------------------------------------------
-    # HARD ROUTING — deterministic routing before LLM
-    # --------------------------------------------------
-    clinical_summary_phrases = [
-        "summarize",
-        "summary",
-        "status",
-        "latest note",
-        "last note",
-        "concern",
-        "major concern",
-        "key concern",
-        "risk",
-        "risk level",
-        "overall risk",
-        "clinical",
-        "condition",
-        "health status",
-        "diagnosis",
-        "what is",
-        "tell me",
-        "how is",
-        "what are",
-    ]
-
-    patient_phrases = [
-        "patient name",
-        "member name",
-        "last name",
-        "first name",
-        "full name",
-        "name",
-        "latest note",
-        "last note",
-        "summarize status",
-        "assessment summary",
-    ]
-
-    tasks_phrases = [
-        "open tasks",
-        "my tasks",
-        "tasks",
-        "what tasks",
-        "pending tasks",
-        "task list",
-        "what do i need to do",
-        "pre call tasks",
-        "during call tasks",
-        "post call tasks",
-    ]
-
-    note_write_phrases = [
-        "update note",
-        "update last note",
-        "write note",
-        "add note",
-        "write a case note",
-        "case note",
-        "last note:",
-        "note:",
-    ]
-
-    # 1) Explicit assessment summary
-    if explicit_assessment_id and any(x in lower_p for x in clinical_summary_phrases):
-        if "get_assessment_summary" in allowed_tools:
-            print("[planner] HARD ROUTE -> get_assessment_summary", flush=True)
-            return (
-                [f"get_assessment_summary: {explicit_assessment_id}"],
-                {"route_type": "HARD_ROUTE", "tool": "get_assessment_summary", "reason": "assessment_id + summary phrase", "active_assessment_id": explicit_assessment_id},
-            )
-
-    # 2) Active assessment follow-up reads
-    if active_assessment_id and any(x in lower_p for x in patient_phrases):
-        if "get_assessment_summary" in allowed_tools:
-            print("[planner] HARD ROUTE -> get_assessment_summary (active assessment)", flush=True)
-            return (
-                [f"get_assessment_summary: {active_assessment_id}"],
-                {"route_type": "HARD_ROUTE", "tool": "get_assessment_summary", "reason": "active_assessment + patient phrase", "active_assessment_id": active_assessment_id},
-            )
-
-    # 3) Tasks lookup
-    if active_assessment_id and any(x in lower_p for x in tasks_phrases):
-        if "get_assessment_tasks" in allowed_tools:
-            print("[planner] HARD ROUTE -> get_assessment_tasks", flush=True)
-            return (
-                [f"get_assessment_tasks: {active_assessment_id}"],
-                {"route_type": "HARD_ROUTE", "tool": "get_assessment_tasks", "reason": "active_assessment + tasks phrase", "active_assessment_id": active_assessment_id},
-            )
-
-    # 4) Deterministic note writing
-    if active_assessment_id and any(x in lower_p for x in note_write_phrases):
-        target_assessment = explicit_assessment_id or active_assessment_id
-
-        if target_assessment and "write_case_note" in allowed_tools:
-            print("[planner] HARD ROUTE -> write_case_note", flush=True)
-            return (
-                [f"write_case_note:{target_assessment} | {p}"],
-                {"route_type": "HARD_ROUTE", "tool": "write_case_note", "reason": "active_assessment + note write phrase", "active_assessment_id": target_assessment},
-            )
-
-    # 5) Member-level summary — no assessment, no case in context
-    if ctx_member_id and not ctx_case_id and not active_assessment_id and any(x in lower_p for x in clinical_summary_phrases):
-        if "get_member_summary" in allowed_tools:
-            print("[planner] HARD ROUTE -> get_member_summary (member ctx)", flush=True)
-            return (
-                [f"get_member_summary: {ctx_member_id}"],
-                {"route_type": "HARD_ROUTE", "tool": "get_member_summary", "reason": "member_id in ctx + summary phrase"},
-            )
-        if "get_member" in allowed_tools:
-            print("[planner] HARD ROUTE -> get_member (member ctx)", flush=True)
-            return (
-                [f"get_member: {ctx_member_id}"],
-                {"route_type": "HARD_ROUTE", "tool": "get_member", "reason": "member_id in ctx + summary phrase"},
-            )
-
-    # 6) Case-level summary — case_id in context, no assessment
-    if ctx_case_id and not active_assessment_id and any(x in lower_p for x in clinical_summary_phrases):
-        if "get_case_summary" in allowed_tools:
-            print("[planner] HARD ROUTE -> get_case_summary (case ctx)", flush=True)
-            return (
-                [f"get_case_summary: {ctx_case_id}"],
-                {"route_type": "HARD_ROUTE", "tool": "get_case_summary", "reason": "case_id in ctx + summary phrase → case_summary"},
-            )
-        target_member = ctx_member_id or prompt_member_id
-        if target_member and "get_member_summary" in allowed_tools:
-            print("[planner] HARD ROUTE -> get_member_summary (case ctx fallback)", flush=True)
-            return (
-                [f"get_member_summary: {target_member}"],
-                {"route_type": "HARD_ROUTE", "tool": "get_member_summary", "reason": "case_id in ctx + summary phrase → member_summary (fallback)"},
-            )
-        if target_member and "get_member" in allowed_tools:
-            print("[planner] HARD ROUTE -> get_member (case ctx)", flush=True)
-            return (
-                [f"get_member: {target_member}"],
-                {"route_type": "HARD_ROUTE", "tool": "get_member", "reason": "case_id in ctx + summary phrase → get_member"},
-            )
-
     retrieval_cfg = ctx.get("retrieval") or {}
     default_retrieval_tool = retrieval_cfg.get("default_tool", "search_kb")
 
-    # --------------------------------------------------
-    # LLM PATH — structured output with context-filtered tools
-    # --------------------------------------------------
-    filtered_tools = _filter_tools_by_context(allowed_tools, ctx_member_id, ctx_case_id, active_assessment_id)
-    print(f"[planner] filtered_tools={filtered_tools}", flush=True)
+    active_scopes = _active_scope_context(ctx, history)
+    history_text = _history_text(history)
+
+    print(f"[planner] allowed_tools={allowed_tools} active_scopes={active_scopes} prompt={p}", flush=True)
+
+    scope_context_lines = "\n".join(
+        f"Active {scope}: {scope_id}" for scope, scope_id in active_scopes.items()
+    ) or "(no scope context)"
 
     model_name = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
     api_key = os.getenv("OPENAI_API_KEY", "")
     llm = ChatOpenAI(model=model_name, temperature=0, api_key=api_key)
 
-    ToolCallSchema = _build_tool_call_schema(filtered_tools)
+    ToolCallSchema = _build_tool_call_schema(allowed_tools)
     structured_llm = llm.with_structured_output(ToolCallSchema)
+    tools_text = _get_tool_descriptions(allowed_tools)
 
-    tools_text = _get_tool_descriptions(filtered_tools)
+    # Inject pre-graph RAG context if available (Dim 2 — pre-reasoning stage)
+    rag_chunks = ctx.get("rag_context") or []
+    if rag_chunks:
+        rag_lines = "\n\n".join(
+            f"[KB {i+1}] {chunk.get('title', '')} — {chunk.get('content', chunk.get('snippet', ''))}"
+            for i, chunk in enumerate(rag_chunks)
+        )
+        rag_section = f"\n\nKnowledge base context (retrieved before reasoning):\n{rag_lines}"
+    else:
+        rag_section = ""
 
     system = SystemMessage(
         content=f"""
 {planner_prompt}
 
-Conversation context:
-Active member_id: {ctx_member_id or "(none)"}
-Active case_id: {ctx_case_id or "(none)"}
-Active assessment_id: {active_assessment_id or "(none)"}
+Active context:
+{scope_context_lines}{rag_section}
 
-Available tools (only these are valid for the current context):
+Available tools:
 {tools_text}
 
 Choose the single best tool for the user's message.
-For the argument, use the active ID from context (assessment_id, case_id, or member_id) unless the user specifies a different one.
-For write_case_note, use the active assessment_id or case_id as the argument.
+Use the active scope ID as the argument unless the user specifies a different one.
 For search_kb, use the user's message as the argument.
+Use direct_answer when no tool is needed — general knowledge questions, greetings, clarifications, or anything answerable from context alone.
 """
     )
 
@@ -383,20 +268,16 @@ For search_kb, use the user's message as the argument.
             {"route_type": "LLM_ROUTE", "tool": default_retrieval_tool, "reason": f"structured output failed: {e}"},
         )
 
-    print(f"[planner] LLM structured result: tool={tool} argument={arg}", flush=True)
+    print(f"[planner] LLM result: tool={tool} argument={arg}", flush=True)
 
-    # Step 3 — Validate and inject missing argument from context
     if not arg:
-        if tool in ("get_assessment_summary", "get_assessment_tasks") and active_assessment_id:
-            arg = active_assessment_id
-        elif tool == "get_case_summary" and ctx_case_id:
-            arg = ctx_case_id
-        elif tool in ("get_member_summary", "get_member") and ctx_member_id:
-            arg = ctx_member_id
-        else:
+        for scope_id in active_scopes.values():
+            arg = scope_id
+            break
+        if not arg:
             arg = p
 
     return (
         [f"{tool}: {arg}"],
-        {"route_type": "LLM_ROUTE", "tool": tool, "reason": "LLM structured decision", "filtered_tools": filtered_tools},
+        {"route_type": "LLM_ROUTE", "tool": tool, "reason": "LLM structured decision"},
     )

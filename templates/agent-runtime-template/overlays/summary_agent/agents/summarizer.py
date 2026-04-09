@@ -26,27 +26,31 @@ def _call_tool(tool_name: str, tool_input: Dict[str, Any], ctx: Dict[str, Any]):
         return tool_name, {"error": str(e)}
 
 
-def fetch(scope_type: str, scope_id: str, ctx: Dict[str, Any]) -> Dict[str, Any]:
-    """Determine which tools to call for this scope, then call them in parallel."""
-    member_id = ctx.get("member_id") or scope_id
+def _get_scope_definition(scope_type: str, ctx: Dict[str, Any]) -> Dict[str, Any]:
+    """Find the scope definition from domain.yaml loaded into ctx."""
+    domain = ctx.get("domain") or {}
+    for scope in domain.get("scopes") or []:
+        if scope.get("name") == scope_type:
+            return scope
+    return {}
 
-    if scope_type == "assessment":
-        calls = [
-            ("get_assessment_summary", {"assessment_id": scope_id}),
-            ("get_assessment_tasks", {"assessment_id": scope_id}),
-        ]
-    elif scope_type == "case":
-        calls = [
-            ("get_member", {"member_id": member_id}),
-            ("get_member_summary", {"member_id": member_id}),
-        ]
-    elif scope_type == "member":
-        calls = [
-            ("get_member", {"member_id": scope_id}),
-            ("get_member_summary", {"member_id": scope_id}),
-        ]
-    else:
+
+def fetch(scope_type: str, scope_id: str, ctx: Dict[str, Any]) -> Dict[str, Any]:
+    """Determine which tools to call for this scope using domain.yaml summary_tools."""
+    scope_def = _get_scope_definition(scope_type, ctx)
+    summary_tools = scope_def.get("summary_tools") or []
+
+    if not summary_tools:
+        print(f"[summarizer] no summary_tools defined for scope '{scope_type}' in domain.yaml", flush=True)
         return {}
+
+    calls = []
+    for entry in summary_tools:
+        tool = entry.get("tool") or ""
+        arg_field = entry.get("arg_field") or scope_def.get("id_field") or f"{scope_type}_id"
+        arg_value = ctx.get(arg_field) or scope_id
+        if tool and arg_value:
+            calls.append((tool, {arg_field: arg_value}))
 
     results: Dict[str, Any] = {}
     with ThreadPoolExecutor(max_workers=max(len(calls), 1)) as executor:

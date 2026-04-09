@@ -98,13 +98,17 @@ def execute(steps: List[str], ctx: Dict[str, Any]) -> Any:
         tool = plan["tool"]
         tool_input = plan["input"]
 
-        # Inject RAG params from agent.yaml retrieval config
+        # Inject RAG params from agent.yaml retrieval.planner_tool config
         retrieval_cfg = ctx.get("retrieval") or {}
-        if tool == retrieval_cfg.get("default_tool"):
-            if retrieval_cfg.get("top_k") is not None:
-                tool_input = {**tool_input, "top_k": retrieval_cfg["top_k"]}
-            if retrieval_cfg.get("similarity_threshold") is not None:
-                tool_input = {**tool_input, "threshold": retrieval_cfg["similarity_threshold"]}
+        planner_tool_cfg = retrieval_cfg.get("planner_tool") or {}
+        planner_tool_name = planner_tool_cfg.get("tool", "search_kb")
+        if tool == planner_tool_name:
+            if planner_tool_cfg.get("top_k") is not None:
+                tool_input = {**tool_input, "top_k": planner_tool_cfg["top_k"]}
+            if planner_tool_cfg.get("similarity_threshold") is not None:
+                tool_input = {**tool_input, "threshold": planner_tool_cfg["similarity_threshold"]}
+            if planner_tool_cfg.get("strategy") is not None:
+                tool_input = {**tool_input, "strategy": planner_tool_cfg["strategy"]}
 
         # HITL check — skip if session override disables it
         _hitl_session_enabled = (ctx.get("hitl_override") or {}).get("enabled", True)

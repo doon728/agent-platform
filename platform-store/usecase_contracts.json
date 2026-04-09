@@ -24,5 +24,31 @@
       "prompt_versioning": true
     },
     "default_model": "gpt-4o-mini"
+  },
+  "care-management::test::chat_agent": {
+    "capability_name": "care-management",
+    "usecase_name": "test",
+    "agent_type": "chat_agent",
+    "app_name": "test",
+    "app_repo_name": "test",
+    "agent_repo_name": "test",
+    "components": {
+      "planner": true,
+      "responder": true,
+      "workflow": false,
+      "router": false
+    },
+    "prompt_types": [
+      "planner",
+      "responder"
+    ],
+    "features": {
+      "memory": false,
+      "rag": false,
+      "hitl": false,
+      "observability": true,
+      "prompt_versioning": true
+    },
+    "default_model": "gpt-4o"
   }
 }

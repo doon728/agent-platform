@@ -1,30 +1,46 @@
 agent:
   type: chat_agent
   planner_mode: llm
+
+reasoning:
+  strategy: react    # react (default) | simple | plan_execute | multi_hop | reflection | tree_of_thought
+  max_steps: 5       # react only — max tool calls before forcing a response
 tools:
   mode: selected
   allowed:
-  - search_kb
-  - get_member
-  - write_case_note
-  - get_member_summary
-  - get_case_summary
-  - get_assessment_summary
-  - get_assessment_tasks
+    - search_kb
 retrieval:
   enabled: true
-  default_tool: search_kb
-  strategy: semantic
+
+  # ── Pre-graph RAG (Dim 2 — Stage 1) ───────────────────────────────────────
+  # Retrieves KB chunks BEFORE the planner runs and injects them into context.
+  # The planner and responder see this silently — no explicit tool call needed.
+  # Recommended for: chat_agent, workflow_agent, quality_checker
+  # NOT recommended for: react_agent (ReAct loop handles retrieval itself)
   pre_graph:
     enabled: false
+    tool: search_kb           # which KB tool to call
+    strategy: hybrid          # Dim 1: semantic | keyword | hybrid (independent of planner_tool)
+    pattern: naive            # Dim 3: naive | self_corrective | multi_hop | hyde | agentic
     top_k: 3
     similarity_threshold: 0.5
-  top_k: 5
-  similarity_threshold: 0.35
-  fallback:
-    allow_no_results_response: true
+
+  # ── Planner tool RAG (Dim 2 — Stage 2) ────────────────────────────────────
+  # Exposes search_kb as a tool the planner LLM can call explicitly.
+  # The planner decides WHEN to call it based on the user's query.
+  # Recommended for: chat_agent, react_agent
+  # NOT recommended for: summary_agent (summarizes given context, no KB search needed)
+  planner_tool:
+    enabled: true
+    tool: search_kb           # which KB tool to expose to the planner
+    strategy: semantic        # Dim 1: semantic | keyword | hybrid (independent of pre_graph)
+    pattern: naive            # Dim 3: naive | self_corrective | multi_hop | hyde | agentic
+    top_k: 5
+    similarity_threshold: 0.35
+    fallback:
+      allow_no_results_response: true
 risk:
-  approval_required: true
+  approval_required: false
   risk_levels:
     write_case_note: high
     get_member_summary: low
@@ -33,20 +49,21 @@ risk:
     get_assessment_tasks: low
     get_member: low
     search_kb: low
+
 hitl:
   adapter: internal
   routing_rules:
-  - risk_level: high
-    requires_approval: true
-  - risk_level: medium
-    requires_approval: true
-  - risk_level: low
-    requires_approval: false
+    - risk_level: high
+      requires_approval: true
+    - risk_level: medium
+      requires_approval: true
+    - risk_level: low
+      requires_approval: false
   sla:
     timeout_minutes: 60
 features:
   memory: true
   rag: true
-  hitl: true
+  hitl: false
   observability: true
-  prompt_versioning: true
+  prompt_versioning: false

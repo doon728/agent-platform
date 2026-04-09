@@ -2,19 +2,48 @@ from __future__ import annotations
 
 from typing import Any, Dict, List
 
-from src.platform.config import load_config
-from src.platform.llm.responder import generate_answer
-from src.platform.observability.tracer import start_run, add_step, finish_run
-from src.platform.tools.registry import registry
-from src.platform.tools.router import route_step
-from src.platform.hitl.adapters.internal import InternalAdapter
-from src.platform.hitl.memory_writer import write_hitl_requested
+from platform_core.config import load_config
+from platform_core.llm.responder import generate_answer
+from platform_core.observability.tracer import start_run, add_step, finish_run
+from platform_core.tools.registry import registry
+from platform_core.tools.router import route_step
+from platform_core.hitl.adapters.internal import InternalAdapter
+from platform_core.hitl.memory_writer import write_hitl_requested
+from platform_core.memory.write_engine import write_episodic_event
+from platform_core.memory.backend_factory import get_backend
 
 
 cfg = load_config()
 USECASE = cfg.app.active_usecase
 
 _hitl_adapter = InternalAdapter()
+
+
+def _should_write_episodic(tool_name: str, ctx: Dict[str, Any]) -> bool:
+    """Check write_on_tool_call config to decide if this tool triggers an episodic write."""
+    memory_cfg = ctx.get("memory") or {}
+    episodic_cfg = ((memory_cfg.get("write_policies") or {}).get("episodic") or {})
+    wotc = episodic_cfg.get("write_on_tool_call") or {}
+
+    if not wotc.get("enabled", False):
+        return False
+
+    tools_setting = wotc.get("tools", "write_only")
+
+    if tools_setting == "all":
+        return True
+
+    if tools_setting == "write_only":
+        try:
+            spec = registry.get_spec(tool_name)
+            return getattr(spec, "mode", "read") == "write"
+        except Exception:
+            return False
+
+    if isinstance(tools_setting, list):
+        return tool_name in tools_setting
+
+    return False
 
 
 def _requires_approval(tool_name: str, ctx: Dict[str, Any]) -> bool:
@@ -80,6 +109,13 @@ def execute(steps: List[str], ctx: Dict[str, Any]) -> Any:
     plan = route_step(step, ctx, raw_prompt=ctx.get("prompt", step))
     mode = plan.get("mode")
 
+    # direct_answer — planner decided no tool needed, answer from context/knowledge directly
+    if plan.get("tool") == "direct_answer":
+        add_step(run_id, "direct_answer", {"reason": "planner: no tool needed"})
+        answer = generate_answer(ctx.get("prompt", step), None, None, ctx)
+        finish_run(run_id)
+        return {"result": "OK", "mode": "DIRECT_ANSWER", "answer": answer}
+
     # Extract assessment_id + note from compound planner step (tool: id | note)
     if mode == "direct_tool":
         if ":" in step and "|" in step:
@@ -98,13 +134,17 @@ def execute(steps: List[str], ctx: Dict[str, Any]) -> Any:
         tool = plan["tool"]
         tool_input = plan["input"]
 
-        # Inject RAG params from agent.yaml retrieval config
+        # Inject RAG params from agent.yaml retrieval.planner_tool config
         retrieval_cfg = ctx.get("retrieval") or {}
-        if tool == retrieval_cfg.get("default_tool"):
-            if retrieval_cfg.get("top_k") is not None:
-                tool_input = {**tool_input, "top_k": retrieval_cfg["top_k"]}
-            if retrieval_cfg.get("similarity_threshold") is not None:
-                tool_input = {**tool_input, "threshold": retrieval_cfg["similarity_threshold"]}
+        planner_tool_cfg = retrieval_cfg.get("planner_tool") or {}
+        planner_tool_name = planner_tool_cfg.get("tool", "search_kb")
+        if tool == planner_tool_name:
+            if planner_tool_cfg.get("top_k") is not None:
+                tool_input = {**tool_input, "top_k": planner_tool_cfg["top_k"]}
+            if planner_tool_cfg.get("similarity_threshold") is not None:
+                tool_input = {**tool_input, "threshold": planner_tool_cfg["similarity_threshold"]}
+            if planner_tool_cfg.get("strategy") is not None:
+                tool_input = {**tool_input, "strategy": planner_tool_cfg["strategy"]}
 
         # HITL check — skip if session override disables it
         _hitl_session_enabled = (ctx.get("hitl_override") or {}).get("enabled", True)
@@ -149,6 +189,38 @@ def execute(steps: List[str], ctx: Dict[str, Any]) -> Any:
 
         add_step(run_id, "tool_call", {"tool": tool, "input": tool_input})
         result = _invoke_tool(tool, tool_input, ctx, bypass_hitl=not _hitl_session_enabled)
+
+        # Write episodic event for direct tool calls (non-HITL) if configured
+        if _should_write_episodic(tool, ctx):
+            try:
+                memory_cfg = ctx.get("memory") or {}
+                episodic_cfg = ((memory_cfg.get("write_policies") or {}).get("episodic") or {})
+                domain = ctx.get("domain") or {}
+                scopes = [
+                    {"scope_type": s["name"], "scope_id": ctx.get(s["id_field"], "")}
+                    for s in (domain.get("scopes") or [])
+                    if ctx.get(s.get("id_field", ""))
+                ]
+                result_summary = str(result)[:300] if result else ""
+                write_episodic_event(
+                    store=get_backend(memory_cfg),
+                    tenant_id=ctx.get("tenant_id", "default"),
+                    scopes=scopes,
+                    content=f"Tool '{tool}' executed. Result: {result_summary}",
+                    metadata={
+                        "type": "tool_executed",
+                        "tool": tool,
+                        "tool_input": {k: v for k, v in tool_input.items() if k != "tenant_id"},
+                        "source": "direct_tool_call",
+                        "agent_type": ctx.get("agent_type", ""),
+                        "reasoning_strategy": (ctx.get("reasoning") or {}).get("strategy", ""),
+                        "thread_id": ctx.get("thread_id", ""),
+                    },
+                    episodic_cfg=episodic_cfg,
+                    domain=domain,
+                )
+            except Exception as e:
+                print(f"[executor] episodic write failed (non-fatal): {e}")
 
         # Retrieval fallback handling
         if tool == retrieval_cfg.get("default_tool"):

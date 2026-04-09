@@ -15,6 +15,8 @@ COPY services/agent-runtime/config/ /app/config
 COPY services/agent-runtime/src/ /app/src
 COPY overlays/ /app/overlays
 
+# domain scope — copied from capabilities/<cap>/domain.yaml at scaffold time
+COPY domain.yaml /app/domain.yaml
 
 EXPOSE 8080
 

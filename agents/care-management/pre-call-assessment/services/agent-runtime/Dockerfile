@@ -5,15 +5,23 @@ ENV PYTHONPATH=/app
 
 RUN pip install --no-cache-dir poetry
 
-# install deps
-COPY services/agent-runtime/pyproject.toml services/agent-runtime/poetry.lock* /app/
+# install platform-core shared library
+COPY platform-core/ /platform-core/
+RUN pip install --no-cache-dir -e /platform-core
+
+# install agent-runtime deps
+COPY agents/care-management/pre-call-assessment/services/agent-runtime/pyproject.toml \
+     agents/care-management/pre-call-assessment/services/agent-runtime/poetry.lock* /app/
 RUN poetry config virtualenvs.create false \
  && poetry install --no-interaction --no-ansi --no-root
 
 # copy runtime
-COPY services/agent-runtime/config/ /app/config
-COPY services/agent-runtime/src/ /app/src
-COPY overlays/ /app/overlays
+COPY agents/care-management/pre-call-assessment/services/agent-runtime/config/ /app/config
+COPY agents/care-management/pre-call-assessment/services/agent-runtime/src/ /app/src
+COPY agents/care-management/pre-call-assessment/overlays/ /app/overlays
+
+# domain scope — copied from capabilities/<cap>/domain.yaml at scaffold time
+COPY agents/care-management/pre-call-assessment/domain.yaml /app/domain.yaml
 
 
 EXPOSE 8080

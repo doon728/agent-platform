@@ -1,4 +1,18 @@
 enabled: true
+
+# Read/write are independent per memory type.
+# read_policies — can this agent retrieve this memory type?
+# write_policies — can this agent write this memory type?
+read_policies:
+  short_term:
+    enabled: true    # always read conversation history
+  episodic:
+    enabled: true    # read case/assessment events
+  semantic:
+    enabled: true    # read member/user facts
+  summary:
+    enabled: true    # read conversation summary
+
 scope_taxonomy:
 - conversation
 - user
@@ -16,15 +30,21 @@ scope_resolution:
 write_policies:
   short_term:
     enabled: true
+    write_locked: false        # chat_agent always writes short_term
     trigger: every_turn
+    write_intermediate_steps: false   # true = write each ReAct thought/action/observation to short-term
     primary_scope: conversation
     retain_last_n_turns: 12
   episodic:
     enabled: true
+    write_locked: false        # chat_agent writes episodic — summary_agent sets true
     triggers:
     - tool_success
     - workflow_checkpoint
     - assessment_completed
+    write_on_tool_call:
+      enabled: true
+      tools: write_only        # write_only | all | [explicit list e.g. write_case_note, get_member]
     allowed_scopes:
     - case
     - assessment
@@ -33,16 +53,19 @@ write_policies:
     link_to_member_scope: true
   semantic:
     enabled: false
+    write_locked: false        # chat_agent writes semantic — summary_agent sets true
     trigger: extractor
-    extractor_profile: stable_fact_extractor_v1
-    confidence_threshold: 0.85
+    dedup:
+      enabled: true            # update existing fact in place if same fact_type exists for scope
     allowed_scopes:
     - member
     - user
   summary:
     enabled: true
-    triggers:
-      every_n_turns: 10
+    write_locked: true         # chat_agent never writes summary — summary_agent does
+    trigger: explicit          # explicit | turn_count | token_threshold | never
+    turn_count_threshold: 20   # used when trigger: turn_count
+    token_threshold: 8000      # used when trigger: token_threshold (approx tokens in short-term)
     allowed_scopes:
     - conversation
     - case

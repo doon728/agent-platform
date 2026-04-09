@@ -4,6 +4,24 @@ Status key: ✅ Done | ⚠ Partial / Limitation | 🔲 Not Started
 
 ---
 
+## Where every item lives
+
+| Item | Home |
+|---|---|
+| Agent Factory UI, Agent Registry UI, Prompt Governance | `platform-tools/agent-factory-ui/` |
+| Support API (scaffold, workspace, registry) | `platform-tools/agent-factory-support-api/` |
+| Agent runtime (planner, executor, responder, memory, RAG, HITL) | `templates/agent-runtime-template/` → copied to `agents/<cap>/<agent>/` |
+| platform-core shared library (10L) | `platform-core/` — imported by all agent runtimes |
+| Guardrails (10m) | `platform-core/` layer, zero agent code touch |
+| HITL adapters | `platform-core/` adapter, selected by `agent.yaml` |
+| Tool Gateway | `shared-infra/industry-tool-gateway-<industry>/` — shared across all agents |
+| New capability | new folder in `capabilities/` + agent shell in `agents/` |
+| New industry | new folder in `shared-infra/` |
+| domain.yaml (scope definitions) | `capabilities/<cap>/domain.yaml` — copied into agent at scaffold |
+| agent.yaml (agent behavior config) | `agents/<cap>/<agent>/overlays/<type>/config/agent.yaml` |
+
+---
+
 ## Active / Next Up
 
 1. **Agent Registry UI** ✅ — fully built. Workspaces page has Restart + Stop buttons. Agent Registry, Prompt Governance all built.
@@ -11,6 +29,45 @@ Status key: ✅ Done | ⚠ Partial / Limitation | 🔲 Not Started
 2. **Summary Agent** ✅ — built. `summary_agent` overlay exists, `SummaryPanel` component built, used in AssessmentView and CaseView.
 
 3. **Live Agent Flow Diagram in Overview tab** 🔲 — as admin configures RAG, HITL, Memory tabs in Agent Registry, the Overview tab shows a live visual flow diagram that updates dynamically to reflect the current config. Examples: enable pre-graph RAG → RAG step appears before graph in diagram; disable HITL → approval branch disappears from executor; turn off episodic memory → post-graph write shows only short-term. Diagram is a React component (ReactFlow) reading the same config state already loaded in the UI — no new API calls needed. Each tab change updates the diagram in real time. Purpose: admin sees exactly what will happen on the next message given current config, without reading YAML.
+
+3h. **Create Agent form — minimal wizard (option 4)** 🔲 — replace the current 740-line single-scroll form with a 3-field scaffold step + post-scaffold redirect to Agent Registry for all configuration.
+
+   **Step 1 — scaffold (3 fields only):**
+   - Agent name
+   - Capability (dropdown from filesystem capabilities)
+   - Agent type (dropdown: chat_agent, summarization_agent, etc.)
+   - → Submit → scaffold files + auto-register → redirect to Agent Registry for the new agent
+
+   **Why:** Agent Registry already has all the config tabs (Memory, HITL, RAG, Tools). Duplicating those controls in the create form creates two places to maintain. Create form should only do what Registry can't — pick the name and type before the files exist.
+
+   **What moves out of the create form:**
+   - Memory toggles → Agent Registry Memory tab
+   - HITL config → Agent Registry HITL tab
+   - RAG config → Agent Registry RAG tab
+   - Tool allowlist → Agent Registry Tools tab
+
+   **After scaffold:** support API scaffolds overlay files + writes to `usecase_registry.json` → agent immediately appears in Agent Registry → admin lands on the new agent's Overview tab to configure.
+
+3g. **Agent Config Comparison Grid** 🔲 — a dedicated view in Agent Registry for the same agent (same usecase + capability) showing all config snapshots as rows and every config parameter + performance metric as columns. Scoped to one agent at a time — not cross-agent comparison.
+
+   **Grid structure:**
+   - Rows = config snapshots (auto-saved each time agent config is changed via UI, with timestamp)
+   - Columns grouped by subsection: RAG (pre_graph + planner_tool, all 3 dimensions each), Memory (all 4 types with all options), HITL (level, adapter), Tools (enabled list), Performance (pre-graph ms, planner ms, tool ms, responder ms, total ms, total tokens, cost/run)
+   - First column (config name + timestamp) frozen
+   - Changed cells highlighted vs previous row — instantly see what changed and what effect it had
+   - Performance metrics come from actual run traces — not estimates
+
+   **Why per-agent, same usecase:** baseline is controlled. The only variable is the config change. Useful for care management specifically — nurses are time-pressured, a 200ms latency difference matters, and cost at scale (50 nurses × 100 queries/day) is visible before it becomes a problem.
+
+   **Detail to refine later:** exact column set, snapshot trigger rules, metric aggregation (P50/P95 vs last N runs), UI layout.
+
+   **Tooling note — not available OOTB anywhere:**
+   - **MLflow / Databricks** — experiment tracking with param + metric comparison, but built for ML training runs. Knows nothing about RAG dimensions, memory types, or reasoning strategies. Would require manually logging every config param as a metric — comparison UI is generic, not tailored.
+   - **LangSmith** — per-run traces with latency + token breakdown per step. No config snapshot concept, no config comparison grid.
+   - **Langfuse** — open source LLM observability, has an "experiments" feature but it is prompt-focused (compare prompt A vs prompt B), not agent config.
+   - **W&B, Arize, Helicone** — aggregate dashboards and monitoring, not per-config comparison.
+   - **Common gap in all:** none understand our config model (agent.yaml, RAG dimensions, memory types). The config parameter columns can only come from us.
+   - **Right approach:** use LangSmith or Langfuse for raw trace + cost + latency data (they are good at that). Build the config comparison grid ourselves — reads config snapshots from our store, pulls metrics from the trace integration. Best of both.
 
 3f. **Agent Registry UI — Routing tab (config-driven hard routes)** 🔲 — new Routing tab in Agent Registry UI per agent. Allows admin to define deterministic keyword-based routes without touching code. Replaces the hardcoded `HARD_ROUTE` block in `llm_planner.py` which today is care management specific.
 
@@ -131,21 +188,66 @@ Status key: ✅ Done | ⚠ Partial / Limitation | 🔲 Not Started
 
 ## Platform Capabilities — Backlog
 
-4. **Tool Gateway Admin UI** 🔲 — new module in Agent Factory UI for managing the tool gateway without editing code
-   - Add/edit/delete tools: name, description, mode (read/write), tags, primary_arg
-   - KB classification: mark tool as retrieval tool, pick DB type (vector_db, graph_db, keyword) → auto-sets strategy (Dimension 1)
-   - Document ingestion: upload PDFs/txt/docx into a KB tool's backing vector store, trigger embedding
-   - KB management: view indexed documents, delete docs, re-embed, see chunk count
-   - Publishes changes to tool gateway registry (currently requires code edits)
-   - **Bucket hierarchy management** — admin defines named buckets (industry → LOB → region/state or any custom hierarchy) and maps them to tag combinations. Hierarchy is flexible and defined at runtime — not hardcoded. Examples: Healthcare → Care Management → Florida; or Region: Southeast → Product: Medicare Advantage → Function: Case Management.
-   - **Agent bucket assignment** — in Agent Registry UI, agent is assigned to one or more buckets. Tool schema shown to LLM is filtered to matching tools at query time. Florida care management agent sees only Florida care management tools.
-   - **What's in the data today**: tags are already a flat list on each ToolSpec (e.g. `["healthcare", "care_management", "florida", "member"]`). The bucket config layer on top is what's missing.
+4. **Tool Gateway Admin UI** ✅ — built. Tool Registry (add/edit/delete, mode, tags, endpoint, schema, enable toggle) and Knowledge Base (document ingestion, chunk management, delete docs) both live at `shared-infra/industry-tool-gateway-healthcare/services/tool-admin-ui/` on port 5200.
+
+4a. **Tool Gateway — Bucket hierarchy + agent assignment** 🔲 — the tag filtering layer on top of the existing flat tag list. Two parts:
+
+   **Bucket hierarchy (Tool Admin UI):**
+   - Admin defines named buckets that map to tag combinations — e.g. `Healthcare → Care Management → Florida` maps to `["healthcare", "care_management", "florida"]`
+   - Hierarchy is flexible and runtime-defined — not hardcoded. Any shape: industry → LOB → region, or region → product → function
+   - UI: bucket editor with parent/child relationship and tag mapping per node
+   - Saves to gateway config — no code changes needed to add a new region or LOB
+
+   **Agent bucket assignment (Agent Registry UI):**
+   - Agent is assigned to one or more buckets in Agent Registry
+   - At query time, tool schema passed to LLM is filtered to tools whose tags match the assigned bucket(s)
+   - Florida care management agent never sees Texas Medicaid tools
+   - UI: bucket multi-select dropdown in Agent Registry (populated from bucket hierarchy config)
+
+   **What's in the data today:** tags already exist as a flat list on each ToolSpec (e.g. `["healthcare", "care_management", "florida", "member"]`). Bucket config layer and agent assignment are the only missing pieces.
+
+   **When to build:** low priority until there are 2+ agents across different regions/LOBs. With one agent today, tag filtering is manual and sufficient.
 
 5. **Prompt Management & Evaluation module** 🔲 — manage prompt templates (prompt-defaults.yaml), A/B test prompt variants, evaluate outputs against test cases, track prompt version history. Add to Agent Factory UI.
 
 6. **Memory Pruning** 🔲 — automatic cleanup of stale/irrelevant memory entries. Strategies: TTL-based expiry, relevance scoring, max-size eviction per scope. Prevent memory bloat over long sessions.
 
 6b. **Intelligent Memory Retrieval** 🔲 — today platform always retrieves all enabled memory types on every turn. Real world: episodic, semantic, and summary retrieval should be conditional — rule-based pre-filter (e.g. only search episodic if case_id present) + optional LLM decision for ambiguous cases ("does this query need past case history?"). Same decision problem as tool calling but at the memory layer.
+
+   **Two-tier design:**
+   - **Tier 1 — rule-based, pre-planner (no LLM cost):** condition options per memory type: `always | scope_present | never`. Runs in `context_builder.py` before planner. Fast, deterministic.
+   - **Tier 2 — LLM-driven, planner tool:** condition `query_relevant`. Memory type exposed as a tool (`fetch_episodic_memory`, `fetch_semantic_facts`, `fetch_summary`). Planner sees a hint in system prompt and decides whether to call it based on the query.
+
+   **Design gaps to resolve before building:**
+
+   1. **`scope_present` needs scope ID reference** — Tier 1 condition `scope_present` must know which scope ID to check (e.g. episodic → `case_id`, summary → `assessment_id`). Requires reading domain.yaml scope hierarchy — not hardcoded. Dependency on scope_resolver.
+
+   2. **Tier 1 → Tier 2 interaction** — if Tier 1 already fetched a memory type (scope_present fired), Tier 2 must NOT expose the fetch tool for that same type — redundant and wasteful. Rule: Tier 1 fetch suppresses Tier 2 tool registration for that memory type in the same turn.
+
+   3. **Tier 2 result injection** — when planner calls `fetch_episodic_memory`, result must be injected back into LLM context for the responder (not just stored as a tool output in the message list). Needs a dedicated injection mechanism — different from regular tool call results.
+
+   4. **`fetch_summary` is scope-based, not query-based** — summary is a pre-generated document, not semantically searched. `fetch_summary` = "get latest summary for this scope." Tier 2 condition `query_relevant` still applies (planner decides IF to fetch) but the fetch itself is a simple scope lookup, not a vector search.
+
+   5. **Config shape not complete** — `memory.yaml` config block needs `intelligent_retrieval.condition` per memory type. Example:
+      ```yaml
+      memory:
+        episodic:
+          intelligent_retrieval:
+            enabled: true
+            condition: scope_present   # Tier 1 — which scope ID from domain.yaml
+            scope: case                # maps to case_id in domain.yaml
+        semantic:
+          intelligent_retrieval:
+            enabled: true
+            condition: query_relevant  # Tier 2 — planner decides
+        summary:
+          intelligent_retrieval:
+            enabled: true
+            condition: scope_present   # Tier 1
+            scope: assessment          # maps to assessment_id in domain.yaml
+      ```
+
+6d. **workflow_agent — per-step memory configuration** 🔲 — different workflow steps may need different memory types (e.g. step 1 needs episodic off, step 2 needs semantic on). Agent Registry Memory tab can only configure agent-level defaults — it has no knowledge of workflow steps. Per-step memory config requires a workflow builder UI (each step node has its own memory config panel). Until then: agent-level defaults via Memory tab, per-step overrides via `workflow.yaml` directly (developer edits). Known limitation — revisit when workflow builder is built.
 
 6c. **Memory Read/Write Split** 🔲 — today memory is a single on/off flag controlling both read and write together. Need to separate into independent controls:
    - `memory.read.enabled` — can the agent retrieve from episodic/semantic/summary memory
@@ -162,6 +264,241 @@ Status key: ✅ Done | ⚠ Partial / Limitation | 🔲 Not Started
          locked: true   # admin cannot override
      ```
    - Also needed in Agent Registry UI — Memory tab should show read/write as separate toggles, write toggle should show lock icon when locked
+
+   **Memory capability matrix — config options per memory type:**
+
+   | Config | Short-term | Episodic | Semantic | Summary |
+   |---|---|---|---|---|
+   | Read enabled | ✅ | ✅ | ✅ | ✅ |
+   | Write enabled | ✅ | ✅ | ✅ | ✅ |
+   | Write locked | ✗ — always writes | ✅ e.g. lock for summary_agent | ✅ | ✅ |
+   | Pruning | TTL + session count — only applies when persistent backend enabled; irrelevant if backend: memory | TTL + relevance scoring | Relevance scoring | TTL |
+   | Backend adapter | memory (default, session-scoped) / SQLite / PostgreSQL (LangGraph checkpointer — enables true resume by thread_id) | File / S3 / DynamoDB | pgvector | File / S3 |
+   | Semantic vector retrieval | ✗ — recency based | ✗ — scope based | ✅ — vector similarity | ✗ |
+   | Intelligent retrieval — Tier 1 (rule-based, pre-planner) | `always` — fixed, always loaded | `always \| scope_present \| never` | `always \| scope_present \| never` | `always \| scope_present \| never` |
+   | Intelligent retrieval — Tier 2 (LLM-driven planner tool) | ✗ — not applicable | ✅ `query_relevant` — exposed as `fetch_episodic_memory` tool | ✅ `query_relevant` — exposed as `fetch_semantic_facts` tool | ✅ `query_relevant` — exposed as `fetch_summary` tool |
+
+   **Write triggers per memory type (what causes a write to happen):**
+
+   | Memory Type | Trigger | Configurable? | Notes |
+   |---|---|---|---|
+   | Short-term | Every turn — post-final-response always. Mid-loop (ReAct/multi_hop) if `write_intermediate_steps: true` | `write_intermediate_steps` toggle only | Automatic. No trigger config needed beyond the toggle. |
+   | Episodic | Event-driven — tool call completes (HITL or direct), turn completes | Which tools trigger via `write_on_tool_call.tools` | Automatic. The event IS the trigger. No threshold config. |
+   | Semantic | Post-final-response — after every turn, LLM extracts facts from the exchange | Extraction model + dedup threshold only | Automatic. Trigger is not configurable — runs every turn if write enabled. Config controls HOW not WHEN. |
+   | Summary | Threshold-driven — not event-driven | `trigger: explicit \| turn_count \| token_threshold \| never` + threshold values | Only memory type with configurable trigger. Different usecases need different strategies. |
+
+   **Semantic write — how the system knows what is a fact:**
+   Not keyword rules (today's broken approach — 3 hardcoded phrases in `semantic_engine.py`). Replaced with an LLM call using a cheap model (Claude Haiku):
+   > "Extract any persistent facts about the member or user from this conversation. Facts are things that remain true beyond this session — preferences, barriers, medical context, behavioral patterns. Return structured JSON."
+   The LLM decides what is a fact. Platform writes what comes back. No Dim 3 patterns involved — Dim 3 is KB retrieval only. Semantic write is: LLM extracts → dedup check → write to store.
+
+   **Summary write trigger modes:**
+   - `explicit` — nurse/admin clicks "Generate Summary" in UI. Today's only behavior.
+   - `turn_count` — platform auto-invokes summary_agent every N turns. Requires post-graph hook in app.py. Not yet built.
+   - `token_threshold` — platform auto-invokes when short-term memory exceeds N tokens. Requires post-graph hook in app.py. Not yet built.
+   - `never` — summary disabled for this usecase.
+
+   **Agent type × memory type + intelligent retrieval matrix:**
+
+   | Memory Type | chat_agent | summary_agent | workflow_agent |
+   |---|---|---|---|
+   | Short-term | ✅ R/W — conversational history | ✗ — no conversation loop | ✗ — no conversation loop |
+   | Episodic | ✅ R/W — Tier 1: scope_present / Tier 2: query_relevant ✅ | ✅ read only — Tier 1 only (scope_present). Tier 2 ✗ — no planner | ✅ write only — Tier 1 only (scope_present). Tier 2 ✗ — executes steps, no query loop |
+   | Semantic | ✅ R/W — Tier 1: always / Tier 2: query_relevant ✅ | ✅ read only — Tier 1 only (always or scope_present). Tier 2 ✗ — no planner | ✅ read only — Tier 1 only (always). Tier 2 ✗ |
+   | Summary | ✅ read only — Tier 1: scope_present / Tier 2: query_relevant ✅ | ✅ write only — Tier 2 ✗ (no read) | ✅ read only — Tier 1 only (scope_present). Tier 2 ✗ |
+
+   **Key rule: Tier 2 (LLM-driven) is only available to agents with an interactive planner loop — today that is `chat_agent` only. `summary_agent` and `workflow_agent` have no query loop so Tier 2 is locked off.**
+
+   Agent type determines: (1) which memory types appear in Agent Registry UI at all, (2) which R/W options are locked vs configurable, (3) which intelligent retrieval tiers are available. New agent types extend this matrix — zero platform code changes, just matrix config.
+
+   **Each memory type has its own separate store — they are NOT shared:**
+
+   | Memory Type | Current store | Lifetime | Future backends |
+   |---|---|---|---|
+   | Short-term | LangGraph state (in-memory) | Session only by default. Persistent by thread_id when backend = SQLite / PostgreSQL (LangGraph checkpointer) — enables true nurse resume. Pruning: TTL (e.g. 4 weeks) + session count (e.g. last 4 sessions), whichever hits first. | SQLite, PostgreSQL (LangGraph checkpointer) |
+   | Episodic | File (JSON per scope) | Persistent across sessions | S3, DynamoDB |
+   | Semantic | File (JSON per scope) | Persistent across sessions | pgvector |
+   | Summary | File (JSON per scope) | Persistent across sessions | S3 |
+
+   Backend config in `memory.yaml` is per memory type — each type can point to a different backend independently.
+
+   **All memory config is per memory type, fully independent. Full config shape (memory.yaml):**
+   ```yaml
+   memory:
+     short_term:
+       read: true
+       write: true
+       backend: memory          # memory (default) | sqlite | postgres
+       max_turns: 20            # max turns kept in active session
+       pruning:                 # only applies when backend: sqlite | postgres
+         ttl_days: 28           # delete threads older than 4 weeks
+         max_sessions: 4        # keep only last N sessions per thread_id
+
+     episodic:
+       read: true
+       write: true
+       write_locked: false
+       backend: file          # file | s3 | dynamodb | redis
+       pruning:
+         ttl_days: 30
+         max_entries: 100
+       intelligent_retrieval:
+         enabled: false
+         condition: scope_present   # only retrieve if case_id in ctx
+
+     semantic:
+       read: true
+       write: true
+       write_locked: false
+       backend: file
+       retrieval: vector            # scope | vector
+       top_k: 5
+       threshold: 0.6
+       pruning:
+         relevance_threshold: 0.4
+
+     summary:
+       read: true
+       write: false
+       write_locked: true           # summary_agent writes, chat_agent never writes
+       backend: file
+       pruning:
+         ttl_days: 7
+   ```
+
+   **UI — all memory config in Agent Registry → Memory tab, per memory type. Filtered by agent type capability matrix (e.g. summary_agent cannot enable write for episodic/semantic).**
+
+6e. **Semantic memory write — LLM-based extraction** 🔲 — today `semantic_engine.py` is 3 hardcoded keyword rules. This breaks for any real conversation and any new domain. Replace with a single LLM call using a cheap model (Claude Haiku):
+   > "Extract any persistent facts about the member or user from this conversation. Facts are things that remain true beyond this session — preferences, barriers, medical context, behavioral patterns. Return structured JSON."
+   The LLM decides what is a fact. Platform writes what comes back. **No Dim 3 patterns involved — Dim 3 is KB retrieval only.**
+   - Write pipeline: LLM extracts facts → dedup check (6f) → write new / update existing
+   - Trigger: post-final-response, every turn, automatic — not configurable
+   - Config shape:
+     ```yaml
+     memory:
+       semantic:
+         write:
+           enabled: true
+           extraction:
+             model: claude-haiku-4-5     # cheap model for extraction
+     ```
+
+6f. **Semantic write deduplication** 🔲 — today the same fact (e.g. "member prefers Spanish") extracted on turn 3 and turn 7 both get written as separate entries. At scale: duplicate facts bloat the semantic store and confuse the LLM when multiple conflicting versions of the same fact are retrieved. Fix:
+   - Before writing a new fact, query existing semantic memories for this scope (vector search if 10h is built, scope scan otherwise)
+   - If a semantically similar fact already exists (cosine similarity > threshold), update in place rather than append
+   - Config: `memory.semantic.write.dedup_threshold: 0.85`
+   - **Dependency:** 10h (semantic vector retrieval) makes dedup accurate. Without it, dedup is string-match only — imprecise but still better than nothing.
+
+6g. **Write scope enforcement from domain.yaml** 🔲 — `write_episodic_event` in `write_engine.py` hardcodes `{"case", "assessment"}` as the only scopes that receive episodic writes. Any new scope added to `domain.yaml` (e.g. `authorization`, `claim`, `encounter`) is silently ignored at write time. Fix: read writeable scopes from `domain.yaml` at runtime — same pattern as `scope_resolver.py` already does for read. No hardcoded scope names anywhere in the write path.
+
+6h. **Write locked — runtime enforcement** 🔲 — `write_locked: true` is defined in `memory.yaml` config shape (item 6c) but never actually read at runtime. Any agent can call `write_engine.py` functions regardless of config. Fix: `write_engine.py` must check `memory.<type>.write_locked` before each write and raise a hard error (not silent skip) if locked. Also enforce in `memory_writer.py` (HITL path). This is the guarantee that `summary_agent` cannot accidentally write episodic/semantic facts even if called incorrectly.
+
+6i. **Write conditioned on HITL outcome** 🔲 — today `write_hitl_requested` and `write_hitl_decision` always write episodic events regardless of approval outcome. A rejected tool call still produces an episodic memory saying "HITL approved." More critically: the tool result should only be written to episodic AFTER a successful approval + execution, not at request time. Fix:
+   - `write_hitl_requested` → keep, this is useful audit trail
+   - `write_hitl_decision` with `decision=rejected` → write rejection event only, no tool result
+   - `write_hitl_tool_executed` → only called after confirmed execution — this is already correct
+   - Add: post-execution episodic write that summarizes the actual outcome (what changed in the system of record), not just the mechanics of the HITL flow
+
+6j. **Write audit metadata** 🔲 — today no write stamps `agent_id`, `agent_type`, or `reasoning_strategy` on the entry metadata. In production with multiple agents writing to the same member/case scope, there is no way to know which agent wrote what. Fix: add to all write calls:
+   ```python
+   metadata={
+       "agent_id": ctx.get("agent_id"),
+       "agent_type": ctx.get("agent_type"),        # chat_agent | summary_agent | workflow_agent
+       "reasoning_strategy": ctx.get("reasoning_strategy"),  # react | simple | plan_execute
+       "turn_id": ctx.get("turn_id"),
+       ...existing fields...
+   }
+   ```
+   Required in: `write_raw_turns`, `write_episodic_event`, `write_semantic_memories`, `write_hitl_*`. Context must carry these fields from `app.py` through the full lifecycle.
+
+6k. **Direct tool call episodic write** 🔲 — today only HITL tool calls produce episodic memory entries (`memory_writer.py`). Non-HITL tool calls (e.g. `get_member`, `search_kb`) are completely invisible to episodic memory. A nurse asking "what is the member's risk score?" produces no episodic trace. Fix: after executor runs any tool (HITL or not), write a lightweight episodic event with tool name, key inputs, and result summary. Config-driven — agent.yaml controls which tools produce episodic writes:
+   ```yaml
+   memory:
+     episodic:
+       write_on_tool_call:
+         enabled: true
+         tools: [write_case_note, update_care_plan]    # explicit list, or "all", or "write_only"
+   ```
+   Default: `write_only` — only write-class tools produce episodic entries. Read-only tools (get_member, search_kb) do not.
+
+6l. **Short-term write: intermediate steps config** 🔲 — for `react` and `multi_hop` strategies, each loop iteration produces thought + tool call + observation. Today only the final user/assistant message pair is written to short-term memory (`write_raw_turns`). The intermediate steps are visible in the LangGraph trace but not in memory. For auditability and next-turn context, intermediate steps may need to be written. Config:
+   ```yaml
+   memory:
+     short_term:
+       write_intermediate_steps: false    # default false — only final user/assistant turns written
+                                          # true: write each thought/action/observation as short-term entries
+   ```
+   **Why short-term only:** intermediate steps are conversational/session-scoped — they belong to this thread. Episodic gets the final outcome. Semantic gets extracted facts. Neither needs raw thinking steps.
+   **Dependency:** applies to both `react` and `multi_hop`. ReAct is built — implement this now. `multi_hop` is not yet built — **re-apply this same config and wiring when multi_hop reasoning is implemented (backlog 10n)**. Do not build multi_hop without also wiring intermediate step writes.
+   **In-graph:** must be wired inside the executor loop, not post-graph in app.py — by post-graph the per-iteration context is gone.
+
+6m. **Summary write trigger config** 🔲 — today there is no defined trigger for when a summary gets written. The `summary_agent` exists as a separate agent overlay but its invocation trigger is undefined at the platform level. Fix: define trigger config per summary type:
+   ```yaml
+   memory:
+     summary:
+       write:
+         trigger: turn_count           # turn_count | token_threshold | explicit | never
+         turn_count_threshold: 20      # write summary every N turns (turn_count mode)
+         token_threshold: 8000         # write summary when short-term exceeds N tokens (token_threshold mode)
+   ```
+   - `turn_count` — platform invokes summary_agent after N turns automatically
+   - `token_threshold` — platform invokes summary_agent when short-term memory exceeds token budget
+   - `explicit` — only invoked when nurse/admin explicitly requests a summary (today's behavior)
+   - `never` — summary agent disabled for this usecase
+   **Missing today:** platform has no auto-invocation logic. Summary is only triggered by explicit UI button. `turn_count` and `token_threshold` modes need platform-level hooks in `app.py` post-graph lifecycle.
+
+6n. **Write size limits** 🔲 — no max token/character limit per memory entry before write. A single tool result (e.g. full care plan returned by `get_care_plan`) written as episodic content can be thousands of tokens. At retrieval time, one oversized entry consumes the entire context budget. Fix: enforce max content length at write time with truncation strategy:
+   ```yaml
+   memory:
+     episodic:
+       write:
+         max_content_tokens: 500       # truncate content at write, not retrieval
+         truncation: tail              # head | tail | smart (LLM summarizes to fit)
+     semantic:
+       write:
+         max_content_tokens: 200
+   ```
+   `smart` truncation = LLM call to compress the content to fit within budget. Expensive but preserves meaning. Default: `tail` (fast, cheap).
+
+   > **Full memory write design:** `docs/design/memory-write-design.md` — complete reference covering all phases (write gate, triggers, per-type config, audit metadata, reasoning strategy × write matrix, agent type matrix, admin UI configurability). Read this before implementing any of 6c–6n.
+
+6o. **Admin UI — Memory R/W config in Agent Registry + Agent Factory** 🔲 — Agent Registry Memory tab and Agent Factory create form both lack controls for the new read/write split and write policy fields implemented in 6c–6n. Missing UI controls:
+
+   **Agent Registry → Memory tab (per memory type):**
+   - Read toggle (independent from write toggle) — separate `read_policies.<type>.enabled` on/off
+   - Write toggle — `write_policies.<type>.enabled` on/off
+   - Write locked indicator — grayed-out lock icon (read-only display, set by platform based on agent type, not editable by admin)
+   - Backend dropdown — `file | s3 | dynamodb | pgvector | redis` (drives `backend_factory.py` selection)
+   - `write_on_tool_call` toggle + tools dropdown — `write_only | all | [explicit list]` (episodic only)
+   - `write_intermediate_steps` toggle — on/off (short-term only, ReAct/multi_hop)
+   - Dedup toggle — on/off (semantic only)
+   - Summary trigger dropdown — `explicit | turn_count | token_threshold | never` with threshold input fields
+   - Write size limits — `max_content_tokens` number input + truncation strategy dropdown `head | tail | smart`
+
+   **Agent Factory → create form (new agent wizard):**
+   - Same memory controls as Agent Registry (above) — admin should not need to manually edit YAML after scaffold
+   - Controls should pre-populate from the agent type template defaults (e.g. chat_agent: summary `write_locked: true` pre-set)
+
+   **`write_locked` display rule:** never editable by admin — the platform sets it based on agent type at registration. Show as lock icon with tooltip: "Set by platform based on agent type. Cannot be overridden."
+
+6p. **Agent Factory — add `chat_agent_multi_hop` to overlay type dropdown** 🔲 — `ApplicationForm.tsx` agent type dropdown currently lists: `chat_agent_react`, `chat_agent_reflection`, `chat_agent_plan_execute`. `chat_agent_multi_hop` is missing. It is listed in `agent.yaml` strategy options and in the reasoning strategy matrix (backlog 10n) as `roadmap: true` — but it is not selectable when creating a new agent via UI. Fix: add `chat_agent_multi_hop` to the dropdown options. Mark as `(roadmap)` in the label so admins know the runtime is not yet built. Same pattern as other roadmap items in the UI.
+
+   **Note:** Do not build the multi_hop runtime until backlog 10n is prioritized. This item is only the dropdown option — so admins can scaffold the config today and wire the runtime later.
+
+6q. **Admin UI — HITL config gaps in Agent Registry + Agent Factory** 🔲 — HITL tab currently has: `approval_required`, per-tool `risk_levels`, `routing_rules`, `timeout`. Missing:
+
+   **Agent Registry → HITL tab:**
+   - Adapter dropdown — `internal | pega | servicenow | epic` (today only `internal` is built — others show as `(roadmap)` with a lock icon)
+   - Dynamic risk scoring toggle — enables runtime scoring function instead of static `risk_levels`; when enabled, show config fields for scoring model and threshold
+   - Parallel approvals toggle — fan-out mode on/off; when enabled, show max concurrent approvals field
+   - Approval routing by role — table of `tool_type → approver_role` mappings (today only `supervisor` exists)
+   - External system execution toggle — when enabled, show system target dropdown (`pega | servicenow | epic`) with a note that the adapter must be wired first
+
+   **Agent Factory → create form:**
+   - Same HITL fields (adapter dropdown + dynamic risk toggle) — pre-populated from agent type defaults
+   - Today: no HITL config at all in create form — admin must go to Agent Registry after scaffold to configure HITL
+
+   **Mark roadmap items clearly:** adapter options other than `internal`, dynamic risk scoring, parallel approvals, and external execution should display with `(roadmap)` labels and be non-interactive until runtime support exists.
 
 7. **Context Engineering** 🔲 — systematic control over what goes into the LLM context window. Token budgeting per context type (memory, tools, history, retrieved docs), priority-based truncation, context quality scoring. Today short-term memory fetches N turns with no token awareness — N turns of large tool outputs can overflow the window silently.
 
@@ -183,16 +520,19 @@ Status key: ✅ Done | ⚠ Partial / Limitation | 🔲 Not Started
    - Applies independently at both pre-graph and planner tool stages
    - Config shape TBD — possibly a `retrieval.kbs` list with tags/rules per KB
 
-10c. **RAG Pattern implementations** 🔲 — build each RAG pattern as a separate file under `src/platform/rag/patterns/`, all implementing a common `RAGPattern` base interface. Once built, any agent selects a pattern via `retrieval.pattern` in agent.yaml — zero code touch in the agent overlay. Patterns to build:
-   - `naive.py` — single retrieve → inject → respond (implicit today, needs formalizing)
-   - `self_corrective.py` — retrieve → LLM grades relevance → re-query if poor → respond
-   - `multi_hop.py` — retrieve → reason → identify gap → retrieve again → chain results → respond
-   - `hyde.py` — LLM generates hypothetical answer first → embed that → use as query → retrieve
-   - `agentic.py` — LLM decides when/how many times to retrieve mid-reasoning
-   - Pattern router — rule-based or LLM-based selection when multiple patterns active in same agent
-   - Admin guidance: naive/self_corrective for time-pressured workflows (nurses); multi_hop/agentic for research-heavy workflows
+10c. **RAG Pattern implementations** ✅ — all 5 patterns built under `src/platform/rag/patterns/`. Any agent selects a pattern via `retrieval.pre_graph.pattern` or `retrieval.planner_tool.pattern` in agent.yaml — zero code touch. Patterns apply independently at both stages.
+   - `naive.py` ✅ — single retrieve → use results as-is
+   - `self_corrective.py` ✅ — retrieve → grade avg score → refine query with Claude Haiku if below QUALITY_BAR → re-retrieve
+   - `multi_hop.py` ✅ — LLM decomposes query into sub-queries → retrieve per sub-query → deduplicate + merge → sort by score
+   - `hyde.py` ✅ — LLM generates hypothetical answer → embed hypothetical → retrieve using that vector → fallback to original query if no results
+   - `agentic.py` ✅ — retrieve → LLM decides if sufficient → refine query and retrieve again if not → repeat up to max_iterations
+   - `runner.py` ✅ — dispatches to correct pattern based on Dim 3 config, applies Dim 1 strategy param
 
 10d. **Semantic tool filtering (RAG over tool registry)** 🔲 — today tool filtering is purely static (allowed list + context field presence). The right approach: embed all tool descriptions at startup, embed user prompt at query time, retrieve top-k most semantically relevant tools, pass only those to the LLM. This is NOT bringing back old V1 hardcoded if/else rules — this is RAG applied to tool selection.
+
+   **Note on tags:** Tags are stored on each tool in the Tool Gateway registry (e.g. `["care_management", "retrieval"]`) but are currently unused at runtime. They were originally intended for rule-based tool filtering — "only show tools tagged `care_management` to this agent." That approach was replaced by LLM-based tool selection (the LLM picks from `allowed_tools` directly). Tags will become useful again when semantic tool filtering (this item) is built — as metadata to aid embedding and retrieval. Until then, tags are stored but not read by the planner.
+
+10g. **Planner — "no tool" / direct answer path** 🔲 — today the planner uses a Pydantic structured output schema where `tool` is a strict `Literal[...allowed tools...]`. The LLM is forced to pick one of the available tools — there is no way for it to say "this question doesn't need a tool, I can answer directly." Result: if `search_kb` is disabled and the user asks a general question, the LLM picks the closest-sounding tool and calls it with a wrong argument. Fix: add a `direct_answer` pseudo-tool to the allowed set. When the planner returns `tool=direct_answer`, the executor skips tool invocation and the responder answers from context (pre-graph RAG, memory, or general knowledge) alone. This makes `planner_tool.enabled: false` safe — KB questions get a graceful "I don't have a tool for that" rather than a wrong tool call.
 
 10e. **RAG Dimension 2 — Multi-KB routing** 🔲 — query classifier (rule-based or LLM) selects which KB tool(s) to call at both pre-graph and planner tool stages independently. Fan-out across multiple KBs + merge/re-rank. All configurable via agent.yaml and UI.
 
@@ -316,6 +656,207 @@ Status key: ✅ Done | ⚠ Partial / Limitation | 🔲 Not Started
    - UI pages — member, case, assessment pages are use-case specific; developer builds them against the scope contract
    - Tool implementations — tool logic is always domain-specific, registered via Tool Gateway
 
+   **Current build status (as of 2026-04-09):**
+
+   **✅ Done:** `scope_resolver.py` reads `domain.yaml` at runtime to derive active scopes dynamically — no hardcoded scope names. `langgraph_runner.py` calls `resolve_scopes()` and passes results to memory read/write. Core scope resolution works.
+
+   **🔲 Missing:**
+   - `preload: always | conditional` per scope — today ALL resolved scopes are fetched unconditionally every turn. No selectivity.
+   - Scope hierarchy traversal — UI currently sends all IDs (assessment_id + case_id + member_id) in the payload. Platform should derive parent scopes automatically from just the deepest ID, using the `parent:` field in domain.yaml hierarchy. Today it only activates scopes for IDs explicitly present in the payload.
+   - `active_scopes` config block in `agent.yaml` — not yet defined or read.
+
+   **Why it matters / concrete example:**
+   Nurse asks "what is the member's phone number?" — a simple member-level question. Today the agent loads full case episodic history AND full assessment episodic history unconditionally, burning ~3000 tokens on irrelevant context before the LLM sees the question. With `preload: conditional` on case and assessment scopes, those fetches are skipped entirely for member-level queries.
+
+   **When to build:** defer. Not urgent with one agent and low traffic — the token waste is invisible at this scale. Build when there is a real latency or cost problem to point to (long sessions 50+ turns, multiple agents, production load). The resolver plumbing is correct today; this is an optimization layer on top.
+
+10n. **Reasoning Strategies — per-agent selectable reasoning loop** ⚠ Partial — `simple`, `react`, `plan_execute` built and wired. `multi_hop`, `reflection`, `tree_of_thought` remaining.
+
+   **What a reasoning strategy is:**
+   A strategy defines the *graph shape* — how the agent loops, plans, and executes. Each strategy is a separate file under `overlays/<agent_type>/agents/strategies/` that exports `build_graph()`. `build_graph.py` reads `reasoning.strategy` from `agent.yaml` and dispatches to the right file via `importlib`. Zero code changes needed to add a new strategy — drop a file, update config.
+
+   **Important: NOT the same as RAG Dim 3 patterns.** RAG patterns control how documents are retrieved. Reasoning strategies control how the agent plans and acts. Both can be active simultaneously and are fully independent.
+
+   **One strategy per agent — decided at deploy time:**
+   Each deployed agent has one fixed strategy. Strategies have fundamentally different LangGraph graph structures — `react` is a loop, `plan_execute` is two-phase, `simple` is linear. Graph structure cannot be hot-swapped mid-conversation. Runtime strategy routing is what **multi-agent** is for — a supervisor routes to specialist agents, each with its own fixed strategy.
+
+   ---
+
+   **STRATEGIES — mutually exclusive, different graph shapes (pick one):**
+
+   | Strategy | Graph shape | Planner system prompt type | `thought` field | Parallel tools | Self-corrective (last step) | Best for | Industry reference |
+   |---|---|---|---|---|---|---|---|
+   | `simple` ✅ | plan → execute → respond | Standard — CoT wasted, no `thought` field | ✗ | ✗ — single tool by design | ✅ optional | Single-tool Q&A, fast lookup | OpenAI Assistants, LangChain basic agent |
+   | `react` ✅ | think → act → observe → loop → respond | CoT natural fit | ✅ every step | ✅ optional | ✅ optional | Multi-step tasks, 2+ tools needed | Yao et al. 2022 ReAct, LangGraph ReAct |
+   | `plan_execute` ✅ | plan all steps → execute in order → respond | CoT in planning phase | ✅ planning phase | ✅ optional | ✅ optional | Structured workflows, intake forms | LangChain Plan-and-Execute |
+   | `multi_hop` 🔲 | decompose → execute each sub-question → synthesize | CoT in decomposition | ✅ decomposition phase | ✅ optional | ✅ recommended | Complex research, multi-criteria queries | LangChain MapReduce, IR multi-hop QA |
+   | `reflection` 🔲 | run → reflect on failure → retry with reflection → respond | CoT in reflection phase | ✅ reflection phase | ✅ optional | ✅ optional | High-stakes decisions, auditability | Shinn et al. 2023 Reflexion |
+   | `tree_of_thought` 🔲 | branch multiple paths → evaluate each → pick best → respond | CoT in every branch | ✅ every branch | ✅ optional | ✅ optional | Complex tradeoff decisions | Yao et al. 2023 ToT (research-grade) |
+
+   **Key rules from this matrix:**
+   - `simple` is the only strategy where a CoT-style planner system prompt is wasted — the LLM generates reasoning but the graph has no `thought` field to capture it. Block this combination in UI.
+   - `simple` cannot use parallel tools — it has exactly one tool call by design.
+   - Parallel tools and self-corrective are **independent toggles** — they stack on top of any strategy that has multiple steps (all except `simple`).
+   - Self-corrective is always the **last step** regardless of strategy — grades the final answer only, never mid-loop.
+   - `thought` field is captured in the observability trace for all strategies except `simple` — full reasoning visibility for audit.
+   - Planner system prompt type refers to the prompt written in `llm_planner.py` by the developer — not the end user's message, not the responder's prompt.
+
+   **Memory write dependency on reasoning strategy:**
+   - `simple`, `plan_execute`, `reflection`, `tree_of_thought` — memory write is always post-final-response. No dependency.
+   - `react`, `multi_hop` — iterative loops. Episodic write has two modes:
+     - `post_final` (default) — write once after responder produces final response. Simple, consistent.
+     - `per_iteration` — write after each think-act-observe loop iteration. Full audit trail but multiple writes per turn.
+   - Semantic and summary memory — always `post_final` regardless of strategy. Only episodic is affected.
+   - Config: `memory.episodic.write_mode: post_final | per_iteration` in agent.yaml.
+   - **When `multi_hop` and `reflection` reasoning strategies are built (currently 🔲), `memory_writer.py` must be updated to support `per_iteration` write mode for episodic.** This is a known dependency — do not build those strategies without also updating memory writer.
+
+   **Removed from strategy list (wrong category):**
+   - `chain_of_thought` — this is a *prompting technique*, not a graph shape. `react` already does CoT via the explicit `thought` field on every step. As a standalone strategy it would be identical to `simple` with a different system prompt. Not a separate strategy.
+   - `self_corrective` — this is a *post-processing layer*, not a strategy. It grades and retries the final answer regardless of which strategy produced it. Moved to independent toggle (see below).
+
+   ---
+
+   **POST-PROCESSING — independent of strategy, stackable:**
+
+   `self_corrective` works on top of any strategy. After the responder generates an answer, a grader LLM call checks quality (groundedness, completeness, accuracy vs tool output). If below threshold, retries with grader feedback injected.
+
+   ```yaml
+   reasoning:
+     strategy: react          # controls the loop
+     self_corrective:
+       enabled: false         # grade + retry final answer — works with any strategy
+       threshold: 0.7         # 0.0–1.0, retry if score below this
+       max_retries: 2
+   ```
+
+   Best for: `write_case_note` (clinical record accuracy), `search_kb` (RAG answer grounding).
+   Not needed for: simple lookups (`get_member`, `get_assessment_summary`) where the responder is already reliable.
+
+   ---
+
+   **Config shape (agent.yaml):**
+   ```yaml
+   reasoning:
+     strategy: react          # react (default) | simple | plan_execute | multi_hop | reflection | tree_of_thought
+     max_steps: 5             # react only — max tool calls before forcing response
+     parallel_tools:
+       enabled: false         # fan-out multiple tool calls simultaneously per step (not applicable to simple)
+       max_parallel: 3        # max tools to call in parallel per step
+     self_corrective:
+       enabled: false         # grade + retry final answer — works with any strategy
+       threshold: 0.7         # 0.0–1.0, retry if score below this
+       max_retries: 2
+   ```
+
+   ---
+
+   **Step-by-step breakdown per strategy — LLM calls vs tool execution:**
+
+   **`simple`** — 2 LLM calls, 1 tool call
+   | Step | Term | Type |
+   |---|---|---|
+   | 1 | **Plan** — pick one tool | LLM — planner |
+   | 2 | **Act** — run the tool | Tool execution |
+   | 3 | **Respond** — generate answer from tool output | LLM — responder |
+
+   **`react`** — 2+ LLM calls per loop iteration, 1 tool call per iteration
+   | Step | Term | Type |
+   |---|---|---|
+   | 1 | **Think** — reason about what to do next, pick tool | LLM — react planner |
+   | 2 | **Act** — run the tool | Tool execution |
+   | 3 | **Observe** — store tool output, feed into next step | Internal state |
+   | 4 | **Think** — reason again with observation in context | LLM — react planner ← loop |
+   | 5 | **Act** — run next tool | Tool execution ← loop |
+   | 6 | **Observe** — store output | Internal state ← loop |
+   | ... | repeats until DONE or max_steps | |
+   | N | **Respond** — only if max_steps hit. If DONE, Think step carries the answer directly | LLM — responder |
+
+   **`plan_execute`** — 2 LLM calls total regardless of tool count
+   | Step | Term | Type |
+   |---|---|---|
+   | 1 | **Plan** — decide ALL tools and order upfront in one shot | LLM — planner |
+   | 2 | **Act** — run tool 1 | Tool execution |
+   | 3 | **Act** — run tool 2 | Tool execution ← no LLM between acts |
+   | ... | **Act** — run remaining tools in planned order | Tool execution |
+   | N | **Respond** — synthesize all tool outputs | LLM — responder |
+
+   **`multi_hop`** — 3+ LLM calls
+   | Step | Term | Type |
+   |---|---|---|
+   | 1 | **Decompose** — break question into sub-questions | LLM — decomposer |
+   | 2 | **Plan** — pick tool for sub-question 1 | LLM — sub-planner |
+   | 3 | **Act** — run tool for sub-question 1 | Tool execution |
+   | 4 | **Observe** — store sub-answer 1 | Internal state |
+   | 5 | **Plan** — pick tool for sub-question 2 | LLM — sub-planner ← loop per sub-question |
+   | 6 | **Act** — run tool for sub-question 2 | Tool execution ← loop |
+   | 7 | **Observe** — store sub-answer 2 | Internal state ← loop |
+   | ... | repeats per sub-question | |
+   | N | **Synthesize** — combine all sub-answers into one coherent response | LLM — synthesizer |
+
+   **`reflection`** — 3–5 LLM calls
+   | Step | Term | Type |
+   |---|---|---|
+   | 1 | **Plan** — pick tool | LLM — planner |
+   | 2 | **Act** — run the tool | Tool execution |
+   | 3 | **Observe** — store tool output | Internal state |
+   | 4 | **Respond** — generate answer | LLM — responder |
+   | 5 | **Reflect** — critique the reasoning and answer — was the approach correct? | LLM — reflector |
+   | 6 | **Plan** — re-plan based on reflection ← only if reflection found issues | LLM — planner |
+   | 7 | **Act** — run tool again | Tool execution ← only if re-plan triggered |
+   | 8 | **Respond** — final answer | LLM — responder |
+
+   **`tree_of_thought`** — most LLM calls, highest cost
+   | Step | Term | Type |
+   |---|---|---|
+   | 1 | **Branch** — generate N different reasoning approaches in parallel | LLM — branch generator |
+   | 2 | **Evaluate** — score each branch, pick the best one | LLM — evaluator |
+   | 3 | **Act** — run tool for winning branch | Tool execution |
+   | 4 | **Observe** — store tool output | Internal state |
+   | 5 | **Respond** — generate final answer | LLM — responder |
+
+   **`self_corrective` post-processing** — appended as last steps to any strategy above
+   | Step | Term | Type |
+   |---|---|---|
+   | +1 | **Grade** — score answer quality against tool output (0.0–1.0) | LLM — grader |
+   | +2 | **Retry** — re-run Respond with grader feedback injected ← only if score < threshold | LLM — responder |
+
+   **Cost summary:**
+   | Strategy | Min LLM calls | Tool calls | Notes |
+   |---|---|---|---|
+   | `simple` | 2 | 1 | Cheapest — deliberate cost optimization |
+   | `react` | 2 + N per loop | N | Moderate — N depends on query complexity |
+   | `plan_execute` | 2 | N | Fixed LLM cost regardless of tool count |
+   | `multi_hop` | 3 + 2 per sub-question | N | Expensive — use for research queries only |
+   | `reflection` | 3–5 | 1–2 | Expensive — use for high-stakes decisions |
+   | `tree_of_thought` | 3 + N branches | 1 | Most expensive — research-grade |
+
+   ---
+
+   **File structure:**
+   ```
+   overlays/chat_agent/agents/strategies/
+     simple.py          ✅ built
+     react.py           ✅ built
+     plan_execute.py    ✅ built
+     multi_hop.py       🔲
+     reflection.py      🔲
+     tree_of_thought.py 🔲 (research-grade, low priority)
+   ```
+
+   **UI — strategy selected in two places:**
+   - Agent Factory form — dropdown at agent config step
+   - Agent Registry — changeable post-creation in config tab (requires rebuild)
+   - Pipeline Builder — dropdown on the Planner node
+
+   **Default strategy:** `react` — not `simple`. `simple` is a deliberate cost-optimization choice. All production enterprise agent frameworks (LangGraph, AutoGen, Vertex AI Agent Builder) default to a reasoning loop. `simple` should require an explicit opt-in, not be the default.
+
+   **CoT system prompt validation rule:**
+   CoT (chain-of-thought) is a prompting technique — it is written into the planner system prompt by the developer, not selected by the end user. A CoT-style prompt instructs the LLM to reason before acting. `simple` has no `thought` field in its schema — the LLM reasoning is generated but not captured, stored, or used. Every other strategy (`react`, `plan_execute`, `multi_hop`, `reflection`, `tree_of_thought`) has a `thought` field as part of their structured output schema.
+
+   Enforcement rule: if the planner system prompt contains CoT instructions, the UI must warn and block saving with `strategy: simple`. All other strategies are compatible with CoT prompts.
+
+   UI validation location: Agent Registry → Planner tab → when system prompt is edited or strategy is changed.
+
 10g. **Config-driven adapter selection** 🔲 — across HITL, RAG patterns, and memory backends, adapter/pattern selection should be fully config-driven. Goal: `hitl.adapter: pega`, `retrieval.pattern: self_corrective`, `memory.backend: dynamodb` in agent.yaml → platform instantiates correct implementation automatically. Zero code touch.
 
 10L. **Platform-core shared library — plugin architecture** 🔲 — centralize all platform logic (scope resolution, memory fetch/write, RAG, HITL) into a single shared library that every agent runtime imports. Agents stay thin — they bring config, the library brings logic.
@@ -369,7 +910,7 @@ Status key: ✅ Done | ⚠ Partial / Limitation | 🔲 Not Started
 
 10h. **Semantic memory vector retrieval** 🔲 — today semantic facts are retrieved by scope (fetch all facts for member). At scale (50+ facts per member), needs vector similarity retrieval: embed each fact at write time, embed query at retrieval time, return top-k by cosine similarity. Requires vector-capable backend (pgvector on PostgreSQL).
 
-10i. **RAG Config — Wire YAML parameters to retriever** ⚠ — `agent.yaml` retrieval section should drive actual RAG behavior. Right now `top_k`, similarity threshold, embedding model, and strategy are hardcoded in `retriever.py` as env var defaults and never read from YAML. Files to touch: `agent.yaml`, `executor.py`, `retriever.py`, `registry.py`.
+10i. **RAG Config — Wire YAML parameters to retriever** ✅ — `agent.yaml` retrieval section should drive actual RAG behavior. Right now `top_k`, similarity threshold, embedding model, and Dim 1 retrieval method (`semantic | keyword | hybrid`) are hardcoded in `retriever.py` as env var defaults and never read from YAML. Applies independently to both pre-graph and planner_tool stages. Files to touch: `agent.yaml`, `executor.py`, `retriever.py`, `registry.py`.
 
 10k. **Multi-Agent & Workflow Architecture** 🔲 — design and build support for multi-agent workflows where a supervisor orchestrates sub-agents, each operating at a different domain scope level. Core design principle: **a new domain or use case should require only new YAML config files, zero platform code changes.**
 
@@ -431,6 +972,40 @@ Status key: ✅ Done | ⚠ Partial / Limitation | 🔲 Not Started
    - New domain = new overlay folder with new `agent.yaml` files (one per agent in workflow) + scope schema per agent
    - Workflow steps declared in supervisor's `agent.yaml`
    - Context propagation, scope resolution, memory scoping, HITL routing all driven by config
+
+   **RAG in multi-agent — per-agent config + context passthrough:**
+   - Each agent (supervisor + every sub-agent) has its own independent `retrieval` config in its own `agent.yaml`
+   - Same `pre_graph` / `planner_tool` two-block structure applies per agent
+   - Different sub-agents can use different KBs: research agent uses `kb_clinical`, writer uses `kb_style_guide`, QA uses `kb_compliance_rules`
+   - New config field for multi-agent RAG coordination:
+   ```yaml
+   retrieval:
+     pre_graph: ...
+     planner_tool: ...
+     multi_agent:
+       accept_supervisor_context: true   # use rag_context passed from supervisor — skip re-retrieve
+       propagate_context: false          # supervisor-only: pass rag_context down to all sub-agents
+   ```
+   - `accept_supervisor_context: true` → sub-agent skips its own pre_graph retrieval, uses what supervisor already retrieved. Saves latency, avoids redundant KB calls.
+   - `propagate_context: true` → supervisor sets this. After its pre_graph retrieval, injects `rag_context` into shared state so all sub-agents can read it.
+   - Default: each agent retrieves independently (clean separation). Passthrough is an opt-in optimization.
+
+   **Memory in multi-agent — per-agent scope + shared store:**
+   - Each agent writes to its own declared scope (assessment, case, member)
+   - All agents share the same memory store — no duplication
+   - Supervisor reads from member scope; sub-agents read from their own scope + parent scopes they're configured to see
+   - Memory write conflicts (two agents writing to same scope in same turn): last-write-wins, documented as known limitation for V1
+
+   **Reasoning strategies in multi-agent:**
+   - Each sub-agent has its own fixed reasoning strategy in its `agent.yaml`
+   - Supervisor does NOT switch strategies at runtime — it routes to the right sub-agent, each of which has the right strategy baked in
+   - Example: supervisor uses `simple` (just routes), research sub-agent uses `multi_hop`, writer sub-agent uses `chain_of_thought`
+
+   **Goal tracking in multi-agent:**
+   - Goal is declared at supervisor level — it owns the overall objective
+   - Sub-agents report sub-goal completion back to supervisor via shared state
+   - Supervisor tracks overall goal progress across sub-agent turns
+   - Requires goal tracking (backlog item 14) to be built first
    - Platform code (scope_resolver, memory_writer, workflow executor) reads config and adapts — no hardcoded domain logic
 
    **What still needs design:**
@@ -495,7 +1070,7 @@ Status key: ✅ Done | ⚠ Partial / Limitation | 🔲 Not Started
 
 12. **Fresh repo generation test** 🔲 — delete and re-scaffold from template, verify end-to-end.
 
-12c. **agent-platform repo structure refactor** 🔲 — full restructure of how capabilities, apps, agents, and UI are organised in the agent-platform repo. This replaces the `generated-repos/` wrapper and the "use case" concept entirely.
+12c. **agent-platform repo structure refactor** ✅ — full restructure of how capabilities, apps, agents, and UI are organised in the agent-platform repo. This replaces the `generated-repos/` wrapper and the "use case" concept entirely.
 
    **Terminology changes:**
    - "use case" → **agent** (what gets created, deployed, and managed in Agent Factory)
@@ -666,7 +1241,39 @@ Status key: ✅ Done | ⚠ Partial / Limitation | 🔲 Not Started
 
 13. **Platform documentation (Word doc)** 🔲 — merge all numbered section docs into a single comprehensive Word document. Full platform narrative, every file's purpose, extension points for new agents/tools/memory scopes.
 
-13a. **Platform Capability Visual Document** 🔲 — one visual per capability (RAG, Memory, HITL, Tools, Observability) showing all dimensions in flow/diagram format, color-coded by build status. The "what and where are we" view for stakeholders and demos.
+13a. **Platform Capability Visual Document + "12 Components" equivalent** 🔲 — two deliverables:
+
+   **Deliverable 1 — Per-capability deep dives** (one visual per capability):
+   RAG, Memory, HITL, Tools, Observability — each showing all dimensions in flow/diagram format, color-coded by build status (✅ built / 🔲 roadmap).
+
+   **Deliverable 2 — "What we built" platform overview diagram** — equivalent to the "12 Core Components of an Agentic AI System" format, but showing OUR platform with OUR terminology, what's actually built, and what makes it different. Structure:
+
+   Title: **"Enterprise Agentic AI Platform — What We Built"**
+
+   12 components to show (mapped to our platform):
+
+   | # | Component | Our term | Status | Our differentiation |
+   |---|---|---|---|---|
+   | 1 | Memory | Memory System (4 types) | ✅ Built | Short-term + episodic + semantic + summary. Per-scope. Toggle per message. |
+   | 2 | Knowledge Base | RAG — 3 Dimensions | ✅ Built | Dim 1: strategy (semantic/keyword/hybrid). Dim 2: stage (pre-graph/planner). Dim 3: pattern (naive/self-corrective). |
+   | 3 | Tool Use & API | Tool Gateway | ✅ Built | URL-based dispatch. DB-backed registry. Admin UI. Tag-based bucketing. |
+   | 4 | Planning Engine | LLM Planner | ✅ Built | Structured output. Dynamic schema from registry. Hard routes. Context-filtered tool list. |
+   | 5 | Execution Loop | LangGraph Executor | ✅ Built | ReAct-compatible. HITL interrupt. Tool result handling. |
+   | 6 | Reasoning Strategies | Reasoning Layer | ⚠ Partial | simple built. react/CoT/self-corrective/multi-hop/plan-execute/reflection/tree-of-thought — stubs, wiring roadmap. |
+   | 7 | NL Interface (LLM) | Responder + Prompt Governance | ✅ Built | Claude. Prompt versioning. Prompt Management UI. |
+   | 8 | Human-in-the-Loop | HITL — Approval Engine | ✅ Built | **Not in any standard framework diagram.** Risk scoring. Adapter pattern (internal → Pega/Epic). Async approval queue. |
+   | 9 | Guardrails | Guardrails Layer | 🔲 Roadmap | Input/output/tool-call intercept. Adapter: local or Bedrock Guardrails. |
+   | 10 | Goal Tracking | Goal Definition & Tracking | 🔲 Roadmap | Multi-step persistent objectives. Sub-goal progress. Required for plan_execute strategy. |
+   | 11 | Evaluation | Eval & Testing Framework | 🔲 Roadmap | LLM-as-judge. RAG eval (Ragas). Prompt regression. Score dashboards. |
+   | 12 | Observability | Trace + LLM Ops | ⚠ Partial | TraceGraph + MemoryPanel built. Cost/token/latency dashboards roadmap. |
+
+   **What makes our version different from the conceptual image:**
+   - Every component shows: built vs roadmap status
+   - Every component is configurable via UI — not just code
+   - HITL is a first-class component (absent from most frameworks)
+   - Memory has 4 types with independent controls — not a single toggle
+   - RAG has 3 dimensions — not just "connect a vector DB"
+   - Agent Factory UI generates, deploys, and manages agents — the diagram shows the factory, not just the agent
 
    Structure — one page per capability:
 
@@ -683,7 +1290,89 @@ Status key: ✅ Done | ⚠ Partial / Limitation | 🔲 Not Started
    1. **Font too small between layers** — connector labels and banner text between rows are hard to read; increase font sizes across both diagram versions
    2. **Supervisor UI label is misleading** — "Supervisor" is shown as a permanent user role box. In reality it only exists today because we have no external workflow system (Pega/Epic). When HITL adapter is wired to an external system, approvals happen there — not in a custom UI. Fix: relabel as "Supervisor UI (interim — replaces Pega/Epic until external HITL adapter is live)" or move it inside the Supervision/Observability section with a roadmap indicator.
 
-14. **PowerPoint deck** 🔲 — platform story for stakeholders. Use capability visuals from 13a as the core slides.
+14. **Goal Definition & Tracking** 🔲 — agents today answer one prompt at a time (stateless intent). Goal tracking gives an agent a persistent multi-step objective across turns: it knows what it's trying to achieve, which sub-steps are done, and whether the goal is met.
+
+   **What a goal is:**
+   A goal is a desired outcome that requires multiple tool calls and/or turns to complete. Example: "Complete pre-call assessment for member M-001" = sub-goals: get_member_summary ✅ → check open tasks ✅ → write case note ✅ → mark assessment complete ✅. The agent tracks state across turns until all sub-goals resolve.
+
+   **How it works:**
+   - Goal defined in `agent.yaml` or injected at runtime via payload (e.g. `goal: complete_pre_call_assessment`)
+   - Goal schema defines: name, required sub-steps, success condition, timeout
+   - LangGraph state carries goal progress — each node updates completed sub-steps
+   - Planner is aware of goal state when deciding next tool call — avoids re-doing completed steps
+   - Goal completion triggers a final summary response ("Assessment complete. All 5 tasks done.")
+
+   **Why it matters:**
+   - Without goal tracking: agent re-derives intent on every turn from scratch
+   - With goal tracking: agent knows where it is in a workflow, picks up after HITL approval, recovers from failures
+   - Required for `plan_execute` reasoning strategy to work properly
+   - Required for multi-agent workflows where sub-agents report progress back to supervisor
+
+   **Config shape:**
+   ```yaml
+   goal:
+     enabled: true
+     type: complete_assessment       # named goal type defined in agent.yaml
+     success_condition: all_tasks_done
+     timeout_turns: 10
+   ```
+
+   **Relationship to reasoning strategies:** goal tracking is what makes `plan_execute` meaningful — plan = goal decomposition, execute = track progress per sub-goal. Without it, plan_execute is just a fancier single-turn response.
+
+   **Clarification — goal tracking vs workflow agent vs stateful memory (2026-04-09):**
+
+   The agent is already stateful — short-term memory persists conversation history across all turns. A nurse can ask 10 questions and the agent remembers the full thread. Goal tracking is NOT needed for that.
+
+   Goal tracking adds a structured task progress object on top:
+   ```
+   goal: complete_pre_call_assessment
+   steps: [✅ get_member, ✅ get_case_summary, 🔲 risk_assessment, 🔲 write_case_note]
+   status: in_progress
+   ```
+   Without it the agent can reconstruct progress from raw conversation history, but has no clean state object to read.
+
+   **Two modes:**
+   - **Explicit (recommended for care management)** — goal templates defined upfront in config. Known steps, auditable, predictable. Right for protocols with fixed steps.
+   - **Emergent** — LLM infers goal and decomposes steps at runtime. More flexible, less reliable. Right for open-ended research agents.
+
+   **Relationship to workflow agent:** goal tracking and workflow agent solve the same problem — multi-step task progress. Goal tracking is the lightweight in-agent version. Workflow agent (backlog 10k) is the full orchestration engine with branching, conditions, parallel steps, and handoffs. **Do not build goal tracking as a separate thing — it will be subsumed by workflow agent.** Build workflow agent when prioritized and get both at once.
+
+   **Current chat panels (member/case/assessment)** are freeform Q&A — nurse asks a question, gets an answer. No structured protocol, no task progress needed. Stateful memory is sufficient for all three panels as they exist today. Goal tracking only becomes relevant when the nurse needs to follow a structured protocol (e.g. the actual pre-call assessment form with required fields). That is a workflow agent use case, not a chat panel use case.
+
+   **When to build:** defer. Not needed for any currently built feature. Revisit when workflow agent is prioritized (backlog 10k).
+
+14a. **Evaluation & Testing Framework** 🔲 — systematic way to measure agent output quality. Today there is no way to test whether a prompt change improved or degraded agent behavior, or whether a new tool works correctly end-to-end.
+
+   **What it covers:**
+   - **Test case library** — store input/expected_output pairs per agent (e.g. "query: summarize member M-001 → expected: member summary with risk score")
+   - **Automated eval runs** — run a batch of test cases against a live agent, capture responses
+   - **LLM-as-judge scoring** — use Claude to grade response quality (relevance, accuracy, tone, completeness) on a 1–5 scale per dimension
+   - **Regression detection** — compare score distributions before/after a prompt or config change; flag regressions automatically
+   - **RAG eval** — faithfulness (does response match retrieved chunks?), context precision (were the right chunks retrieved?), answer relevance (did retrieved chunks actually help?)
+   - **HITL eval** — did risk scoring correctly flag the right tools? False positive/negative rate on approval triggers
+
+   **Tools to consider:** Ragas (RAG eval), PromptFoo (prompt regression), custom LLM-as-judge via Claude.
+
+   **UI — Evaluation tab in Agent Registry:**
+   - Upload test cases (CSV or JSON)
+   - Run eval against current config
+   - View score dashboard per dimension
+   - Compare runs (before/after config change)
+   - Flag regressions with diff view
+
+   **Why it matters:** without eval, every prompt change is a guess. With eval, you know in 2 minutes whether a change helped or hurt — across 50 test cases, not just the one you manually tested.
+
+14b. **Logging & Feedback Loop** 🔲 — today the platform logs execution traces (TraceGraph in UI) but has no structured feedback mechanism and no learning loop.
+
+   **What's missing:**
+   - **Structured feedback capture** — nurse/user rates agent response (thumbs up/down, 1–5, free text). Stored per turn with full context (prompt, response, memory state, tools called).
+   - **Feedback-driven improvement** — negative feedback triggers: flag for review, auto-run eval on similar test cases, suggest prompt adjustment
+   - **Failure analysis** — when HITL is triggered and supervisor rejects: why? Capture rejection reason, store as labeled example, feed into eval suite
+   - **LLM Ops dashboards** — cost per agent per day, token usage by component (planner/responder/RAG/memory), latency P50/P95, error rate, tool success rate. Today: none of this is visible.
+
+   **Relationship to Evaluation (14a):** feedback is the runtime data source; evaluation is the offline scoring system. Together they form the improvement loop: feedback → test cases → eval run → prompt/config change → re-eval → deploy.
+
+14c. **PowerPoint deck** 🔲 — platform story for stakeholders. Use capability visuals from 13a as the core slides.
 
 15. **Platform Evolution Story** 🔲 — document how each dimension evolved from hardcoded → configurable → production-grade.
 
