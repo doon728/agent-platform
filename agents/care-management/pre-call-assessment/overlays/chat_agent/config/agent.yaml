@@ -3,8 +3,8 @@ agent:
   planner_mode: llm
 
 reasoning:
-  strategy: react    # react (default) | simple | plan_execute | multi_hop | reflection | tree_of_thought
-  max_steps: 5       # react only — max tool calls before forcing a response
+  strategy: simple   # locked by overlay type — chat_agent_simple uses linear planner, do not change
+  # max_steps: N     # only applies to react strategy
 tools:
   mode: selected
   allowed:

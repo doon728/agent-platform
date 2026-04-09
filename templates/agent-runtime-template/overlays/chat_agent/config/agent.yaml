@@ -3,8 +3,8 @@ agent:
   planner_mode: llm
 
 reasoning:
-  strategy: react    # react (default) | simple | plan_execute | multi_hop | reflection | tree_of_thought
-  max_steps: 5       # react only — max tool calls before forcing a response
+  strategy: simple   # locked by overlay type — set at scaffold time, do not change manually
+  # max_steps: 5     # only applies to react strategy
 tools:
   mode: selected
   allowed:
