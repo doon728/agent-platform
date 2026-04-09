@@ -661,27 +661,31 @@ const DIM3_ALL_PATTERNS = [
   { value: "agentic",         label: "Agentic",         roadmap: true,  description: "LLM decides when and how many times to retrieve mid-reasoning." },
 ]
 
+const RAG_HELP: Record<string, { title: string; body: string; example?: string }> = {
+  dim1_strategy: { title: "Dimension 1 — Search Strategy", body: "How documents are retrieved from the knowledge base.\n\nSemantic — embeds the query and finds chunks with similar meaning via pgvector.\n\nKeyword — PostgreSQL full-text BM25. Fast for exact/fuzzy word matching.\n\nHybrid — runs both in parallel, merges results via Reciprocal Rank Fusion (RRF). Best recall, slightly higher latency.", example: "Clinical policy KB: hybrid. FAQ KB: keyword is often sufficient." },
+  dim3_pattern:  { title: "Dimension 3 — Retrieval Pattern", body: "Controls how many retrieval attempts happen and whether the agent self-evaluates results.\n\nNaive — single retrieve, inject, respond. Cheapest.\n\nSelf-Corrective — retrieve → LLM grades relevance → re-query if poor. Better recall at ~1.5× cost.\n\nMulti-Hop / HyDE / Agentic — roadmap.", example: "Time-pressured workflow (nurses): naive or self_corrective. Research workflow: multi_hop." },
+  pre_graph:     { title: "Pre-Graph RAG (Dim 2 — Stage 1)", body: "Retrieves KB chunks BEFORE the planner runs and injects them silently into context. No explicit tool call needed — the planner always sees the retrieved content.\n\nBest for: chat_agent, workflow_agent.\nNot for: react_agent (which manages its own retrieval mid-loop).", example: "User asks about a prior auth policy. Pre-graph retrieves the policy doc before the planner even sees the question." },
+  planner_tool:  { title: "Planner Tool RAG (Dim 2 — Stage 2)", body: "Exposes search_kb as a callable tool to the planner LLM. The planner decides when to call it — only on KB questions.\n\nMore selective than pre-graph — no retrieval cost on turns that don't need it.\n\nBest for: chat_agent, react_agent.\nNot for: summary_agent.", example: "Member case question → planner calls get_case. Policy question → planner calls search_kb." },
+  top_k:         { title: "Top K", body: "Max number of chunks to retrieve. Higher K = more context, more tokens, higher cost.\n\nPre-graph: keep low (2–4) — injected every turn.\nPlanner tool: 4–6 — only triggered when needed.", example: "top_k: 3 returns 3 chunks. At ~300 tokens each, that's ~900 tokens added to context every turn." },
+  threshold:     { title: "Similarity Threshold", body: "Minimum cosine similarity score for a chunk to be returned. Chunks below this are discarded even if in the top K.\n\nHigher → more selective, less noise.\nLower → more recall, more noise.", example: "0.5 = only highly relevant chunks. 0.2 = returns almost everything — useful for sparse KBs." },
+  fallback:      { title: "Allow No-Results Response", body: "When ON: if search returns no results above threshold, the LLM answers from general knowledge with a disclaimer.\n\nWhen OFF: returns a fixed 'no relevant knowledge found' message and stops. Use for strict compliance scenarios where hallucination is worse than no answer." },
+  kb_tool:       { title: "KB Tool", body: "The knowledge base tool to call for retrieval. Comes from tools assigned to this agent in the Tools tab tagged 'retrieval'.\n\nEach stage can use a different KB tool — e.g. pre-graph on a broad policy KB, planner tool on a narrower clinical guidelines KB." },
+}
+
 function RagTab({ config, onSave }: { config: AgentConfig; onSave: (section: string, changes: any) => Promise<void>; agent: AgentRecord }) {
   const [retrieval, setRetrieval] = useState<any>({})
   const [gatewayTools, setGatewayTools] = useState<any[]>([])
-  const [saving, setSaving] = useState(false)
+  const [saving, setSaving]   = useState(false)
+  const [helpKey, setHelpKey] = useState<string>("dim1_strategy")
 
-  useEffect(() => {
-    setRetrieval(config.agent?.retrieval || {})
-  }, [config])
-
+  useEffect(() => { setRetrieval(config.agent?.retrieval || {}) }, [config])
   useEffect(() => {
     getGatewayTools().then(res => setGatewayTools(res.data?.tools || [])).catch(() => {})
   }, [])
 
-  // Tools from gateway that are tagged "retrieval"
   const retrievalTools = gatewayTools.filter(t => t.tags?.includes("retrieval"))
-  // Tools currently assigned to this agent for retrieval
   const allowedTools: string[] = config.agent?.tools?.allowed || []
   const assignedRetrievalTools = retrievalTools.filter(t => allowedTools.includes(t.name))
-  // Active strategy from config
-  const activeStrategy = retrieval.strategy || "semantic"
-  void DIM1_ALL_STRATEGIES.find(s => s.value === activeStrategy) // active strategy reference
 
   const save = async () => {
     setSaving(true)
@@ -689,23 +693,25 @@ function RagTab({ config, onSave }: { config: AgentConfig; onSave: (section: str
     setSaving(false)
   }
 
+  const help = (key: string) => ({ onMouseEnter: () => setHelpKey(key), onFocus: () => setHelpKey(key) })
+  const helpContent = RAG_HELP[helpKey]
+
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+    <Box sx={{ display: "flex", gap: 3, alignItems: "flex-start" }}>
+      {/* ── Left: config ── */}
+      <Box sx={{ flex: 1, display: "flex", flexDirection: "column", gap: 3, minWidth: 0 }}>
       <FormControlLabel
         control={<Switch checked={!!retrieval.enabled} onChange={e => setRetrieval({ ...retrieval, enabled: e.target.checked })} />}
-        label="RAG Enabled"
+        label={<Typography fontWeight={700}>RAG Enabled</Typography>}
       />
 
       {/* Dimension 1 — Strategy */}
       <Box>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
           <Typography variant="body2" fontWeight={700}>Dimension 1 — Search Strategy</Typography>
           <Chip label="Dim 1" size="small" sx={{ bgcolor: "#dcfce7", color: "#166534", fontWeight: 600, fontSize: 11 }} />
         </Box>
-        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1.5 }}>
-          How documents are retrieved from the KB. All three strategies are supported today (semantic via pgvector, keyword via PostgreSQL full-text, hybrid via RRF merge).
-        </Typography>
-        <FormControl size="small" sx={{ minWidth: 280, mb: 2 }}>
+        <FormControl size="small" sx={{ minWidth: 280, mb: 1.5 }} {...help("dim1_strategy")}>
           <InputLabel>Strategy</InputLabel>
           <Select
             value={retrieval.strategy || "semantic"}
@@ -752,14 +758,11 @@ function RagTab({ config, onSave }: { config: AgentConfig; onSave: (section: str
 
       {/* Dimension 3 — Pattern */}
       <Box>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
           <Typography variant="body2" fontWeight={700}>Dimension 3 — Retrieval Pattern</Typography>
           <Chip label="Dim 3" size="small" sx={{ bgcolor: "#ede9fe", color: "#5b21b6", fontWeight: 600, fontSize: 11 }} />
         </Box>
-        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1.5 }}>
-          Controls the retrieval loop behavior — how many times to retrieve and whether to self-evaluate results.
-        </Typography>
-        <FormControl size="small" sx={{ minWidth: 280 }}>
+        <FormControl size="small" sx={{ minWidth: 280 }} {...help("dim3_pattern")}>
           <InputLabel>Pattern</InputLabel>
           <Select
             value={retrieval.pattern || "naive"}
@@ -784,22 +787,20 @@ function RagTab({ config, onSave }: { config: AgentConfig; onSave: (section: str
       <Divider />
 
       {/* Pre-graph RAG — fully independent config */}
-      <Box>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
-          <Typography variant="body2" fontWeight={700}>Pre-Graph RAG</Typography>
+      {/* Pre-Graph RAG */}
+      <Paper variant="outlined" sx={{ borderRadius: 2, overflow: "hidden" }}>
+        <Box sx={{ px: 2, py: 1.5, bgcolor: "#f8fafc", borderBottom: "1px solid #e2e8f0", display: "flex", alignItems: "center", gap: 1 }}>
+          <Typography fontWeight={700} fontSize={14}>Pre-Graph RAG</Typography>
           <Chip label="Dim 2 — Stage 1" size="small" sx={{ bgcolor: "#ede9fe", color: "#5b21b6", fontWeight: 600, fontSize: 11 }} />
         </Box>
-        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1.5 }}>
-          Retrieves KB chunks BEFORE the planner runs. Injected silently into context — no tool call needed. Best for: chat_agent, workflow_agent. Not for: react_agent.
-        </Typography>
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <FormControlLabel
+        <Box sx={{ p: 2, display: "flex", flexDirection: "column", gap: 2 }}>
+          <FormControlLabel {...help("pre_graph")}
             control={<Switch checked={!!retrieval.pre_graph?.enabled}
               onChange={e => setRetrieval({ ...retrieval, pre_graph: { ...retrieval.pre_graph, enabled: e.target.checked } })} />}
-            label="Enabled"
+            label={<Typography fontSize={13}>{retrieval.pre_graph?.enabled ? "Enabled" : "Disabled"}</Typography>}
           />
           {retrieval.pre_graph?.enabled && <>
-            <FormControl size="small" sx={{ maxWidth: 280 }}>
+            <FormControl size="small" sx={{ maxWidth: 280 }} {...help("kb_tool")}>
               <InputLabel>KB Tool</InputLabel>
               <Select value={retrieval.pre_graph?.tool || "search_kb"} label="KB Tool"
                 onChange={e => setRetrieval({ ...retrieval, pre_graph: { ...retrieval.pre_graph, tool: e.target.value } })}>
@@ -808,7 +809,7 @@ function RagTab({ config, onSave }: { config: AgentConfig; onSave: (section: str
                   : <MenuItem value="search_kb">search_kb</MenuItem>}
               </Select>
             </FormControl>
-            <FormControl size="small" sx={{ maxWidth: 280 }}>
+            <FormControl size="small" sx={{ maxWidth: 280 }} {...help("dim1_strategy")}>
               <InputLabel>Strategy (Dim 1)</InputLabel>
               <Select value={retrieval.pre_graph?.strategy || "semantic"} label="Strategy (Dim 1)"
                 onChange={e => setRetrieval({ ...retrieval, pre_graph: { ...retrieval.pre_graph, strategy: e.target.value } })}>
@@ -820,7 +821,7 @@ function RagTab({ config, onSave }: { config: AgentConfig; onSave: (section: str
                 </MenuItem>)}
               </Select>
             </FormControl>
-            <FormControl size="small" sx={{ maxWidth: 280 }}>
+            <FormControl size="small" sx={{ maxWidth: 280 }} {...help("dim3_pattern")}>
               <InputLabel>Pattern (Dim 3)</InputLabel>
               <Select value={retrieval.pre_graph?.pattern || "naive"} label="Pattern (Dim 3)"
                 onChange={e => setRetrieval({ ...retrieval, pre_graph: { ...retrieval.pre_graph, pattern: e.target.value } })}>
@@ -836,35 +837,30 @@ function RagTab({ config, onSave }: { config: AgentConfig; onSave: (section: str
               <TextField size="small" label="Top K" type="number" sx={{ maxWidth: 120 }}
                 value={retrieval.pre_graph?.top_k ?? 3}
                 onChange={e => setRetrieval({ ...retrieval, pre_graph: { ...retrieval.pre_graph, top_k: Number(e.target.value) } })}
-                helperText="Keep low (2–4)" />
+                {...help("top_k")} />
               <TextField size="small" label="Threshold" type="number" inputProps={{ step: 0.05, min: 0, max: 1 }} sx={{ maxWidth: 140 }}
                 value={retrieval.pre_graph?.similarity_threshold ?? 0.5}
                 onChange={e => setRetrieval({ ...retrieval, pre_graph: { ...retrieval.pre_graph, similarity_threshold: Number(e.target.value) } })}
-                helperText="Higher = more selective" />
+                {...help("threshold")} />
             </Box>
           </>}
         </Box>
-      </Box>
+      </Paper>
 
-      <Divider />
-
-      {/* Planner tool RAG — fully independent config */}
-      <Box>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
-          <Typography variant="body2" fontWeight={700}>Planner Tool RAG</Typography>
+      {/* Planner Tool RAG */}
+      <Paper variant="outlined" sx={{ borderRadius: 2, overflow: "hidden" }}>
+        <Box sx={{ px: 2, py: 1.5, bgcolor: "#f8fafc", borderBottom: "1px solid #e2e8f0", display: "flex", alignItems: "center", gap: 1 }}>
+          <Typography fontWeight={700} fontSize={14}>Planner Tool RAG</Typography>
           <Chip label="Dim 2 — Stage 2" size="small" sx={{ bgcolor: "#dcfce7", color: "#166534", fontWeight: 600, fontSize: 11 }} />
         </Box>
-        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1.5 }}>
-          Exposes search_kb as a tool the planner LLM calls explicitly when the user asks a KB question. Best for: chat_agent, react_agent. Not for: summary_agent.
-        </Typography>
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <FormControlLabel
+        <Box sx={{ p: 2, display: "flex", flexDirection: "column", gap: 2 }}>
+          <FormControlLabel {...help("planner_tool")}
             control={<Switch checked={!!retrieval.planner_tool?.enabled}
               onChange={e => setRetrieval({ ...retrieval, planner_tool: { ...retrieval.planner_tool, enabled: e.target.checked } })} />}
-            label="Enabled"
+            label={<Typography fontSize={13}>{retrieval.planner_tool?.enabled ? "Enabled" : "Disabled"}</Typography>}
           />
           {retrieval.planner_tool?.enabled && <>
-            <FormControl size="small" sx={{ maxWidth: 280 }}>
+            <FormControl size="small" sx={{ maxWidth: 280 }} {...help("kb_tool")}>
               <InputLabel>KB Tool</InputLabel>
               <Select value={retrieval.planner_tool?.tool || "search_kb"} label="KB Tool"
                 onChange={e => setRetrieval({ ...retrieval, planner_tool: { ...retrieval.planner_tool, tool: e.target.value } })}>
@@ -873,7 +869,7 @@ function RagTab({ config, onSave }: { config: AgentConfig; onSave: (section: str
                   : <MenuItem value="search_kb">search_kb</MenuItem>}
               </Select>
             </FormControl>
-            <FormControl size="small" sx={{ maxWidth: 280 }}>
+            <FormControl size="small" sx={{ maxWidth: 280 }} {...help("dim1_strategy")}>
               <InputLabel>Strategy (Dim 1)</InputLabel>
               <Select value={retrieval.planner_tool?.strategy || "semantic"} label="Strategy (Dim 1)"
                 onChange={e => setRetrieval({ ...retrieval, planner_tool: { ...retrieval.planner_tool, strategy: e.target.value } })}>
@@ -885,7 +881,7 @@ function RagTab({ config, onSave }: { config: AgentConfig; onSave: (section: str
                 </MenuItem>)}
               </Select>
             </FormControl>
-            <FormControl size="small" sx={{ maxWidth: 280 }}>
+            <FormControl size="small" sx={{ maxWidth: 280 }} {...help("dim3_pattern")}>
               <InputLabel>Pattern (Dim 3)</InputLabel>
               <Select value={retrieval.planner_tool?.pattern || "naive"} label="Pattern (Dim 3)"
                 onChange={e => setRetrieval({ ...retrieval, planner_tool: { ...retrieval.planner_tool, pattern: e.target.value } })}>
@@ -900,23 +896,49 @@ function RagTab({ config, onSave }: { config: AgentConfig; onSave: (section: str
             <Box sx={{ display: "flex", gap: 2 }}>
               <TextField size="small" label="Top K" type="number" sx={{ maxWidth: 120 }}
                 value={retrieval.planner_tool?.top_k ?? 5}
-                onChange={e => setRetrieval({ ...retrieval, planner_tool: { ...retrieval.planner_tool, top_k: Number(e.target.value) } })} />
+                onChange={e => setRetrieval({ ...retrieval, planner_tool: { ...retrieval.planner_tool, top_k: Number(e.target.value) } })}
+                {...help("top_k")} />
               <TextField size="small" label="Threshold" type="number" inputProps={{ step: 0.05, min: 0, max: 1 }} sx={{ maxWidth: 140 }}
                 value={retrieval.planner_tool?.similarity_threshold ?? 0.35}
-                onChange={e => setRetrieval({ ...retrieval, planner_tool: { ...retrieval.planner_tool, similarity_threshold: Number(e.target.value) } })} />
+                onChange={e => setRetrieval({ ...retrieval, planner_tool: { ...retrieval.planner_tool, similarity_threshold: Number(e.target.value) } })}
+                {...help("threshold")} />
             </Box>
-            <FormControlLabel
+            <FormControlLabel {...help("fallback")}
               control={<Switch checked={!!retrieval.planner_tool?.fallback?.allow_no_results_response}
                 onChange={e => setRetrieval({ ...retrieval, planner_tool: { ...retrieval.planner_tool, fallback: { allow_no_results_response: e.target.checked } } })} />}
-              label="Allow No-Results Response"
+              label={<Typography fontSize={13}>Allow No-Results Response</Typography>}
             />
           </>}
         </Box>
-      </Box>
+      </Paper>
 
       <Button variant="contained" size="small" onClick={save} disabled={saving} sx={{ alignSelf: "flex-start" }}>
         {saving ? "Saving…" : "Save RAG"}
       </Button>
+      </Box>
+
+      {/* ── Right: contextual help panel ── */}
+      <Box sx={{ width: 260, flexShrink: 0, position: "sticky", top: 0 }}>
+        <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, bgcolor: "#fafafa" }}>
+          <Typography fontSize={12} fontWeight={700} color="primary.main" sx={{ mb: 1 }}>
+            {helpContent?.title || "Hover any field for help"}
+          </Typography>
+          {helpContent && (
+            <>
+              <Typography fontSize={12} color="text.secondary" sx={{ whiteSpace: "pre-line", lineHeight: 1.6 }}>
+                {helpContent.body}
+              </Typography>
+              {helpContent.example && (
+                <Box sx={{ mt: 1.5, p: 1.5, bgcolor: "#f0f4ff", borderRadius: 1, borderLeft: "3px solid #6366f1" }}>
+                  <Typography fontSize={11} color="#4338ca" sx={{ lineHeight: 1.5 }}>
+                    <strong>Example:</strong> {helpContent.example}
+                  </Typography>
+                </Box>
+              )}
+            </>
+          )}
+        </Paper>
+      </Box>
     </Box>
   )
 }
