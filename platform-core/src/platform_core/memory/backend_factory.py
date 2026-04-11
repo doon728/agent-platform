@@ -25,7 +25,9 @@ def get_backend(memory_cfg: Dict[str, Any], memory_type: str | None = None) -> M
         backend_name = (memory_cfg.get("backend") or "file")
 
     if backend_name == "file":
-        return FileMemoryStore()
+        import os
+        base_dir = os.getenv("MEMORY_BASE_PATH", "/app/state/memory")
+        return FileMemoryStore(base_dir=base_dir)
 
     if backend_name == "s3":
         raise NotImplementedError("S3Backend not yet implemented — set backend: file for now")
