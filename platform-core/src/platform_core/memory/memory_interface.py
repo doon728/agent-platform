@@ -76,3 +76,6 @@ class MemoryBackend:
         child_type: str,
     ) -> List[str]:
         raise NotImplementedError
+
+# Backwards-compatibility alias
+MemoryService = MemoryBackend

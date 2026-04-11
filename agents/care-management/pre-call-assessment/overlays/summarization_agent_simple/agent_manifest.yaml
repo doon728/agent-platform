@@ -1,0 +1,15 @@
+agent_type: summarization_agent_simple
+
+components:
+  - summarizer
+
+features:
+  memory: false
+  observability: true
+  prompt_versioning: false
+
+entrypoint:
+  orchestration_graph: orchestration/build_graph.py
+
+# No rag_dimension2 — this agent does not search a knowledge base.
+# fetch_node calls tools by known ID (structured lookup), not vector search.

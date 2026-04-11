@@ -7,6 +7,6 @@ tool_gateway:
 prompt_service:
   url: http://host.docker.internal:8101
   app_name: CM hero Fl APP
-  agent_type: chat_agent
+  agent_type: chat_agent_simple
   usecase_name: UC_PreCall_Assess
   environment: dev

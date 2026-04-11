@@ -165,3 +165,11 @@ export const stopWorkspace = () => {
 export const deleteWorkspace = () => {
   return SUPPORT_API.delete("/workspace/delete")
 }
+
+export const deleteAgent = (agentRepo: string) => {
+  return SUPPORT_API.delete("/registry/agent", { params: { agent_repo: agentRepo } })
+}
+
+export const stopAgent = (agentRepo: string) => {
+  return SUPPORT_API.post("/workspace/stop", null, { params: { agent_repo: agentRepo } })
+}

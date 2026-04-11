@@ -2,7 +2,7 @@
   {
     "capability_name": "care-management",
     "usecase_name": "pre-call-assessment",
-    "agent_type": "chat_agent",
+    "agent_type": "chat_agent_simple",
     "app_name": "Pre-Call Assessment",
     "app_repo_name": "",
     "agent_name": "Pre-Call Assessment",
@@ -29,7 +29,7 @@
   {
     "capability_name": "care-management",
     "usecase_name": "pre-call-assessment",
-    "agent_type": "summary_agent",
+    "agent_type": "summarization_agent_simple",
     "app_name": "Pre-Call Assessment",
     "app_repo_name": "",
     "agent_name": "Pre-Call Assessment Summary",
@@ -56,32 +56,5 @@
       "rag"
     ],
     "default_model": "gpt-4o-mini"
-  },
-  {
-    "capability_name": "care-management",
-    "usecase_name": "test",
-    "agent_type": "chat_agent",
-    "app_name": "test",
-    "app_repo_name": "test",
-    "agent_name": "test",
-    "agent_repo_name": "test",
-    "components": {
-      "planner": true,
-      "responder": true,
-      "workflow": false,
-      "router": false
-    },
-    "prompt_types": [
-      "planner",
-      "responder"
-    ],
-    "features": {
-      "memory": false,
-      "rag": false,
-      "hitl": false,
-      "observability": true,
-      "prompt_versioning": true
-    },
-    "default_model": "gpt-4o"
   }
 ]

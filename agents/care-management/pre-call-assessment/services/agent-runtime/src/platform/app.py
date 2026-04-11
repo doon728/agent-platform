@@ -285,11 +285,17 @@ async def summarize_scope(request: Request) -> JSONResponse:
 
     # Run the summary graph
     try:
-        from overlays.summary_agent.orchestration.build_graph import build_graph
+        from overlays.summarization_agent_simple.orchestration.build_graph import build_graph
 
+        from platform_core.usecase_config_loader import load_agent_config
+        from platform_core.config import load_config as _load_cfg
+        _cfg = _load_cfg()
+        _usecase_cfg = load_agent_config(_cfg.prompt_service.agent_type)
         ctx = {
             "tenant_id": tenant_id,
             "member_id": payload.get("member_id") or scope_id,
+            "domain": _usecase_cfg.get("domain") or {},
+            "tool_policy": _usecase_cfg.get("tool_policy") or {},
         }
         graph = build_graph()
         result = graph.invoke({"scope_type": scope_type, "scope_id": scope_id, "ctx": ctx})

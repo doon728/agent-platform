@@ -114,6 +114,18 @@ Status key: ✅ Done | ⚠ Partial / Limitation | 🔲 Not Started
    - Support API — add route to read/write `hard_routes` block in agent.yaml
    - agent.yaml schema — add `hard_routes` as a validated optional field
 
+3f-a. **Hard route — multi-match handling** 🔲 — today hard route is single match only: one phrase list → one tool → skip LLM. When multiple routes match the same input, behavior is undefined.
+
+   **Two cases to handle:**
+   - **Multiple read/context tools match** → execute all in parallel pre-graph, merge results into context. No LLM needed.
+   - **Multiple action/ambiguous tools match** → pass all matched tools as candidates to LLM in-graph. LLM decides which to call.
+
+   **What needs to change:**
+   - `llm_planner.py` hard route logic — collect all matches instead of returning on first match
+   - Classify each matched tool as `read` vs `write/action` (from tool metadata)
+   - Read matches → execute pre-graph, inject into context
+   - Action matches → pass candidate list into in-graph LLM call
+
 3d. **Agent capability matrix — config options per agent type** 🔲 — not all agents should see all configuration options. Today the Agent Registry UI and Agent Factory create form show all options regardless of agent type. Need to enforce which capabilities are available, locked, or hidden per agent type.
 
    **Capability matrix (what each agent type supports):**
@@ -179,6 +191,48 @@ Status key: ✅ Done | ⚠ Partial / Limitation | 🔲 Not Started
 
    **This is also the decoupling goal:**
    UI and agent are completely independent. UI can be rebuilt or redesigned without touching agent config. Agent config can change without touching UI. The scope ID payload is the only contract between them.
+
+3a. **Scope-level memory control** 🔲 — today memory toggles (short-term, episodic, semantic, summary) apply globally to the entire agent. Every scope (member, case, assessment) shares the same on/off state.
+
+   **The problem:**
+   Different scopes have different memory needs. For example: you may want episodic memory at the assessment scope (track what happened in this assessment) but not at the member scope (too broad, too noisy). Or short-term at case level but not member level. Today there is no way to express this — it's all or nothing.
+
+   **What needs to be built:**
+
+   **1. Config — agent.yaml:**
+   ```yaml
+   memory:
+     scopes:
+       member:
+         short_term: true
+         episodic: false
+         summary: true
+         semantic: false
+       case:
+         short_term: true
+         episodic: true
+         summary: true
+         semantic: false
+       assessment:
+         short_term: true
+         episodic: true
+         summary: true
+         semantic: true
+   ```
+   Falls back to global policy if scope-level not defined.
+
+   **2. Runtime — memory policy resolution:**
+   `LangGraphRunner` already resolves `active_scopes` from `domain.yaml`. Extend `memory_policy_state` to be a dict keyed by scope type instead of flat booleans. Write and read engines check per-scope policy before writing.
+
+   **3. Agent Registry UI — Memory tab:**
+   Instead of 4 global toggles, render one row per scope (read dynamically from `/config/scopes`). Each row has the same 4 toggles. Works for any capability — no hardcoding. Applies to all reasoning strategies.
+
+   **4. Post-graph Memory Panel in UI:**
+   Currently shows 3 memory types. After this change, shows per-scope breakdown — e.g. "member: short-term ✅ episodic ✗" and "assessment: all ✅". Gives nurse/admin visibility into what was written where.
+
+   **Applies to:** all agent types (chat, summarization, workflow, multi-agent) and all reasoning strategies — the memory write layer is below the reasoning layer.
+
+   **Priority note:** tackle this before adding new capabilities — once there are multiple agents with different domain.yaml scopes, retrofitting scope-level memory becomes much harder.
 
 3b. **Case/Member chat 3-column layout** 🔲 — CaseView and MemberProfile have `InlineChatPanel` ✅ but missing `TraceGraph` + full `MemoryPanel`. AssessmentView has the full 3-column layout — needs to be replicated in CaseView and MemberProfile.
 
@@ -469,7 +523,7 @@ Status key: ✅ Done | ⚠ Partial / Limitation | 🔲 Not Started
    - Write toggle — `write_policies.<type>.enabled` on/off
    - Write locked indicator — grayed-out lock icon (read-only display, set by platform based on agent type, not editable by admin)
    - Backend dropdown — `file | s3 | dynamodb | pgvector | redis` (drives `backend_factory.py` selection)
-   - `write_on_tool_call` toggle + tools dropdown — `write_only | all | [explicit list]` (episodic only)
+   - `write_on_tool_call` toggle + tools dropdown — `write_only | all | [explicit list]` (episodic only). When `write_only` is selected, the dropdown shows only tools that are: (a) in this agent's `allowed_tools` list AND (b) marked `mode: write` in Tool Gateway. This gives the admin visibility into exactly which write tools are active for this agent without leaving the Memory tab.
    - `write_intermediate_steps` toggle — on/off (short-term only, ReAct/multi_hop)
    - Dedup toggle — on/off (semantic only)
    - Summary trigger dropdown — `explicit | turn_count | token_threshold | never` with threshold input fields
@@ -1089,6 +1143,61 @@ Status key: ✅ Done | ⚠ Partial / Limitation | 🔲 Not Started
 
 11. **AgentCore compatibility** 🔲 — memory backend swap + CloudWatch traces. Note: AgentCore replaces the orchestration engine only — all platform capabilities (memory model, HITL, RAG patterns, prompt governance) must still be built regardless.
 
+11a. **Runtime split — 2-container architecture** 🔲 — refactor the single agent-runtime container into two deployable units to support edge/customer VPC deployment without exposing platform IP.
+
+   **Container 1 — Runtime Shell (deploys to customer VPC or edge)**
+   - Graph skeleton: pre-graph, in-graph, post-graph orchestration
+   - HTTP clients only: calls Container 2 for all logic
+   - No business logic, no IP — just the execution shell
+
+   **Container 2 — Platform Services (stays on your VPC)**
+   - Config resolver (merges YAMLs → resolved runtime config)
+   - Tool gateway / MCP server (tool execution, healthcare logic)
+   - Memory service (read + write)
+   - RAG service (retrieval)
+   - Prompt service
+   - Observability / trace store
+
+   **Key property:** Container 1 is deployment-agnostic — same image deploys to customer VPC, edge, or your VPC. Points at Container 2 via URL config only. For strict customers who require zero data leaving their boundary, Container 2 services can also be moved customer-side — Container 1 code unchanged.
+
+   **Industry alignment:** Control-plane / data-plane split is standard across AWS (VPC + service endpoints), Istio (sidecar + control plane), and enterprise agent platforms (Sema4.ai, LangChain). Two-container separation of orchestration shell from platform services is the right enterprise pattern.
+
+   **Design constraints (must be addressed in implementation):**
+   - Latency: every pre/in/post-graph step now has a network hop to Container 2 — cache resolved config + tool metadata at Container 1 startup to avoid per-request round trips
+   - Inter-service auth: Container 1 → Container 2 calls must use mTLS or signed tokens — not open HTTP
+   - Resilience: Container 1 needs circuit breakers — if Container 2 is unreachable, fail gracefully not silently
+   - Strict customers: design Container 2 services to be individually deployable customer-side from day one — same Container 1 image, different service URLs via env vars
+
+   **What needs to change:**
+   - Extract `tools/router.py`, memory engines, RAG runner, prompt client into standalone service endpoints in Container 2
+   - Container 1 replaces direct calls with HTTP client calls to Container 2 base URL (env var)
+   - `tool_gateway_client.py` and `prompt_client.py` already exist as client patterns — extend this model to memory + RAG + config resolution
+   - Add inter-service auth layer (mTLS or signed JWT) between containers
+
+11b. **Resolved runtime config — single merged config per agent** 🔲 — replace per-request multi-YAML loading with a single pre-resolved `resolved_runtime_config.yaml` generated at deploy/save time. Container 1 loads one file at startup. Container 2 owns the resolution logic (merging agent.yaml + memory.yaml + rag.yaml + tools.yaml + routing.yaml + customer overrides → one execution-ready object).
+
+   **What it solves:**
+   - Container 1 has no config parsing logic → no IP exposed in shell
+   - No per-request YAML merging → faster startup and execution
+   - Single artifact to audit — exactly what the agent will do, no ambiguity
+   - Customer never sees raw policy/routing logic, only the resolved output
+
+   **Industry alignment:** Same pattern as Kubernetes (manifest → applied config), Helm (values.yaml → rendered templates), and compiled deployment artifacts. Pre-resolving config at build/deploy time rather than runtime is standard enterprise practice for both performance and auditability.
+
+   **Resolution trigger:** config is regenerated whenever admin saves any config tab in Agent Registry UI → Support API calls Container 2 resolver → writes new `resolved_runtime_config.yaml` → Container 1 hot-reloads or restarts.
+
+   **Design constraints (must be addressed in implementation):**
+   - Versioning: every resolved config must be versioned (timestamp + hash) so you can rollback if a bad config reaches production
+   - Invalidation: Container 1 must detect when resolved config changes and reload — avoid stale config serving live traffic
+   - Sensitivity: resolved config contains tool lists, HITL rules, policy data — treat as sensitive artifact, do not log raw, encrypt at rest
+   - Strict customers: for customer-hosted deployments, resolution can run customer-side with Container 2 deployed there — same output format, same Container 1 consumption
+
+   **What needs to change:**
+   - Container 2: build `ConfigResolver` service that reads all source YAMLs + customer overrides, outputs `resolved_runtime_config.yaml`
+   - Container 1: replace `usecase_config_loader.py` multi-file loading with single resolved config loader
+   - Support API: on any agent config save → trigger resolved config regeneration via Container 2
+   - Add config version field to resolved output for audit + rollback
+
 12. **Fresh repo generation test** 🔲 — delete and re-scaffold from template, verify end-to-end.
 
 12c. **agent-platform repo structure refactor** ✅ — full restructure of how capabilities, apps, agents, and UI are organised in the agent-platform repo. This replaces the `generated-repos/` wrapper and the "use case" concept entirely.
@@ -1407,3 +1516,156 @@ Status key: ✅ Done | ⚠ Partial / Limitation | 🔲 Not Started
    | **Tool management** | Tools hardcoded in registry.py | Tool defined in registry + agent.yaml allowed list | Tool Gateway Admin UI: add/edit tools from UI, auto-appear in LLM schema (planned) |
    | **Agent scaffolding** | Manual copy-paste per usecase | Template-based generation from Admin UI | Full lifecycle: generate → configure → deploy → restart → delete |
    | **HITL** | No approval, agent writes directly | Tool-level risk_levels in agent.yaml, internal approval queue | Dynamic risk scoring per invocation, scenario-based rules engine, parallel approvals, external system executes (Pega/Epic) — agent only proposes |
+
+---
+
+6r. **Agent Registry — Inline config validation across all tabs** 🔲 — today most tabs save silently with no cross-field validation. Wrong config fails at runtime with no warning at save time. Add inline validation rules per tab so mismatches are caught before save.
+
+   **Routing tab** ✅ (partially built):
+   - Scope `id_field` must match tool `primary_arg` — mismatch shows orange warning banner
+   - Tool must be in agent's allowed tools list (Tools tab) — warn if route tool is not in `tools.allowed`
+   - Phrase list must not be empty before save — block save with error
+
+   **Tools tab:**
+   - Tool must exist in Tool Gateway registry — warn if tool name not found in gateway `/tools/specs`
+   - `tools.mode: selected` with empty allowed list — warn: "no tools allowed, agent cannot call any tools"
+
+   **RAG tab:**
+   - `planner_tool.tool` must be in agent's allowed tools list — warn if `search_kb` (or configured tool) is not in `tools.allowed`
+   - `pre_graph.top_k` and `planner_tool.top_k` must be > 0
+   - `similarity_threshold` must be between 0 and 1
+   - If `retrieval.enabled: false` but pre_graph or planner_tool enabled — warn: "retrieval is disabled globally, these settings have no effect"
+
+   **HITL tab:**
+   - Tool in `risk_levels` must exist in agent's allowed tools list — warn on unknown tool names
+   - `hitl: true` (features) but `approval_required: false` — warn: "HITL is enabled but no approval trigger is active"
+   - `routing_rules` must cover all risk levels present in `risk_levels` — warn if a tool's risk level has no matching routing rule
+
+   **Memory tab:**
+   - `write_on_tool_call.tools` list must only contain tools from the allowed tools list
+   - Summary trigger `turn_count` or `token_threshold` with no threshold value set — warn: "trigger type requires a threshold value"
+   - `write_intermediate_steps: true` on `simple` strategy — warn: "intermediate steps only apply to react/plan_execute strategies"
+
+   **Implementation pattern:**
+   - Each tab has a `validateConfig()` function that returns `Warning[]`
+   - Warnings render as amber inline banners per field (not blocking save — warn only, except empty phrase list)
+   - Same `validateConfig()` logic runs on the Overview tab's config summary so admin can see all warnings in one place without visiting each tab
+
+---
+
+## Reference: Runtime Chat Panel (InlineChatPanel) — Tab Coverage
+
+Used at member, case, and assessment level in the care management UI. Three tabs:
+
+| Tab | What it shows | Wired? |
+|---|---|---|
+| **Chat** | Full conversation, HITL pending approval, context-aware (passes member_id/case_id/assessment_id), thread persistence per context | ✅ |
+| **Memory** | Live toggles (short_term/episodic/summary/semantic ON/OFF per message as `memory_policy_override`), planner route type (HARD_ROUTE vs LLM_ROUTE), router tool/mode, executor tool/status, what was written post-turn (episodic/short_term/summary/semantic), live episodic entries after HITL approval | ✅ `memory_trace` returned by runtime and read by UI |
+| **Trace** | Execution graph via TraceGraph component — steps, tool calls, latency | ✅ |
+
+**Memory tab gaps (not shown, in `memory_trace` but UI ignores):**
+- `skipped.*` — which memory types were skipped and why
+- `retrieved.*` — what was read from memory before the LLM ran
+- `scopes` — which scopes were resolved for this invocation
+- `policy_state` — effective per-type on/off after policy resolution
+
+**Testing shortcut:** memory toggles in the Memory tab are per-message overrides — flip a toggle, send a message, see the effect without restarting the agent.
+
+---
+
+## Workspace + Capability UI Port Wiring 🔲
+
+**Problem:** When Workspaces starts an agent, it resolves a port dynamically (8081, 8082, etc.). The capability UI (e.g. care management) has `VITE_API_PROXY_TARGET` hardcoded to `http://localhost:8081` in its `.env`. If the agent lands on a different port, the UI talks to the wrong place.
+
+**Two things needed:**
+
+1. **Write resolved port to capability UI `.env`** — when workspace starts an agent, look up which capability UI owns it and update `VITE_API_PROXY_TARGET` in that UI's `.env` with the resolved port.
+
+2. **Restart the capability UI dev server** — Vite reads `.env` at startup only. After writing the port, the support API must kill and restart the Vite dev server process for the change to take effect. Today the dev server is started manually in terminal and the platform never touches it.
+
+**Multi-capability implication:** each capability UI must have its own fixed port assignment (e.g. care-management always on 8081, another capability on 8082) so their UIs always proxy to the right agent. Port assignments should be defined in the registry record at scaffold time.
+
+**Current workaround:** ensure agent always starts on 8081 (works as long as only one agent runs at a time).
+
+---
+
+## Observability Section — Agent Factory UI 🔲
+
+New left nav section in Agent Factory UI with 2 menu items:
+
+### Lineage
+Per-message full chain — one unified Lineage Panel per message, clickable from chat history. Content adapts by agent type, reasoning strategy, and RAG pattern:
+
+- **Prompt version used** — which prompt version was active for this turn
+- **Memory read** — which memory items (short_term, episodic, semantic, summary) were retrieved and injected
+- **Documents retrieved** — per RAG retrieval: document name, chunk text, similarity score. Multi-hop shows multiple retrieval blocks chained.
+- **Planner decision** — route type (HARD_ROUTE / LLM_ROUTE), tool selected, reasoning
+- **Tool called** — tool name, input, output
+- **HITL approval** — approval_id, who approved, timestamp (section hidden if no HITL)
+- **Response** — final answer
+- **Memory written** — what was written post-turn (episodic, short_term, semantic, summary) and to which scope
+
+Sections show/hide based on what actually ran for that turn. Applies across all agent types (chat, summary, react), reasoning strategies (simple, react, plan_execute), and RAG patterns (naive, multi_hop, hyde, agentic, none).
+
+**RAG lineage gap to fix first:** today RAG runner fetches chunks but doesn't store which documents/chunks were used. Need to record document_name, document_id, chunk_id, chunk_text, similarity_score alongside each invocation response.
+
+**Display:** Sources tab in runtime chat panel (per message clicked), full lineage in Agent Factory Observability → Lineage view.
+
+### Metrics
+Per-turn observability grid for a given agent:
+- Columns: turn, timestamp, total latency, tokens at each step (planner, tool, responder), total tokens
+- Rows: every invocation turn
+- Filterable by date range, agent type, thread_id
+
+---
+
+## Overlay Structure Refactor — Split by Agent Type + Reasoning Strategy 🔲 ⭐ NEXT PRIORITY
+
+**Problem:** Today the overlay folder is just `chat_agent/` on disk but the Create Agent dropdown already shows `chat_agent — simple`, `chat_agent — ReAct`, `chat_agent — Plan & Execute` etc. The file structure doesn't match the UI — scaffolding always copies the same `chat_agent/` overlay regardless of reasoning strategy selected.
+
+**Required structure:**
+```
+templates/agent-runtime-template/overlays/
+  chat_agent_simple/
+  chat_agent_react/
+  chat_agent_plan_execute/
+  chat_agent_chain_of_thought/
+  summarization_agent/
+  workflow_agent_simple/
+  workflow_agent_react/
+  multi_agent_supervisor/
+  multi_agent_supervisor_hitl/
+```
+
+**Each overlay contains:**
+- `agents/` — planner, executor specific to that reasoning strategy
+- `config/agent.yaml` — pre-set reasoning.strategy locked to that overlay type
+- `config/memory.yaml`
+- `config/prompt-defaults.yaml` — prompts formatted for that strategy (ReAct needs thought/action/observation, simple needs tool:argument)
+- `agent_manifest.yaml` — agent_type + reasoning strategy declared
+- `orchestration/build_graph.py` — graph wired for that strategy
+- `ui/` — mini standalone test UI for that agent type (chat panel for chat agents, context+output for summary agent)
+
+**Why do this next:** wrong structure now = refactor everything later. UI dropdown is already correct, file structure needs to catch up.
+
+**Existing agents affected:** `agents/care-management/pre-call-assessment/overlays/chat_agent/` needs to be renamed to `chat_agent_simple/` and re-registered.
+
+---
+
+## Reference: All Agent Types + Reasoning Strategies
+
+Industry and enterprise aligned. Used to drive overlay structure refactor.
+
+| Agent Type | Strategies | Notes |
+|---|---|---|
+| **chat_agent** | simple, react, plan_execute, chain_of_thought, self_corrective, reflection | Conversational, user-facing, memory-heavy |
+| **summarization_agent** | simple, map_reduce, hierarchical | Batch, no conversation loop. Strategies from LangChain summarization chains (stuff/map_reduce/refine) |
+| **workflow_agent** | simple, react, plan_execute | Executes defined step sequences, less conversational |
+| **multi_agent** | supervisor, supervisor+HITL, hierarchical | Coordination patterns not reasoning loops — sub-agents each have their own reasoning strategy independently |
+
+**Key distinctions:**
+- chat_agent strategies = reasoning loop patterns (how the agent thinks)
+- summarization_agent strategies = document processing patterns (how context is chunked/combined)
+- multi_agent strategies = coordination patterns (how agents are orchestrated)
+
+**Currently built:** chat_agent/simple ✅, summarization_agent/simple ✅

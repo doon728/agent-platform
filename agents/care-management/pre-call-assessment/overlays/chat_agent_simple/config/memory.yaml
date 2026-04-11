@@ -1,0 +1,91 @@
+enabled: true
+
+# Read/write are independent per memory type.
+# read_policies — can this agent retrieve this memory type?
+# write_policies — can this agent write this memory type?
+read_policies:
+  short_term:
+    enabled: true    # always read conversation history
+  episodic:
+    enabled: true    # read case/assessment events
+  semantic:
+    enabled: true    # read member/user facts
+  summary:
+    enabled: true    # read conversation summary
+
+scope_taxonomy:
+- conversation
+- user
+- member
+- case
+- assessment
+- care_plan
+scope_resolution:
+  priority:
+  - explicit_request
+  - ui_context
+  - domain_lookup
+  - prompt_inference
+  - conversation_fallback
+write_policies:
+  short_term:
+    enabled: true
+    write_locked: false        # chat_agent always writes short_term
+    trigger: every_turn
+    write_intermediate_steps: false   # true = write each ReAct thought/action/observation to short-term
+    primary_scope: conversation
+    retain_last_n_turns: 12
+  episodic:
+    enabled: true
+    write_locked: false        # chat_agent writes episodic — summary_agent sets true
+    triggers:
+    - tool_success
+    - workflow_checkpoint
+    - assessment_completed
+    write_on_tool_call:
+      enabled: true
+      tools: write_only        # write_only | all | [explicit list e.g. write_case_note, get_member]
+    allowed_scopes:
+    - case
+    - assessment
+    link_to_parent_scope: true
+    link_to_root_scope: true
+    link_to_member_scope: true
+  semantic:
+    enabled: false
+    write_locked: false        # chat_agent writes semantic — summary_agent sets true
+    trigger: extractor
+    dedup:
+      enabled: true            # update existing fact in place if same fact_type exists for scope
+    allowed_scopes:
+    - member
+    - user
+  summary:
+    enabled: true
+    write_locked: true         # chat_agent never writes summary — summary_agent does
+    trigger: explicit          # explicit | turn_count | token_threshold | never
+    turn_count_threshold: 20   # used when trigger: turn_count
+    token_threshold: 8000      # used when trigger: token_threshold (approx tokens in short-term)
+    allowed_scopes:
+    - conversation
+    - case
+retrieval_policies:
+  conversation:
+    short_term:
+      include: true
+      max_turns: 12
+    summary:
+      include: true
+      max_items: 1
+  case:
+    episodic:
+      include: true
+      top_k: 5
+  member:
+    semantic:
+      include: false
+      top_k: 3
+context_assembly:
+  max_total_items: 12
+  prefer_summaries_over_raw: true
+  deduplicate: true

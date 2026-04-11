@@ -73,8 +73,8 @@ const MODEL_OPTIONS = [
 
 const BASE_AGENT_TYPE_OPTIONS = [
   // ── Available ────────────────────────────────────────────────────────────────
-  { value: "chat_agent",            label: "chat_agent — simple (linear planner)",       enabled: true },
-  { value: "summarization_agent",   label: "summarization_agent",                        enabled: true },
+  { value: "chat_agent_simple",           label: "chat_agent — simple (linear planner)",       enabled: true },
+  { value: "summarization_agent_simple", label: "summarization_agent — simple",               enabled: true },
   // ── Roadmap: reasoning strategy variants ─────────────────────────────────────
   { value: "chat_agent_react",      label: "chat_agent — ReAct (think→act→observe loop)", enabled: false },
   { value: "chat_agent_cot",        label: "chat_agent — Chain-of-Thought",               enabled: false },
@@ -94,7 +94,7 @@ export default function ApplicationForm() {
   const [agentName, setAgentName] = useState("")
   const [agentFolder, setAgentFolder] = useState("")
   const [agentFolderTouched, setAgentFolderTouched] = useState(false)
-  const [agentType, setAgentType] = useState("chat_agent")
+  const [agentType, setAgentType] = useState("chat_agent_simple")
   const [persona, setPersona] = useState("care_manager")
   const [description, setDescription] = useState("")
 
@@ -263,6 +263,7 @@ export default function ApplicationForm() {
             repo_name: agentFolder,
             capability_name: capabilityName,
             usecase_name: agentFolder,
+            display_name: agentName,
             agent_type: agentType,
             persona,
             tool_policy: { mode: "selected", allowed_tools: selectedTools, allowed_tags: [] },
@@ -340,401 +341,164 @@ export default function ApplicationForm() {
   })
   return (
     <div style={pageStyle}>
-      <div style={{ marginBottom: 16 }}>
-        <h1 style={{ margin: 0, fontSize: 30 }}>Agent Factory</h1>
-        <p style={{ marginTop: 8, color: "#4b5563" }}>
-          Select an existing capability and scaffold a new agent under it. Configure existing agents in Agent Registry.
+      <div style={{ marginBottom: 24 }}>
+        <h1 style={{ margin: 0, fontSize: 28, fontWeight: 700 }}>Create Agent</h1>
+        <p style={{ marginTop: 6, color: "#6b7280", fontSize: 14 }}>
+          Pick a capability, agent type, and give it a name. All other configuration (Memory, HITL, RAG, Tools) is done in Agent Registry after scaffold.
         </p>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1.45fr 0.95fr", gap: 18, alignItems: "start" }}>
-          {/* Left */}
-          <div style={{ display: "grid", gap: 18 }}>
-            {/* Agent Identity */}
-            <div style={sectionStyle}>
-              <h2 style={{ marginTop: 0, marginBottom: 12 }}>Agent</h2>
-              <div style={compactGrid}>
-                <div>
-                  <label style={labelStyle}>Capability</label>
-                  <select
-                    style={inputStyle}
-                    value={capabilityName}
-                    onChange={(e) => setCapabilityName(e.target.value)}
-                  >
-                    <option value="">Select capability...</option>
-                    {filesystemCapabilities.map((cap) => (
-                      <option key={cap} value={cap}>{cap}</option>
-                    ))}
-                  </select>
-                  {filesystemCapabilities.length === 0 && (
-                    <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 4 }}>
-                      No capabilities found. Developer must create capabilities/ directory first.
-                    </div>
-                  )}
-                </div>
+      <div style={{ display: "grid", gridTemplateColumns: "480px 1fr", gap: 24, alignItems: "start", maxWidth: 900 }}>
 
-                <div>
-                  <label style={labelStyle}>Overlay Type</label>
-                  <select
-                    style={inputStyle}
-                    value={agentType}
-                    onChange={(e) => { setAgentType(e.target.value); applyMemoryDefaults(e.target.value) }}
-                  >
-                    {BASE_AGENT_TYPE_OPTIONS.map((o) => (
-                      <option key={o.value} value={o.value} disabled={!o.enabled}>
-                        {o.label}{o.enabled ? "" : " (coming soon)"}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+        {/* ── Left: 3-field form ── */}
+        <div style={{ display: "grid", gap: 16 }}>
+          <div style={sectionStyle}>
+            <h2 style={{ marginTop: 0, marginBottom: 16, fontSize: 16 }}>Agent Identity</h2>
 
-                <div>
-                  <label style={labelStyle}>Agent Name</label>
-                  <input
-                    style={inputStyle}
-                    placeholder="Pre-Call Assessment"
-                    value={agentName}
-                    onChange={(e) => setAgentName(e.target.value)}
-                  />
-                </div>
+            <div style={{ display: "grid", gap: 14 }}>
 
-                <div>
-                  <label style={labelStyle}>
-                    Agent Folder{" "}
-                    <InfoTooltip text="Folder name under agents/<capability>/. Auto-generated from agent name — edit to override." />
-                  </label>
-                  <input
-                    style={inputStyle}
-                    placeholder="pre-call-assessment"
-                    value={agentFolder}
-                    onChange={(e) => { setAgentFolderTouched(true); setAgentFolder(e.target.value) }}
-                  />
-                </div>
-
-                <div>
-                  <label style={labelStyle}>Persona</label>
-                  <input style={inputStyle} value={persona} onChange={(e) => setPersona(e.target.value)} />
-                </div>
-
-                <div>
-                  <label style={labelStyle}>Model</label>
-                  <select style={inputStyle} value={modelName} onChange={(e) => setModelName(e.target.value)}>
-                    {MODEL_OPTIONS.map((o) => (
-                      <option key={o.value} value={o.value} disabled={!o.enabled}>
-                        {o.label}{o.enabled ? "" : " (coming soon)"}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label style={labelStyle}>Temperature</label>
-                  <input style={inputStyle} value={temperature} onChange={(e) => setTemperature(e.target.value)} />
-                </div>
+              {/* Capability */}
+              <div>
+                <label style={labelStyle}>Capability</label>
+                <select style={inputStyle} value={capabilityName} onChange={(e) => setCapabilityName(e.target.value)}>
+                  <option value="">Select capability…</option>
+                  {filesystemCapabilities.map((cap) => (
+                    <option key={cap} value={cap}>{cap}</option>
+                  ))}
+                </select>
+                {filesystemCapabilities.length === 0 && (
+                  <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 4 }}>No capabilities found — create a folder under capabilities/ first.</div>
+                )}
               </div>
 
-              <div style={{ marginTop: 14 }}>
-                <label style={labelStyle}>Description</label>
+              {/* Agent Type */}
+              <div>
+                <label style={labelStyle}>Agent Type</label>
+                <select style={inputStyle} value={agentType} onChange={(e) => { setAgentType(e.target.value); applyMemoryDefaults(e.target.value) }}>
+                  {BASE_AGENT_TYPE_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value} disabled={!o.enabled}>
+                      {o.label}{o.enabled ? "" : " (coming soon)"}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Display Name */}
+              <div>
+                <label style={labelStyle}>
+                  Display Name{" "}
+                  <InfoTooltip text="Business-facing name shown in Agent Registry. Example: 'Pre-Call Assessment Assistant'" />
+                </label>
+                <input
+                  style={inputStyle}
+                  placeholder="e.g. Pre-Call Assessment Assistant"
+                  value={agentName}
+                  onChange={(e) => setAgentName(e.target.value)}
+                />
+              </div>
+
+              {/* Agent ID — auto-slugified, editable */}
+              <div>
+                <label style={labelStyle}>
+                  Agent ID / Folder{" "}
+                  <InfoTooltip text="Technical ID — auto-generated from Display Name as a slug. Becomes the folder name and usecase_name in config." />
+                </label>
+                <input
+                  style={agentFolderTouched ? inputStyle : { ...inputStyle, color: "#6b7280" }}
+                  placeholder="pre-call-assessment"
+                  value={agentFolder}
+                  onChange={(e) => { setAgentFolderTouched(true); setAgentFolder(e.target.value) }}
+                />
+              </div>
+
+              {/* Description (optional) */}
+              <div>
+                <label style={labelStyle}>Description <span style={{ fontWeight: 400, color: "#9ca3af" }}>(optional)</span></label>
                 <textarea
-                  style={{ ...inputStyle, minHeight: 60 }}
+                  style={{ ...inputStyle, minHeight: 56, resize: "vertical" }}
                   placeholder="What does this agent do?"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                 />
               </div>
             </div>
+          </div>
 
-            {/* Gateway & Tools */}
-            <div style={sectionStyle}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                <h2 style={{ margin: 0 }}>Gateway & Tools</h2>
-                <button type="button" onClick={() => setToolsExpanded(!toolsExpanded)} style={pillButton(false)}>
-                  {toolsExpanded ? "Hide Tools" : "Show Tools"} ({selectedTools.length}/{availableTools.length})
-                </button>
-              </div>
-              <div style={compactGrid}>
-                <div>
-                  <label style={labelStyle}>Select Gateway</label>
-                  <select style={inputStyle} value={selectedGateway} onChange={(e) => setSelectedGateway(e.target.value)}>
-                    {availableGateways.map((g) => <option key={g} value={g}>{g}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label style={labelStyle}>Gateway Status</label>
-                  <input style={readonlyInputStyle} value="Published" readOnly />
-                </div>
-              </div>
-              {toolsExpanded && (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12, marginTop: 14 }}>
-                  {availableTools.map((tool) => (
-                    <label key={tool.name} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: 12, border: "1px solid #e5e7eb", borderRadius: 10, background: "#fafafa" }}>
-                      <input type="checkbox" checked={selectedTools.includes(tool.name)} onChange={() => toggleTool(tool.name)} style={{ marginTop: 2 }} />
-                      <div>
-                        <div style={{ fontWeight: 600 }}>{tool.name} <span style={{ color: "#6b7280", fontWeight: 400 }}>({tool.mode})</span></div>
-                        <div style={{ fontSize: 13, color: "#4b5563" }}>{tool.description || "No description"}</div>
-                      </div>
-                    </label>
-                  ))}
-                </div>
-              )}
+          {/* Scaffold button */}
+          <button
+            onClick={handleScaffoldAgent}
+            style={{ width: "100%", padding: "13px 18px", borderRadius: 10, border: "none", background: "#2563eb", color: "white", fontWeight: 700, cursor: "pointer", fontSize: 15 }}
+          >
+            Create Agent →
+          </button>
+
+          {message && (
+            <div style={{ padding: "10px 14px", borderRadius: 8, background: message.startsWith("Error") ? "#fef2f2" : "#f0fdf4", border: `1px solid ${message.startsWith("Error") ? "#fecaca" : "#bbf7d0"}`, color: message.startsWith("Error") ? "#b91c1c" : "#166534", fontSize: 13 }}>
+              {message}
             </div>
+          )}
 
-            {/* Memory */}
-            <div style={sectionStyle}>
-              <h2 style={{ marginTop: 0, marginBottom: 12 }}>Memory</h2>
-              <div style={{ display: "grid", gap: 14 }}>
-                <label style={labelStyle}>
-                  <input type="checkbox" checked={memoryEnabled} onChange={(e) => setMemoryEnabled(e.target.checked)} />{" "}
-                  Enable Memory
-                </label>
-                {memoryEnabled && (
-                  <>
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>Memory Types</div>
-                      <div style={{ display: "grid", gap: 10 }}>
-                        {(["shortTerm", "episodic", "semantic", "summary"] as const).map((type) => (
-                          <label key={type}>
-                            <input type="checkbox" checked={memoryTypes[type]}
-                              onChange={(e) => setMemoryTypes((p) => ({ ...p, [type]: e.target.checked }))} />{" "}
-                            {type === "shortTerm" ? "Short-Term" : type.charAt(0).toUpperCase() + type.slice(1)} Memory
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>Advanced</div>
-                      <div style={compactGrid}>
-                        <div><label style={labelStyle}>Short-Term Window</label><input style={inputStyle} value={memoryAdvanced.shortTermWindow} onChange={(e) => setMemoryAdvanced((p) => ({ ...p, shortTermWindow: e.target.value }))} /></div>
-                        <div><label style={labelStyle}>Summary Interval</label><input style={inputStyle} value={memoryAdvanced.summaryInterval} onChange={(e) => setMemoryAdvanced((p) => ({ ...p, summaryInterval: e.target.value }))} /></div>
-                        <div><label style={labelStyle}>Episodic Top-K</label><input style={inputStyle} value={memoryAdvanced.episodicTopK} onChange={(e) => setMemoryAdvanced((p) => ({ ...p, episodicTopK: e.target.value }))} /></div>
-                        <div><label style={labelStyle}>Semantic Top-K</label><input style={inputStyle} value={memoryAdvanced.semanticTopK} onChange={(e) => setMemoryAdvanced((p) => ({ ...p, semanticTopK: e.target.value }))} /></div>
-                      </div>
-                    </div>
-                  </>
-                )}
+          {result && (
+            <div style={{ ...sectionStyle, background: "#f0fdf4", borderColor: "#bbf7d0" }}>
+              <div style={{ fontWeight: 700, fontSize: 14, color: "#166534", marginBottom: 8 }}>✓ Agent scaffolded</div>
+              <div style={{ display: "grid", gap: 4, fontSize: 13, color: "#374151" }}>
+                <div><span style={{ color: "#6b7280" }}>Capability:</span> {result.capability_name}</div>
+                <div><span style={{ color: "#6b7280" }}>Agent:</span> {result.agent_name}</div>
+                <div><span style={{ color: "#6b7280" }}>Folder:</span> {result.agent_repo_name}</div>
               </div>
+              <div style={{ marginTop: 12, fontSize: 13, color: "#374151", padding: "8px 12px", background: "#fefce8", border: "1px solid #fde68a", borderRadius: 6 }}>
+                → Go to <strong>Agent Registry</strong> to configure Memory, HITL, RAG, and Tools for this agent.
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ── Right: what happens next ── */}
+        <div style={{ display: "grid", gap: 12 }}>
+          <div style={{ ...sectionStyle, background: "#fafafa" }}>
+            <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 10, color: "#374151" }}>What gets created</div>
+            <div style={{ display: "grid", gap: 8, fontSize: 13, color: "#4b5563" }}>
+              {[
+                ["Overlay files", `agents/${capabilityName || "<capability>"}/${agentFolder || "<agent-id>"}/overlays/${agentType}/`],
+                ["Config files", "agent.yaml · memory.yaml · prompts.yaml"],
+                ["domain.yaml", `copied from capabilities/${capabilityName || "<capability>"}/`],
+                ["Registry entry", "usecase_registry.json — agent appears in Agent Registry"],
+                ["Workspace", "auto-registered, ready to start from Workspaces"],
+              ].map(([label, detail]) => (
+                <div key={label} style={{ display: "flex", gap: 8 }}>
+                  <span style={{ color: "#22c55e", fontWeight: 700, flexShrink: 0 }}>✓</span>
+                  <div>
+                    <span style={{ fontWeight: 600 }}>{label}</span>
+                    <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 1 }}>{detail}</div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 
-          {/* Right */}
-          <div style={{ display: "grid", gap: 18, position: "sticky", top: 16 }}>
-            {/* HITL */}
-            <div style={sectionStyle}>
-              <h2 style={{ marginTop: 0, marginBottom: 12 }}>HITL (Human-in-the-Loop)</h2>
-              {agentType === "summarization_agent" ? (
-                <div style={{ padding: "8px 12px", borderRadius: 6, background: "rgba(100,116,139,0.08)", border: "1px solid rgba(100,116,139,0.2)", color: "#64748b", fontSize: 12 }}>
-                  Not applicable — summarization agents are read-only.
+          <div style={{ ...sectionStyle, background: "#fafafa" }}>
+            <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 10, color: "#374151" }}>Configure after scaffold in Agent Registry</div>
+            <div style={{ display: "grid", gap: 6, fontSize: 13, color: "#4b5563" }}>
+              {[
+                ["Memory tab", "Read/write policies, backends, retention, episodic write triggers"],
+                ["HITL tab", "Approval gates, risk levels per tool, SLA timeout"],
+                ["RAG tab", "Pre-graph & planner tool RAG, strategy, pattern, top-K, threshold"],
+                ["Tools tab", "Allowed tool list, access mode"],
+                ["Routing tab", "Hard routes — phrase → tool mapping, bypass LLM planner"],
+              ].map(([tab, desc]) => (
+                <div key={tab} style={{ display: "flex", gap: 8 }}>
+                  <span style={{ color: "#f59e0b", fontWeight: 700, flexShrink: 0 }}>→</span>
+                  <div>
+                    <span style={{ fontWeight: 600 }}>{tab}</span>
+                    <span style={{ color: "#9ca3af" }}> — {desc}</span>
+                  </div>
                 </div>
-              ) : (
-                <div style={{ display: "grid", gap: 14 }}>
-                  <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <input type="checkbox" checked={hitlApprovalRequired} onChange={(e) => setHitlApprovalRequired(e.target.checked)} />
-                    <span style={{ fontWeight: 600, fontSize: 13 }}>Approval Required</span>
-                    <InfoTooltip text="When enabled, the agent pauses and waits for human approval before executing any tool that meets the risk threshold." />
-                  </label>
-                  {hitlApprovalRequired && (
-                    <>
-                      <div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
-                          Risk Level per Tool <InfoTooltip text="Classify how risky each tool call is." />
-                        </div>
-                        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                          <thead>
-                            <tr style={{ background: "#f3f4f6" }}>
-                              <th style={{ padding: "5px 8px", textAlign: "left", border: "1px solid #e5e7eb" }}>Tool</th>
-                              <th style={{ padding: "5px 8px", textAlign: "left", border: "1px solid #e5e7eb" }}>Risk</th>
-                              <th style={{ padding: "5px 8px", border: "1px solid #e5e7eb" }}></th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {Object.entries(hitlRiskLevels).map(([tool, level]) => (
-                              <tr key={tool}>
-                                <td style={{ padding: "5px 8px", border: "1px solid #e5e7eb" }}>
-                                  <input style={{ ...inputStyle, padding: "4px 6px" }} value={tool}
-                                    onChange={(e) => {
-                                      const next: Record<string, string> = {}
-                                      Object.entries(hitlRiskLevels).forEach(([k, v]) => { next[k === tool ? e.target.value : k] = v })
-                                      setHitlRiskLevels(next)
-                                    }} />
-                                </td>
-                                <td style={{ padding: "5px 8px", border: "1px solid #e5e7eb" }}>
-                                  <select style={inputStyle} value={level} onChange={(e) => setHitlRiskLevels({ ...hitlRiskLevels, [tool]: e.target.value })}>
-                                    <option value="low">low</option>
-                                    <option value="medium">medium</option>
-                                    <option value="high">high</option>
-                                  </select>
-                                </td>
-                                <td style={{ padding: "5px 8px", border: "1px solid #e5e7eb", textAlign: "center" }}>
-                                  <button type="button" style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", fontSize: 14 }}
-                                    onClick={() => { const next = { ...hitlRiskLevels }; delete next[tool]; setHitlRiskLevels(next) }}>✕</button>
-                                </td>
-                              </tr>
-                            ))}
-                            <tr>
-                              <td colSpan={3} style={{ padding: "5px 8px", border: "1px solid #e5e7eb" }}>
-                                <button type="button" style={{ ...pillButton(false), fontSize: 12, padding: "4px 10px" }}
-                                  onClick={() => setHitlRiskLevels({ ...hitlRiskLevels, new_tool: "low" })}>+ Add Tool</button>
-                              </td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
-                      <div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
-                          Minimum Risk for Approval <InfoTooltip text="Sets the approval threshold." />
-                        </div>
-                        <select style={inputStyle} value={hitlMinRisk} onChange={(e) => setHitlMinRisk(e.target.value as typeof hitlMinRisk)}>
-                          <option value="high">High only</option>
-                          <option value="medium_and_above">Medium and above</option>
-                          <option value="all">All tool calls</option>
-                        </select>
-                      </div>
-                      <div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
-                          SLA Timeout (minutes) <InfoTooltip text="How long before the approval request expires." />
-                        </div>
-                        <input style={{ ...inputStyle, width: 100 }} value={hitlTimeoutMinutes} onChange={(e) => setHitlTimeoutMinutes(e.target.value)} />
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
+              ))}
             </div>
-
-            {/* RAG */}
-            <div style={sectionStyle}>
-              <h2 style={{ marginTop: 0, marginBottom: 4 }}>RAG Configuration</h2>
-              <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 12 }}>Each stage has independent Dim 1 (strategy), Dim 2 (stage), and Dim 3 (pattern) config.</div>
-
-              {/* Stage 1 — Pre-Graph */}
-              <div style={{ border: `1px solid ${localPreGraphEnabled ? "#c4b5fd" : "#e5e7eb"}`, borderRadius: 8, padding: 14, marginBottom: 12, opacity: localPreGraphEnabled ? 1 : 0.7 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, flexWrap: "wrap" }}>
-                  <span style={{ fontSize: 13, fontWeight: 700 }}>Pre-Graph RAG</span>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: "#1d4ed8", background: "#dbeafe", padding: "2px 7px", borderRadius: 4 }}>Dim 1: Strategy</span>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: "#5b21b6", background: "#ede9fe", padding: "2px 7px", borderRadius: 4 }}>Dim 2: Stage 1 (Pre-Graph)</span>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: "#92400e", background: "#fef3c7", padding: "2px 7px", borderRadius: 4 }}>Dim 3: Pattern</span>
-                </div>
-                <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 10 }}>Ambient enrichment before planner. Best for: chat_agent, workflow_agent.</div>
-                <label style={{ fontSize: 13, display: "block", marginBottom: 10 }}>
-                  <input type="checkbox" checked={localPreGraphEnabled} onChange={e => setLocalPreGraphEnabled(e.target.checked)} />{" "}Enable Pre-Graph RAG
-                </label>
-                <div style={{ display: "grid", gap: 8, opacity: localPreGraphEnabled ? 1 : 0.45 }}>
-                  <div style={compactGrid}>
-                    <div>
-                      <label style={labelStyle}>KB Tool</label>
-                      <select style={inputStyle} disabled={!localPreGraphEnabled} value={localPreGraphTool} onChange={e => setLocalPreGraphTool(e.target.value)}>
-                        {availableTools.filter(t => !!t.db_type).map(t => <option key={t.name} value={t.name}>{t.name}</option>)}
-                        {availableTools.filter(t => !!t.db_type).length === 0 && <option value="search_kb">search_kb</option>}
-                      </select>
-                    </div>
-                    <div>
-                      <label style={labelStyle}>Strategy (Dim 1)</label>
-                      <select style={inputStyle} disabled={!localPreGraphEnabled} value={localPreGraphStrategy} onChange={e => setLocalPreGraphStrategy(e.target.value)}>
-                        <option value="semantic">Semantic</option>
-                        <option value="keyword">Keyword</option>
-                        <option value="hybrid">Hybrid (RRF)</option>
-                        <option value="graph" disabled>Graph RAG — roadmap</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div style={compactGrid}>
-                    <div>
-                      <label style={labelStyle}>Pattern (Dim 3)</label>
-                      <select style={inputStyle} disabled={!localPreGraphEnabled} value={localPreGraphPattern} onChange={e => setLocalPreGraphPattern(e.target.value)}>
-                        <option value="naive">Naive</option>
-                        <option value="self_corrective">Self-Corrective</option>
-                        <option value="multi_hop" disabled>Multi-Hop — roadmap</option>
-                        <option value="hyde" disabled>HyDE — roadmap</option>
-                        <option value="agentic" disabled>Agentic — roadmap</option>
-                      </select>
-                    </div>
-                    <div><label style={labelStyle}>Top K</label><input style={inputStyle} disabled={!localPreGraphEnabled} value={localPreGraphTopK} onChange={e => setLocalPreGraphTopK(e.target.value)} /></div>
-                    <div><label style={labelStyle}>Threshold</label><input style={inputStyle} disabled={!localPreGraphEnabled} value={localPreGraphThreshold} onChange={e => setLocalPreGraphThreshold(e.target.value)} /></div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Stage 2 — Planner Tool */}
-              <div style={{ border: `1px solid ${localRagEnabled ? "#86efac" : "#e5e7eb"}`, borderRadius: 8, padding: 14, opacity: localRagEnabled ? 1 : 0.7 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, flexWrap: "wrap" }}>
-                  <span style={{ fontSize: 13, fontWeight: 700 }}>Planner Tool RAG</span>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: "#1d4ed8", background: "#dbeafe", padding: "2px 7px", borderRadius: 4 }}>Dim 1: Strategy</span>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: "#166534", background: "#dcfce7", padding: "2px 7px", borderRadius: 4 }}>Dim 2: Stage 2 (Planner Tool)</span>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: "#92400e", background: "#fef3c7", padding: "2px 7px", borderRadius: 4 }}>Dim 3: Pattern</span>
-                </div>
-                <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 10 }}>LLM calls KB explicitly via tool. Best for: chat_agent, react_agent.</div>
-                <label style={{ fontSize: 13, display: "block", marginBottom: 10 }}>
-                  <input type="checkbox" checked={localRagEnabled} onChange={e => setLocalRagEnabled(e.target.checked)} />{" "}Enable Planner Tool RAG
-                </label>
-                <div style={{ display: "grid", gap: 8, opacity: localRagEnabled ? 1 : 0.45 }}>
-                  <div style={compactGrid}>
-                    <div>
-                      <label style={labelStyle}>KB Tool</label>
-                      <select style={inputStyle} disabled={!localRagEnabled} value={localPlannerTool} onChange={e => setLocalPlannerTool(e.target.value)}>
-                        {availableTools.filter(t => !!t.db_type).map(t => <option key={t.name} value={t.name}>{t.name}</option>)}
-                        {availableTools.filter(t => !!t.db_type).length === 0 && <option value="search_kb">search_kb</option>}
-                      </select>
-                    </div>
-                    <div>
-                      <label style={labelStyle}>Strategy (Dim 1)</label>
-                      <select style={inputStyle} disabled={!localRagEnabled} value={localPlannerStrategy} onChange={e => setLocalPlannerStrategy(e.target.value)}>
-                        <option value="semantic">Semantic</option>
-                        <option value="keyword">Keyword</option>
-                        <option value="hybrid">Hybrid (RRF)</option>
-                        <option value="graph" disabled>Graph RAG — roadmap</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div style={compactGrid}>
-                    <div>
-                      <label style={labelStyle}>Pattern (Dim 3)</label>
-                      <select style={inputStyle} disabled={!localRagEnabled} value={localPlannerPattern} onChange={e => setLocalPlannerPattern(e.target.value)}>
-                        <option value="naive">Naive</option>
-                        <option value="self_corrective">Self-Corrective</option>
-                        <option value="multi_hop" disabled>Multi-Hop — roadmap</option>
-                        <option value="hyde" disabled>HyDE — roadmap</option>
-                        <option value="agentic" disabled>Agentic — roadmap</option>
-                      </select>
-                    </div>
-                    <div><label style={labelStyle}>Top K</label><input style={inputStyle} disabled={!localRagEnabled} value={localTopK} onChange={e => setLocalTopK(e.target.value)} /></div>
-                    <div><label style={labelStyle}>Threshold</label><input style={inputStyle} disabled={!localRagEnabled} value={localScoreThreshold} onChange={e => setLocalScoreThreshold(e.target.value)} /></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Scaffold button */}
-            <div style={sectionStyle}>
-              <button
-                onClick={handleScaffoldAgent}
-                style={{ width: "100%", padding: "14px 18px", borderRadius: 10, border: "none", background: "#2563eb", color: "white", fontWeight: 700, cursor: "pointer", fontSize: 15 }}
-              >
-                Scaffold Agent
-              </button>
-              <div style={{ marginTop: 14, color: message.startsWith("Error") ? "#b91c1c" : "#374151", fontSize: 14 }}>
-                {message}
-              </div>
-            </div>
-
-            {/* Result */}
-            {result && (
-              <div style={sectionStyle}>
-                <h2 style={{ marginTop: 0, marginBottom: 12 }}>Scaffold Result</h2>
-                <div><strong>Status:</strong> {result.status}</div>
-                <div><strong>Capability:</strong> {result.capability_name}</div>
-                <div><strong>Agent:</strong> {result.agent_name}</div>
-                <div><strong>Folder:</strong> {result.agent_repo_name}</div>
-                <div><strong>Path:</strong> {result.agent_repo_url}</div>
-                {result.workspace && (
-                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #e5e7eb" }}>
-                    <div><strong>Workspace:</strong> {result.workspace.status}</div>
-                    <div><strong>Agent Runtime:</strong> {result.workspace.agent_runtime_url}</div>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         </div>
+
+      </div>
     </div>
   )
 }

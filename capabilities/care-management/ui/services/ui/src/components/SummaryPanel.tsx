@@ -117,7 +117,7 @@ export default function SummaryPanel({ scopeType, scopeId, tenantId = "t1", memb
 
               {data.summary && (
                 <div style={{ fontSize: 13, color: "#334155", lineHeight: 1.55 }}>
-                  {data.summary}
+                  {typeof data.summary === "string" ? data.summary : JSON.stringify(data.summary)}
                 </div>
               )}
 

@@ -1,6 +1,7 @@
 from pathlib import Path
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from dotenv import load_dotenv
 import os
 import subprocess
@@ -707,7 +708,7 @@ def create_application(payload: dict[str, Any]):
 
         agent_repo_name = create_cfg.get("repo_name")
         agent_name = first_agent.get("agent_name") or agent_repo_name
-        agent_type = first_agent.get("agent_type", "chat_agent")
+        agent_type = first_agent.get("agent_type", "chat_agent_simple")
 
         capability_name = create_cfg.get("capability_name", "care-management")
         usecase_name = create_cfg.get("usecase_name", "cm_assistant")
@@ -1283,35 +1284,42 @@ def workspace_status():
 
 
 @app.post("/workspace/stop")
-def workspace_stop():
+def workspace_stop(agent_repo: str = ""):
+    """Stop a specific agent by repo name. Falls back to LAST_WORKSPACE_STATE if no agent_repo given."""
     global LAST_WORKSPACE_STATE
+
+    # If agent_repo given directly, use it
+    if agent_repo:
+        records = list_registry_records()
+        record = next((r for r in records if r.get("agent_repo_name") == agent_repo), None)
+        app_repo = record.get("app_repo_name", "") if record else ""
+        runtime_result = runtime_stop(repo_name=agent_repo)
+        app_result = app_stop(repo_name=app_repo) if app_repo else {"ok": True}
+        if LAST_WORKSPACE_STATE.get("agent_repo") == agent_repo:
+            LAST_WORKSPACE_STATE["status"] = "stopped"
+            _save_workspace_state(LAST_WORKSPACE_STATE)
+        return {"ok": True, "agent_repo": agent_repo, "app_repo": app_repo, "runtime": runtime_result, "app": app_result}
+
+    # Fallback: use LAST_WORKSPACE_STATE
     state = LAST_WORKSPACE_STATE
-    agent_repo = state.get("agent_repo")
+    repo = state.get("agent_repo")
     app_repo = state.get("app_repo")
 
-    # If state was lost (API restart), try to detect from running containers
-    if not agent_repo:
+    if not repo:
         detected = _detect_running_workspace()
         if not detected.get("agent_repo"):
             return {"ok": False, "error": "No active workspace to stop"}
-        agent_repo = detected["agent_repo"]
+        repo = detected["agent_repo"]
         app_repo = detected.get("app_repo")
         LAST_WORKSPACE_STATE = {**detected, "status": "running"}
-        state = LAST_WORKSPACE_STATE
 
-    runtime_result = runtime_stop(repo_name=agent_repo)
+    runtime_result = runtime_stop(repo_name=repo)
     app_result = app_stop(repo_name=app_repo) if app_repo else {"ok": True}
 
     LAST_WORKSPACE_STATE["status"] = "stopped"
     _save_workspace_state(LAST_WORKSPACE_STATE)
 
-    return {
-        "ok": True,
-        "agent_repo": agent_repo,
-        "app_repo": app_repo,
-        "runtime": runtime_result,
-        "app": app_result,
-    }
+    return {"ok": True, "agent_repo": repo, "app_repo": app_repo, "runtime": runtime_result, "app": app_result}
 
 
 @app.delete("/workspace/delete")
@@ -1367,6 +1375,62 @@ def workspace_delete():
         "deleted": deleted,
         "errors": errors,
     }
+
+@app.delete("/registry/agent")
+def registry_agent_delete(agent_repo: str):
+    """Delete a specific agent by repo name — stops containers, deletes files, removes from registry."""
+    import json as _json
+
+    # Look up the agent in the registry to find its app_repo
+    records = list_registry_records()
+    agent_record = next(
+        (r for r in records if r.get("agent_repo_name") == agent_repo),
+        None,
+    )
+    app_repo = agent_record.get("app_repo_name") if agent_record else None
+
+    # Stop containers (best-effort)
+    runtime_stop(repo_name=agent_repo)
+    if app_repo:
+        app_stop(repo_name=app_repo)
+
+    deleted = []
+    errors = []
+
+    # Delete generated repo dirs
+    for repo in [r for r in [agent_repo, app_repo] if r]:
+        repo_path = resolve_repo_path(repo)
+        try:
+            if repo_path.exists():
+                shutil.rmtree(repo_path)
+                deleted.append(str(repo_path))
+        except Exception as e:
+            errors.append(f"Failed to delete {repo_path}: {e}")
+
+    # Remove all registry records tied to this agent_repo
+    try:
+        registry_file = _DATA_DIR / "usecase_registry.json"
+        if registry_file.exists():
+            all_records = _json.loads(registry_file.read_text()) or []
+            all_records = [r for r in all_records if r.get("agent_repo_name") != agent_repo]
+            registry_file.write_text(_json.dumps(all_records, indent=2))
+    except Exception as e:
+        errors.append(f"Registry cleanup failed: {e}")
+
+    # Clear workspace state if it pointed to this agent
+    global LAST_WORKSPACE_STATE
+    if LAST_WORKSPACE_STATE.get("agent_repo") == agent_repo:
+        LAST_WORKSPACE_STATE = {}
+        _save_workspace_state(LAST_WORKSPACE_STATE)
+
+    return {
+        "ok": len(errors) == 0,
+        "agent_repo": agent_repo,
+        "app_repo": app_repo,
+        "deleted": deleted,
+        "errors": errors,
+    }
+
 
 @app.get("/repo-exists")
 def repo_exists(name: str):
@@ -1597,6 +1661,14 @@ def get_agent_config(capability_name: str, usecase_name: str, agent_type: str):
         filepath = config_dir / filename
         result[key] = yaml.safe_load(filepath.read_text()) or {} if filepath.exists() else {}
 
+    # domain.yaml lives at agent root (capability-level, copied at scaffold)
+    domain_path = AGENTS_ROOT / capability_name / agent_repo_name / "domain.yaml"
+    result["domain"] = yaml.safe_load(domain_path.read_text()) or {} if domain_path.exists() else {}
+
+    # agent_manifest.yaml lives at overlay root
+    manifest_path = AGENTS_ROOT / capability_name / agent_repo_name / "overlays" / agent_type / "agent_manifest.yaml"
+    result["manifest"] = yaml.safe_load(manifest_path.read_text()) or {} if manifest_path.exists() else {}
+
     return {
         "ok": True,
         "capability_name": capability_name,
@@ -1750,3 +1822,23 @@ def filesystem_agents(capability_name: str):
         return {"ok": True, "agents": []}
     agents = sorted([d.name for d in agents_dir.iterdir() if d.is_dir()])
     return {"ok": True, "agents": agents}
+
+
+# =========================================================
+# AGENT MINI UI — serves the static HTML mini UI for an agent
+# =========================================================
+
+@app.get("/agent-ui/{capability_name}/{agent_repo_name}/{agent_type}")
+def agent_mini_ui(capability_name: str, agent_repo_name: str, agent_type: str):
+    """Serve the per-agent mini UI HTML file (chat or summary)."""
+    # Map agent_type prefix to UI folder
+    if "summary" in agent_type:
+        ui_folder = "summary-ui"
+    else:
+        ui_folder = "chat-ui"
+
+    html_path = AGENTS_ROOT / capability_name / agent_repo_name / "services" / ui_folder / "index.html"
+    if not html_path.exists():
+        raise HTTPException(status_code=404, detail=f"Mini UI not found at {html_path}. Run scaffold to generate it.")
+
+    return FileResponse(str(html_path), media_type="text/html")
