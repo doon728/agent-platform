@@ -1,20 +1,51 @@
 services:
+
+  # Container 2 — Platform Services (deployed once per customer, shared across all agents)
+  platform-services:
+    build:
+      context: ../../../
+      dockerfile: shared-infra/platform-services/Dockerfile
+    image: platform-services:local
+    ports:
+      - "${PLATFORM_SERVICES_PORT:-8002}:8080"
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      TOOL_GATEWAY_URL: ${TOOL_GATEWAY_URL:-http://host.docker.internal:8080}
+      AGENT_TYPE: "chat_agent_simple"
+      ACTIVE_USECASE: "chat_agent"
+      CAPABILITY_NAME: "care-management"
+      USECASE_NAME: "pre-call-assessment"
+      ENVIRONMENT: "local"
+      MEMORY_BACKEND: "file"
+      MEMORY_BASE_PATH: "/app/state/memory"
+    volumes:
+      - ./state:/app/state
+      - ./services/agent-runtime/config:/app/config
+      - ./domain.yaml:/app/domain.yaml
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # Container 1 — Agent Runtime Shell (deployed per agent, per customer)
   agent-runtime:
     build:
       context: ../../../
       dockerfile: agents/care-management/pre-call-assessment/services/agent-runtime/Dockerfile
     image: agent-runtime:local
     ports:
-      - "${AGENT_RUNTIME_PORT:-8081}:8080"
+      - "${AGENT_RUNTIME_PORT:-8001}:8080"
     environment:
-      CONTRACT_VERSION: "v1"
-      TOOL_GATEWAY_URL: ${TOOL_GATEWAY_URL:-http://host.docker.internal:8080}
+      PLATFORM_SERVICES_URL: "http://platform-services:8080"
+      AGENT_TYPE: "chat_agent_simple"
+      ACTIVE_USECASE: "chat_agent"
+      CAPABILITY_NAME: "care-management"
+      USECASE_NAME: "pre-call-assessment"
+      ENVIRONMENT: "local"
       AUTH_MODE: "OPTIONAL"
-      AGENT_ENV: "dev"
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
-      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
     volumes:
       - ./data:/app/data
-      - ./state:/app/state
+      - ./state/hitl:/app/state/hitl
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    depends_on:
+      - platform-services

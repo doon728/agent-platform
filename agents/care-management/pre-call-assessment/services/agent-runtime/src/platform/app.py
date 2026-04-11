@@ -1,54 +1,45 @@
 from __future__ import annotations
 
+# Container 1 — Agent Runtime Shell.
+# Thin FastAPI entrypoint: auth, context, HITL state, and HTTP client orchestration.
+# All business logic lives in Container 2 (platform-services).
+
 import traceback
 from uuid import uuid4
 
+from dotenv import load_dotenv
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from dotenv import load_dotenv
 
-from platform_core.config import load_config
-from platform_core.usecase_config_loader import load_agent_config
-from platform_core.context import build_context
-from platform_core.auth import authenticate_request
-from platform_core.authorization import enforce_tenant_isolation
-from platform_core.tools.bootstrap import register_tools
-from platform_core.tools.discovery import load_tools_from_gateway
-from platform_core.tools.registry import registry
-from platform_core.observability.tracer import list_traces
-from platform_core.usecase_contract import execute
-from platform_core.hitl import approval_store
-from platform_core.hitl.memory_writer import write_hitl_decision, write_hitl_tool_executed
+from src.platform.langgraph_runner import LangGraphRunner
 
 load_dotenv()
 
-# Load config
-cfg = load_config()
-register_tools()
-load_tools_from_gateway()
+# HITL approval store lives here — Container 1 owns local approval state
+from platform_core.hitl import approval_store
+from platform_core.hitl.memory_writer import write_hitl_decision, write_hitl_tool_executed
+from platform_core.auth import authenticate_request
+from platform_core.authorization import enforce_tenant_isolation
+from platform_core.context import build_context
+
 approval_store.init_db()
 
-print(
-    f"[config] agent_type={cfg.prompt_service.agent_type} "
-    f"tool_gateway_url={cfg.tool_gateway.url}",
-    flush=True,
-)
-
-app = FastAPI(title="Agent Runtime", version="v1")
+app = FastAPI(title="Agent Runtime Shell", version="v1")
+_runner = LangGraphRunner()
 
 
 @app.get("/health")
 def health() -> dict:
-    return {"ok": True, "service": "agent-runtime", "version": "v1"}
+    return {"ok": True, "service": "agent-runtime-shell", "version": "v1"}
 
 
 @app.get("/config/scopes")
-def config_scopes() -> dict:
-    """Return scope definitions from domain.yaml. Generic UI uses this to render context input fields."""
-    from platform_core.usecase_config_loader import load_domain_config
-    domain = load_domain_config()
+def config_scopes() -> JSONResponse:
+    """Return domain scope definitions. Used by the UI to render context input fields."""
+    from src.clients import config_client
+    domain = config_client.get_domain_config()
     scopes = domain.get("scopes") or []
-    return {
+    return JSONResponse({
         "ok": True,
         "capability": domain.get("capability"),
         "capability_name": domain.get("name"),
@@ -56,85 +47,43 @@ def config_scopes() -> dict:
             {"name": s.get("name"), "id_field": s.get("id_field"), "parent": s.get("parent")}
             for s in scopes
         ],
-    }
+    })
 
 
 @app.get("/config-flags")
-def config_flags() -> dict:
-    """Return feature flags derived from the agent config. Used by the UI to lock/unlock toggles."""
-    agent_cfg = load_agent_config(cfg.prompt_service.agent_type)
-    memory_enabled = bool((agent_cfg.get("memory") or {}).get("enabled", True))
-    hitl_enabled = bool((agent_cfg.get("risk") or {}).get("approval_required", False))
-    return {
+def config_flags() -> JSONResponse:
+    """Return feature flags for the UI to lock/unlock toggles."""
+    import os
+    from src.clients import config_client
+    agent_type = os.getenv("AGENT_TYPE", "chat_agent")
+    agent_cfg = config_client.get_agent_config(agent_type)
+    return JSONResponse({
         "ok": True,
-        "memory_enabled": memory_enabled,
-        "hitl_enabled": hitl_enabled,
-    }
+        "memory_enabled": bool((agent_cfg.get("memory") or {}).get("enabled", True)),
+        "hitl_enabled": bool((agent_cfg.get("risk") or {}).get("approval_required", False)),
+    })
 
 
 @app.get("/traces")
-def traces() -> dict:
-    return {"ok": True, "traces": list_traces()}
+def traces() -> JSONResponse:
+    from src.clients.base import get
+    resp = get("/observability/traces")
+    return JSONResponse({"ok": True, "traces": resp.get("traces") or []})
 
 
 @app.get("/traces/latest")
-def traces_latest() -> dict:
-    traces = list_traces()
-    if not traces:
-        return {"ok": True, "trace": None}
-    return {"ok": True, "trace": traces[0]}
+def traces_latest() -> JSONResponse:
+    from src.clients.base import get
+    resp = get("/observability/traces/latest")
+    return JSONResponse({"ok": True, "trace": resp.get("trace")})
 
 
-@app.post("/debug/memory")
-async def debug_memory(request: Request) -> JSONResponse:
-    try:
-        payload = await request.json()
-    except Exception:
-        payload = {}
-
-    if not isinstance(payload, dict):
-        payload = {}
-
-    ctx = build_context(request, payload)
-    ctx["prompt"] = payload.get("prompt") or payload.get("text") or payload.get("message") or ""
-
-    cfg = load_config()
-    usecase_cfg = load_agent_config(cfg.prompt_service.agent_type)
-
-    from platform_core.memory.config_loader import load_memory_config
-    from platform_core.memory.scope_resolver import resolve_scopes
-    from platform_core.memory.context_builder import build_memory_context
-
-    memory_cfg = load_memory_config(usecase_cfg)
-    scopes = resolve_scopes(ctx, memory_cfg)
-
-    memory_context = build_memory_context(
-        scopes,
-        memory_cfg,
-        tenant_id=ctx.get("tenant_id") or "default-tenant",
-    )
-
-    return JSONResponse(
-        status_code=200,
-        content={
-            "ok": True,
-            "active_usecase": cfg.app.active_usecase,
-            "memory_config": memory_cfg,
-            "resolved_scopes": scopes,
-            "memory_context": memory_context,
-        },
-    )
-
-
-def hydrate_active_domain_context(ctx: dict) -> dict:
-    """Patch missing scope IDs into ctx by reading recent thread history.
-    Reads id_fields from domain.yaml — no hardcoded scope names."""
-    from platform_core.usecase_config_loader import load_domain_config
-
-    domain = load_domain_config()
+def _hydrate_active_domain_context(ctx: dict) -> dict:
+    """Patch missing scope IDs into ctx by reading recent thread history."""
+    from src.clients import config_client
+    domain = config_client.get_domain_config()
     scopes = domain.get("scopes") or []
 
-    # Check if all scope IDs are already present
     if scopes and all(ctx.get(s.get("id_field") or "") for s in scopes):
         return ctx
 
@@ -147,7 +96,6 @@ def hydrate_active_domain_context(ctx: dict) -> dict:
         from platform_core.memory.backend_factory import get_backend
         store = get_backend({})
         recent = store.list_recent_turns(tenant_id=tenant_id, thread_id=thread_id, max_turns=12)
-
         for scope in scopes:
             id_field = scope.get("id_field") or ""
             if not id_field or ctx.get(id_field):
@@ -171,162 +119,68 @@ async def invocations(request: Request) -> JSONResponse:
         payload = await request.json()
     except Exception:
         payload = {}
-
     if not isinstance(payload, dict):
         payload = {}
 
     ctx = build_context(request, payload)
     ctx["run_id"] = f"run_{uuid4().hex[:8]}"
     ctx["prompt"] = payload.get("prompt") or payload.get("text") or payload.get("message") or ""
-    ctx = hydrate_active_domain_context(ctx)
-
-    print(
-        f"[ctx] run={ctx.get('run_id')} tenant={ctx.get('tenant_id')} "
-        f"user={ctx.get('user_id')} thread={ctx.get('thread_id')} "
-        f"corr={ctx.get('correlation_id')}",
-        flush=True,
-    )
+    ctx = _hydrate_active_domain_context(ctx)
 
     try:
         enforce_tenant_isolation(ctx, auth)
     except PermissionError as e:
-        return JSONResponse(
-            status_code=403,
-            content={
-                "ok": False,
-                "error": {"code": "FORBIDDEN", "message": str(e)},
-                "correlation_id": ctx.get("correlation_id"),
-            },
-        )
+        return JSONResponse(status_code=403, content={
+            "ok": False, "error": {"code": "FORBIDDEN", "message": str(e)},
+            "correlation_id": ctx.get("correlation_id"),
+        })
 
-    prompt = payload.get("prompt") or payload.get("text") or payload.get("message") or ""
-    if not prompt:
-        prompt = "hello"
+    prompt = ctx.get("prompt") or "hello"
 
     try:
-        result = execute(prompt, ctx)
+        result = _runner.run(prompt, ctx)
     except Exception as e:
-        print("❌ RUNTIME_ERROR traceback below:", flush=True)
-        print(traceback.format_exc(), flush=True)
+        print("❌ RUNTIME_ERROR:", traceback.format_exc(), flush=True)
+        return JSONResponse(status_code=200, content={
+            "ok": False,
+            "error": {"code": "RUNTIME_ERROR", "message": str(e)},
+            "correlation_id": ctx.get("correlation_id"),
+        })
 
-        return JSONResponse(
-            status_code=200,
-            content={
-                "ok": False,
-                "error": {"code": "RUNTIME_ERROR", "message": str(e)},
-                "correlation_id": ctx.get("correlation_id"),
-            },
-        )
-
-    if isinstance(result, dict):
-        out = result
-    else:
-        out = {"answer": str(result)}
-
-    return JSONResponse(
-        status_code=200,
-        content={"ok": True, "output": out, "correlation_id": ctx.get("correlation_id")},
-    )
+    out = result if isinstance(result, dict) else {"answer": str(result)}
+    return JSONResponse(status_code=200, content={
+        "ok": True, "output": out, "correlation_id": ctx.get("correlation_id"),
+    })
 
 
-@app.post("/summarize")
-async def summarize_scope(request: Request) -> JSONResponse:
-    """
-    Generate (or return cached) an AI summary for a given scope.
-
-    Body:
-      scope_type   : "assessment" | "case" | "member"
-      scope_id     : the ID of the scope (assessment_id, case_id, or member_id)
-      tenant_id    : optional, defaults to "default-tenant"
-      member_id    : required when scope_type is "case"
-      force_refresh: optional bool, bypass cache and regenerate
-    """
-    import json
-    from datetime import datetime, timezone, timedelta
-
+@app.post("/chat")
+async def chat(request: Request) -> JSONResponse:
+    """Alias for /invocations with a simplified response shape for the chat UI."""
+    auth = authenticate_request(request)
     try:
         payload = await request.json()
     except Exception:
         payload = {}
+    if not isinstance(payload, dict):
+        payload = {}
 
-    scope_type = payload.get("scope_type", "assessment")
-    scope_id = payload.get("scope_id", "")
-    tenant_id = payload.get("tenant_id") or "default-tenant"
-    force_refresh = bool(payload.get("force_refresh", False))
+    ctx = build_context(request, payload)
+    ctx["run_id"] = f"run_{uuid4().hex[:8]}"
+    ctx = _hydrate_active_domain_context(ctx)
 
-    if not scope_id:
-        return JSONResponse(status_code=400, content={"ok": False, "error": "scope_id is required"})
+    prompt = payload.get("prompt") or payload.get("text") or payload.get("message") or "hello"
 
-    if scope_type not in ("assessment", "case", "member"):
-        return JSONResponse(status_code=400, content={"ok": False, "error": "scope_type must be assessment, case, or member"})
-
-    CACHE_TTL_SECONDS = 1800  # 30 minutes
-
-    from platform_core.memory.backend_factory import get_backend
-    store = get_backend({})
-
-    # Check cache
-    if not force_refresh:
-        records = store._read_records(tenant_id, scope_type, scope_id)
-        cached = next((r for r in reversed(records) if r.get("memory_type") == "summary_cache"), None)
-        if cached:
-            try:
-                created_at = datetime.fromisoformat(cached["created_at"])
-                if datetime.now(timezone.utc) - created_at < timedelta(seconds=CACHE_TTL_SECONDS):
-                    summary_data = json.loads(cached["content"]) if isinstance(cached["content"], str) else cached["content"]
-                    return JSONResponse(content={
-                        "ok": True,
-                        "cached": True,
-                        "generated_at": cached["created_at"],
-                        **summary_data,
-                    })
-            except Exception:
-                pass  # stale or corrupt cache — fall through to regenerate
-
-    # Run the summary graph
     try:
-        from overlays.summarization_agent_simple.orchestration.build_graph import build_graph
-
-        from platform_core.usecase_config_loader import load_agent_config
-        from platform_core.config import load_config as _load_cfg
-        _cfg = _load_cfg()
-        _usecase_cfg = load_agent_config(_cfg.prompt_service.agent_type)
-        ctx = {
-            "tenant_id": tenant_id,
-            "member_id": payload.get("member_id") or scope_id,
-            "domain": _usecase_cfg.get("domain") or {},
-            "tool_policy": _usecase_cfg.get("tool_policy") or {},
-        }
-        graph = build_graph()
-        result = graph.invoke({"scope_type": scope_type, "scope_id": scope_id, "ctx": ctx})
-        summary = result.get("summary") or {}
+        result = _runner.run(prompt, ctx)
+        answer = result.get("answer") if isinstance(result, dict) else str(result)
+        if isinstance(answer, dict):
+            answer = answer.get("answer") or str(answer)
+        return JSONResponse({"ok": True, "answer": answer, "memory_trace": result.get("memory_trace")})
     except Exception as e:
-        return JSONResponse(
-            status_code=200,
-            content={"ok": False, "error": f"Summary generation failed: {e}"},
-        )
+        return JSONResponse({"ok": False, "error": str(e)})
 
-    # Cache result
-    generated_at = datetime.now(timezone.utc).isoformat()
-    try:
-        store.replace_memory(
-            tenant_id=tenant_id,
-            memory_type="summary_cache",
-            scope_type=scope_type,
-            scope_id=scope_id,
-            content=json.dumps(summary),
-            metadata={"scope_type": scope_type, "scope_id": scope_id, "generated_at": generated_at},
-        )
-    except Exception:
-        pass  # cache failure is non-fatal
 
-    return JSONResponse(content={
-        "ok": True,
-        "cached": False,
-        "generated_at": generated_at,
-        **summary,
-    })
-
+# ── HITL endpoints — approval state lives in Container 1 ─────────────────────
 
 @app.get("/hitl/pending")
 def hitl_pending(tenant_id: str = None) -> JSONResponse:
@@ -355,31 +209,35 @@ async def hitl_decide(request: Request) -> JSONResponse:
     decided_by = payload.get("decided_by", "supervisor")
 
     if not approval_id or decision not in ("approved", "rejected"):
-        return JSONResponse(status_code=400, content={"ok": False, "error": "approval_id and decision (approved|rejected) required"})
+        return JSONResponse(status_code=400, content={
+            "ok": False, "error": "approval_id and decision (approved|rejected) required",
+        })
 
     record = approval_store.get_approval(approval_id)
     if not record:
         return JSONResponse(status_code=404, content={"ok": False, "error": "Approval not found"})
     if record.get("status") != "pending":
-        return JSONResponse(status_code=409, content={"ok": False, "error": f"Approval already {record.get('status')}"})
+        return JSONResponse(status_code=409, content={
+            "ok": False, "error": f"Approval already {record.get('status')}",
+        })
 
-    # Update status in DB
     approval_store.decide(approval_id, decision, decided_by, reason)
 
     tool_result = None
-
-    # If approved — execute the tool now
     if decision == "approved":
         try:
-            tool_name = record["tool_name"]
-            tool_input = record["tool_input"] if isinstance(record["tool_input"], dict) else {}
-            tool_result = registry.invoke_approved(tool_name, tool_input, {})
+            from src.clients import tools_client
+            tool_result = tools_client.invoke(
+                tool_name=record["tool_name"],
+                tool_input=record["tool_input"] if isinstance(record["tool_input"], dict) else {},
+                ctx={"tenant_id": record.get("tenant_id")},
+                bypass_hitl=True,
+            )
             approval_store.log_event(approval_id, "tool_executed", "system", {"result": str(tool_result)})
         except Exception as e:
             approval_store.log_event(approval_id, "tool_execution_failed", "system", {"error": str(e)})
             return JSONResponse(status_code=500, content={"ok": False, "error": f"Tool execution failed: {e}"})
 
-    # Write decision to episodic memory
     try:
         ctx = {
             "tenant_id": record.get("tenant_id"),
@@ -407,31 +265,12 @@ async def hitl_decide(request: Request) -> JSONResponse:
             )
         approval_store.log_event(approval_id, "memory_written", "system", {})
     except Exception as e:
-        print(f"[hitl] memory write failed: {e}")
+        print(f"[hitl] memory write failed: {e}", flush=True)
 
-    return JSONResponse({
-        "ok": True,
-        "approval_id": approval_id,
-        "decision": decision,
-        "tool_result": tool_result,
-    })
+    return JSONResponse({"ok": True, "approval_id": approval_id, "decision": decision, "tool_result": tool_result})
 
 
 @app.get("/hitl/history")
 def hitl_history(tenant_id: str = None, limit: int = 50) -> JSONResponse:
     records = approval_store.list_all(tenant_id=tenant_id, limit=limit)
     return JSONResponse({"ok": True, "history": records, "count": len(records)})
-
-
-@app.post("/approvals/resume")
-async def approvals_resume(payload: dict):
-    approved = payload.get("approved", False)
-    tool_name = payload.get("tool_name")
-    tool_input = payload.get("tool_input") or {}
-    ctx = payload.get("ctx") or {}
-
-    if not approved:
-        return {"ok": True, "output": {"result": "CANCELLED"}}
-
-    result = registry.invoke_approved(tool_name, tool_input, ctx)
-    return {"ok": True, "output": {"result": result}}
