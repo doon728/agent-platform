@@ -1,10 +1,147 @@
-# Runtime Split — 2-Container Architecture Design
+# Runtime Split — 3-Container Architecture Design
 
 ## Overview
 
-The agent runtime is split into two containers to support edge/customer VPC deployment without exposing platform IP, and to enable a shared platform-services layer across all agents and capabilities per customer.
+The platform splits into three containers. Each has a distinct deployment scope and responsibility. No container does another's job.
+
+| Container | Name | Deploys | Calls |
+|-----------|------|---------|-------|
+| 1 | `agent-runtime-shell` | Per agent, per customer | → Container 2 |
+| 2 | `platform-services` | Once per customer, shared across all agents | → Container 3 |
+| 3 | `tool-gateway` | Once per customer, shared across all agents | → Customer APIs |
+
+```
+templates/
+  agent-runtime-shell/     ← Container 1 — deploy per agent
+  platform-services/       ← Container 2 — deploy once per customer
+  tool-gateway/            ← Container 3 — deploy once per customer
+```
+
+Each template folder has its own `Dockerfile`, `README.md`, and `.env.example` making the deployment boundary explicit.
+
+```
+# agent-runtime-shell/.env.example
+PLATFORM_SERVICES_URL=http://platform-services:8080
+
+# platform-services/.env.example
+TOOL_GATEWAY_URL=http://tool-gateway:8080
+
+# tool-gateway/.env.example
+TENANT_ID=customer-a
+```
 
 **Industry alignment:** This is the enterprise-standard control plane / execution plane split used by Anthropic (brain/hands decoupling), AWS Bedrock AgentCore, Google Cloud, and Microsoft Azure multi-agent patterns. Reasoning strategies are kept centralized per Anthropic/LangChain production guidance — not pushed to edge.
+
+---
+
+## Platform Services — Naming and Organization
+
+Container 2 is organized as named **Services** — not "engines". This matches the naming used by AWS Bedrock (Runtime, Gateway, Memory, Policy), Microsoft Foundry (Control Plane, Agent Service, Memory, Evaluations), Google Vertex (Agent Engine, Memory Bank, Tool Governance), and Salesforce Agentforce (Reasoning, Model Gateway, Memory Store).
+
+**"Engine" is not a standard architectural term.** Use "Service" — it is universally understood, maps to real platform patterns, and is the correct abstraction for independently evolvable platform components.
+
+### Container 2 — Service Organization
+
+One FastAPI app (`main.py`), multiple service modules. Not microservices — all bundled in one process. Split into microservices only if scaling or team ownership demands it later.
+
+```
+platform-services/
+  src/
+    services/
+      reasoning/
+        reasoning.yaml       ← max_steps, fallback strategy, model config
+        router.py            ← FastAPI routes for this service
+        react.py             ← ReAct strategy logic
+        simple.py            ← simple strategy logic
+        plan_execute.py      ← plan-execute strategy logic
+      memory/
+        memory.yaml          ← backends, retention, PHI rules
+        router.py
+        context_builder.py
+        write_engine.py
+        semantic_engine.py
+        summary_engine.py
+        scope_resolver.py
+      policy/
+        policy.yaml          ← rate limits, data residency, access rules
+        router.py
+      hitl/
+        hitl.yaml            ← approval rules, escalation, adapters
+        router.py
+        adapters/
+      prompt/
+        prompt.yaml          ← versioning, activation rules
+        router.py
+      observability/
+        observability.yaml   ← log levels, trace retention, audit rules
+        router.py
+        tracer.py
+      evaluation/
+        evaluation.yaml      ← scoring thresholds, regression config
+        router.py
+      tool_governance/
+        tool_governance.yaml ← approval workflow, deprecation rules
+        router.py
+    config/
+      resolver.py            ← merges all service YAMLs + agent YAMLs → resolved_runtime_config.yaml
+    main.py                  ← one FastAPI app mounting all service routers
+  Dockerfile
+  README.md                  ← "deploy once per customer, shared across all agents"
+  .env.example
+```
+
+**Pre/in/post-graph work distribution:**
+
+| Stage | Container 1 does | Container 2 does |
+|-------|-----------------|-----------------|
+| Pre-graph | calls clients | memory read, config resolve, tool filtering, policy check |
+| In-graph | graph state machine, calls clients per node | reasoning strategy, tool execution, RAG retrieval |
+| Post-graph | calls clients | memory write, trace store, HITL write, evaluation |
+
+Container 1 orchestrates. Container 2 executes.
+
+### Admin UI — Two-Level Config (confirmed industry standard)
+
+Every major platform (Google Vertex, Microsoft, ServiceNow) enforces separation between:
+
+**Agent Registry** (per-agent) — what this agent needs:
+- tools allowed, memory on/off, HITL rules, RAG settings, prompts, routing
+
+**Platform Governance** (global) — what the platform enforces across all agents:
+
+```
+Platform Governance nav section:
+  ├── Policy Service       ← rate limits, data residency, access rules
+  ├── Prompt Lifecycle     ← prompt versions, activation, A/B across all agents
+  ├── Observability        ← traces, audit logs, metrics dashboard
+  ├── HITL Service         ← global approval queues, escalation rules
+  ├── Evaluation           ← test runs, scoring, regression
+  ├── Memory Service       ← backends, retention policies
+  └── Tool Governance      ← tool registry, approval, deprecation (see below)
+```
+
+### Tool Governance — Separate Section (important)
+
+Google Cloud (2025) and Microsoft (2026) both added explicit Tool Governance layers as a distinct admin concern — separate from the tool registry list. Required capabilities:
+
+- Who can register tools (approval workflow for new tools)
+- Tool deprecation lifecycle (mark deprecated → sunset date → block)
+- Per-tenant tool access policies
+- Tool version history + rollback
+- Audit trail of which agent used which tool version when
+
+This is not the same as the Tools tab in Agent Registry (which is per-agent tool allowlist). Tool Governance is platform-wide.
+
+### Cost / Token Budgeting — Missing Gap
+
+Research (MIT 2025, AWS Bedrock patterns) identifies this as a critical missing concern: without token budgets, short-term memory silently consumes context at scale.
+
+**Required:**
+- Per-agent token budget declaration in agent.yaml
+- Per-tenant quota enforcement in Policy Service
+- Memory read must respect context window budget — truncate or summarize if over budget
+- Cost tracking per agent per run — feed into Evaluation Service
+- Platform Governance UI shows cost per tenant, per agent, per capability
 
 ---
 
@@ -609,3 +746,106 @@ Research against enterprise agent platform best practices identified the followi
 - Not delegated entirely to downstream services
 - Every tool call checked against: tenant policy, tool allowlist, data classification, rate limit
 - Rejected calls logged to audit trail before rejection
+
+---
+
+## Notes on Potential Issues
+
+These are things in this design that might be wrong or need re-examination before implementation. Review each before writing code.
+
+### 1. Overlay naming inconsistency — `chat_agent_simple` vs `chat_agent`
+**Issue:** This document says Container 1 overlays are thin and no longer carry a strategy suffix (`chat_agent/`, not `chat_agent_react/`). But then it also says "one overlay per combination is still required." These two statements contradict each other.
+
+**Resolution needed:** Pick one:
+- **Option A:** Keep `chat_agent_react/`, `chat_agent_simple/` naming (today's pattern). Overlays are still per-combination but thin — each has a different HTTP call to Container 2.
+- **Option B:** Use `chat_agent/` only. Strategy determined at runtime by config. Requires Container 1 graph topology to be truly identical regardless of strategy — may not be possible (ReAct has an extra loop node that simple does not).
+
+**Most likely correct:** Option A. The graph _topology_ differs per strategy (different node count, different edge conditions) even though the strategy _logic_ moves to Container 2. Keep the per-combination overlay naming.
+
+---
+
+### 2. `strategy_client` vs `reasoning_client` — naming not locked
+**Issue:** The design uses `strategy_client.py` in some places and `reasoning_client.py` in others. Not consistent.
+
+**Resolution needed:** Pick `strategy_client.py` as the canonical name (matches `reasoning.strategy` in agent.yaml). Audit every reference in code and doc before implementation.
+
+---
+
+### 3. LangGraph state serialization across HTTP boundary
+**Issue:** Today LangGraph graph state is a Python dict passed between nodes in-process. After split, the in-graph strategy step crosses an HTTP boundary. LangGraph state must be serializable (JSON-serializable). Any non-serializable state keys (e.g., Pydantic objects, callables, tool instances) will break the split.
+
+**Must audit before implementation:**
+- Every key in `AgentState` / graph state dict — is it JSON-serializable?
+- LangGraph checkpointer state — does it serialize cleanly to/from HTTP payload?
+- Tool result objects — are they plain dicts or custom types?
+
+If any state is not serializable, the split cannot work without refactoring state types first.
+
+---
+
+### 4. HITL graph pause/resume cannot round-trip to Container 2
+**Issue:** When an agent pauses for HITL approval, the LangGraph graph is suspended mid-execution. Graph state must be held in Container 1 (it cannot be shipped to Container 2 for storage without solving the serialization issue above). If Container 1 restarts while the graph is paused waiting for approval, the graph state is lost.
+
+**Required before implementation:**
+- Container 1 must write graph state to a durable store (Redis or DB) before pausing
+- Container 1 must restore state from store on resume — not from in-memory
+- HITL outcome written to Container 2 post-resume — same pattern as other post-graph writes
+- This is a correctness issue, not just a performance issue
+
+---
+
+### 5. Container 1 startup latency — loading resolved config on every cold start
+**Issue:** Container 1 fetches resolved config from Container 2 at startup. If Container 2 is slow to respond (cold start, high load), Container 1 startup fails or times out. For serverless/edge deployments (AgentCore Lambda-style), cold starts happen on every request.
+
+**Required:**
+- Fallback: Container 1 should cache a copy of last-known resolved config locally (file or in-memory with TTL)
+- Circuit breaker: if Container 2 unreachable at startup, use cached config and warn — do not hard fail
+- Document timeout + retry config for startup fetch
+
+---
+
+### 6. Resolved config contains secrets — sensitivity not handled
+**Issue:** The resolved runtime config merges all YAMLs including tool registry auth config and potential API key references. If this is written to disk as `resolved_runtime_config.yaml` it contains sensitive data in plaintext.
+
+**Required before implementation:**
+- Secrets must NOT be merged into the resolved file — only secret references (Vault paths, env var names)
+- Actual secret values injected at runtime from env vars / secrets manager, not stored in config file
+- Resolved config file is still sensitive but not secret-bearing — treat as confidential, not secret
+
+---
+
+### 7. "Fix once" benefit assumes Container 2 is backward-compatible on every change
+**Issue:** The design sells "fix ReAct in Container 2 once, all agents get it." This is only safe if the fix is backward-compatible. If Container 2 strategy interface changes (different input/output schema), all Container 1 overlays calling that strategy will break simultaneously.
+
+**Required:**
+- Version Container 2 strategy endpoints: `POST /v1/strategy/react`, `POST /v2/strategy/react`
+- Container 1 overlays pin to a strategy API version in resolved config
+- Breaking changes deploy as a new version — old version kept until all agents migrate
+- This is the API versioning gap (Gap #8) but worth calling out specifically for strategies
+
+---
+
+### 8. Hard route multi-match — parallel execution risk for action tools
+**Issue:** The backlog item (3f-a) says: multiple read tools → parallel execute pre-graph; multiple action tools → pass to LLM. The risk is that "action tools" (tools that write or modify state) run in parallel could produce conflicting mutations. Even passing to LLM does not guarantee serial execution if the LLM outputs multiple tool calls.
+
+**Required:** Explicit constraint: action tools are ALWAYS serialized — never parallelized, even when multiple match. LLM output that requests multiple action tools must be executed one at a time with state re-read between calls. Document this constraint in the Tool Gateway design.
+
+---
+
+### 9. One Container 2 per customer — operational scale concern
+**Issue:** "Deployed once per customer" means if you have 50 customers, you operate 50 Container 2 instances. Combined with 50 Tool Gateway instances, this is 100 managed services. The design does not address how this fleet is managed (deployments, monitoring, config updates).
+
+**Not a blocker for MVP** but plan for:
+- Infrastructure as code (Terraform/CDK) to provision new customer environments
+- Centralized observability (all Container 2 logs → your observability platform)
+- A "deploy config change to all customers" mechanism for Platform Governance global settings
+
+---
+
+### 10. `platform-core` renamed/wrapped — import paths in existing code will break
+**Issue:** Today all agent code imports from `platform_core.*` directly. After split, these imports either become HTTP client calls or the library is bundled inside Container 2. Either way, the import paths in `langgraph_runner.py`, `build_graph.py`, and overlay agents break.
+
+**Must be explicit in implementation plan:**
+- Which `platform_core` imports stay in Container 1 as-is (utility functions, non-networked code)?
+- Which become HTTP calls to Container 2?
+- Container 1 should have no `platform_core` imports for logic that moves to Container 2
