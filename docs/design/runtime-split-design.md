@@ -508,6 +508,44 @@ AgentCore manages lifecycle (scaling, health, restart) for both. Container 1 con
 
 ---
 
+## AgentCore Native Services — What Overlaps and What Doesn't
+
+AWS Bedrock AgentCore provides its own memory, observability, tool execution, and HITL. This does **not** mean Container 2 disappears. The overlap is real but partial — AgentCore services are generic infrastructure; your platform services are domain-specific.
+
+| AgentCore provides | Your Container 2 has | Decision |
+|---|---|---|
+| Managed runtime + scaling | Container 1 shell | **Use AgentCore** — it replaces the Container 1 infra concern |
+| Generic conversation memory | Structured memory with member / case / assessment scopes | **Keep yours** — AgentCore memory has no healthcare scope hierarchy |
+| Tool execution (Action Groups / MCP) | Tenant-aware tool registry (per-customer endpoint + auth + field mappings) | **Keep yours** — AgentCore has no built-in per-tenant registry |
+| CloudWatch observability | Domain-specific observability + agent trace store | **Coexist** — AgentCore for infra metrics, yours for agent traces + domain audit |
+| Basic HITL approval | Custom HITL adapters (Slack, email, portal) | **Keep yours** — AgentCore approval is generic; yours has custom workflow adapters |
+| — | Healthcare reasoning strategies (ReAct, plan-execute, etc.) | **Keep yours** — AgentCore has no custom strategy routing |
+| — | Per-tenant field mappings + auth config | **Keep yours** — no AgentCore equivalent |
+
+### What this means in practice
+
+AgentCore manages the **compute and runtime** (Container 1). Your platform-services (Container 2) still runs alongside it and handles the **domain logic** AgentCore does not have.
+
+Container 2 shrinks slightly — you could delegate basic conversation memory and infra observability to AgentCore's native services. But you keep:
+- Reasoning strategies (AgentCore has none)
+- Structured memory scopes — member / case / assessment (AgentCore memory is generic)
+- Per-tenant tool registry with endpoint URLs, auth, field mappings (AgentCore has no tenant-aware registry)
+- Custom HITL adapters (AgentCore approval is too basic for enterprise healthcare workflows)
+
+### The key decision before using AgentCore
+
+Decide explicitly for each Container 2 service: **use AgentCore's version or yours?**
+
+Do not mix both for the same concern without a clear boundary — e.g., don't write to both AgentCore memory AND your memory store in the same request. Pick one per concern, document the choice, enforce it.
+
+**Recommended split:**
+- AgentCore → manages Container 1 runtime lifecycle (scaling, health, restart, cold start)
+- Yours → all domain logic in Container 2 (memory scopes, strategies, HITL, per-tenant tools)
+- AgentCore → infra observability (CloudWatch for container health)
+- Yours → agent-level observability (trace store, domain audit log, HITL history)
+
+---
+
 ## Tool Gateway / MCP Server Placement
 
 Tool Gateway and MCP server live in **your VPC alongside Container 2** (platform services). They are never deployed to customer VPC directly.
