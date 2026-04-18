@@ -1,0 +1,36 @@
+[
+  {
+    "memory_id": "mem_030d878b5754",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "test-fix-789",
+    "role": "user",
+    "content": "summary",
+    "metadata": {
+      "member_id": "m-001715",
+      "agent_type": "chat_agent_simple",
+      "reasoning_strategy": "simple",
+      "turn_id": "0e787d79-876b-4c34-bf20-35a19c8d3641",
+      "thread_id": "test-fix-789",
+      "tenant_id": "t1"
+    },
+    "created_at": "2026-04-10T13:23:49.050224+00:00"
+  },
+  {
+    "memory_id": "mem_58cd5e208425",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "test-fix-789",
+    "role": "assistant",
+    "content": "Mia Martinez, a 69-year-old member from Maryland, is enrolled in a Medicaid plan and has a risk score of 1.26. She has a chronic condition coded as I50.9 (heart failure). Her primary care provider is Dr. Miller at Miller Clinic, a cardiology practice in Georgia.\n\nMia has two active care plans: one for asthma, focusing on reducing exacerbations and improving inhaler technique, and another for maternity, emphasizing prenatal visit adherence. A previous post-discharge care plan has been closed.\n\nHer latest assessment is a scheduled reassessment for Q2 2026, with a low priority status. Recent claims indicate she has had multiple paid services, including prescriptions and professional services, with various diagnosis codes. Additionally, a recent authorization request for durable medical equipment was denied.",
+    "metadata": {
+      "member_id": "m-001715",
+      "agent_type": "chat_agent_simple",
+      "reasoning_strategy": "simple",
+      "turn_id": "0e787d79-876b-4c34-bf20-35a19c8d3641",
+      "thread_id": "test-fix-789",
+      "tenant_id": "t1"
+    },
+    "created_at": "2026-04-10T13:23:49.051789+00:00"
+  }
+]

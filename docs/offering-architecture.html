@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>AWS Reference Architecture — Intelligent Agent Accelerator for Healthcare</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#eceff1;padding:28px;}
+.page{max-width:1180px;margin:0 auto;}
+.title-bar{
+  background:#232f3e;color:white;
+  padding:14px 24px;
+  border-radius:8px 8px 0 0;
+  display:flex;justify-content:space-between;align-items:center;
+}
+.title-bar h1{font-size:15px;font-weight:800;letter-spacing:.3px;}
+.badge{background:#FF9900;color:#232f3e;font-size:10px;font-weight:900;padding:3px 12px;border-radius:4px;text-transform:uppercase;letter-spacing:1px;}
+.diagram-wrap{background:white;border:1px solid #cfd8dc;padding:20px 16px;}
+.footer-bar{background:#232f3e;padding:9px 24px;border-radius:0 0 8px 8px;display:flex;justify-content:space-between;}
+.footer-bar span{color:#90a4ae;font-size:10px;}
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="title-bar">
+  <h1>Reference Architecture — Intelligent Agent Accelerator for Healthcare</h1>
+  <div class="badge">AWS Native</div>
+</div>
+
+<div class="diagram-wrap">
+<svg xmlns="http://www.w3.org/2000/svg" width="1130" height="740"
+     viewBox="0 0 1130 740" style="display:block;font-family:'Segoe UI',system-ui,sans-serif;">
+<defs>
+  <marker id="ao" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#FF9900"/></marker>
+  <marker id="ab" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0277bd"/></marker>
+  <marker id="ag" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2e7d32"/></marker>
+  <marker id="ap" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6a1b9a"/></marker>
+  <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c62828"/></marker>
+</defs>
+
+<!-- ═══════════════════════════════════════════════════════════
+     CUSTOMER AWS ACCOUNT  (x=145, y=12, w=416, h=700)
+═══════════════════════════════════════════════════════════ -->
+<rect x="145" y="12" width="416" height="700" rx="8" fill="#fffde7" stroke="#FF9900" stroke-width="2" stroke-dasharray="9,4"/>
+<rect x="145" y="12" width="416" height="30" rx="8" fill="#FF9900"/>
+<rect x="145" y="30" width="416" height="12" fill="#FF9900"/>
+<text x="353" y="31" text-anchor="middle" fill="white" font-size="10.5" font-weight="800" letter-spacing="1.2">CUSTOMER AWS ACCOUNT</text>
+
+<!-- VPC inner -->
+<rect x="160" y="52" width="386" height="540" rx="5" fill="#e3f2fd" stroke="#1976d2" stroke-width="1" stroke-dasharray="4,3" opacity="0.45"/>
+<text x="173" y="67" fill="#1565c0" font-size="8.5" font-weight="700">Amazon VPC</text>
+
+<!-- ── Agent Runtime ── -->
+<rect x="173" y="76" width="168" height="108" rx="5" fill="white" stroke="#e65100" stroke-width="1.5"/>
+<rect x="173" y="76" width="168" height="22" rx="5" fill="#e65100"/>
+<rect x="173" y="88" width="168" height="10" fill="#e65100"/>
+<text x="257" y="91" text-anchor="middle" fill="white" font-size="9.5" font-weight="800" letter-spacing=".3">AGENT RUNTIME</text>
+<text x="257" y="111" text-anchor="middle" fill="#37474f" font-size="8.5">Amazon ECS / EKS</text>
+<text x="257" y="125" text-anchor="middle" fill="#37474f" font-size="8.5">LangGraph agent service</text>
+<text x="257" y="139" text-anchor="middle" fill="#37474f" font-size="8.5">HIPAA boundary · PII masking</text>
+<text x="257" y="155" text-anchor="middle" fill="#bf360c" font-size="8" font-weight="700">HITL gates · session rehydration</text>
+
+<!-- ── Knowledge Store ── -->
+<rect x="358" y="76" width="168" height="122" rx="5" fill="white" stroke="#6a1b9a" stroke-width="1.5"/>
+<rect x="358" y="76" width="168" height="22" rx="5" fill="#6a1b9a"/>
+<rect x="358" y="88" width="168" height="10" fill="#6a1b9a"/>
+<text x="442" y="91" text-anchor="middle" fill="white" font-size="9.5" font-weight="800" letter-spacing=".3">KNOWLEDGE STORE</text>
+<text x="442" y="111" text-anchor="middle" fill="#37474f" font-size="8.5">Amazon OpenSearch</text>
+<text x="442" y="125" text-anchor="middle" fill="#37474f" font-size="8.5">PostgreSQL + pgvector</text>
+<text x="442" y="139" text-anchor="middle" fill="#37474f" font-size="8.5">Databricks Delta Lake</text>
+<text x="442" y="157" text-anchor="middle" fill="#4a148c" font-size="8" font-weight="700">Semantic · hybrid · graph RAG</text>
+
+<!-- ── Data Layer ── -->
+<rect x="173" y="222" width="353" height="220" rx="5" fill="white" stroke="#2e7d32" stroke-width="1.5"/>
+<rect x="173" y="222" width="353" height="22" rx="5" fill="#2e7d32"/>
+<rect x="173" y="234" width="353" height="10" fill="#2e7d32"/>
+<text x="349" y="237" text-anchor="middle" fill="white" font-size="9.5" font-weight="800" letter-spacing=".3">CUSTOMER DATA — never leaves customer account</text>
+<!-- EHR -->
+<rect x="184" y="254" width="102" height="82" rx="4" fill="#f1f8e9" stroke="#558b2f" stroke-width="1"/>
+<text x="235" y="271" text-anchor="middle" fill="#33691e" font-size="9" font-weight="800">EHR SYSTEM</text>
+<text x="235" y="287" text-anchor="middle" fill="#37474f" font-size="8">Epic / Cerner</text>
+<text x="235" y="301" text-anchor="middle" fill="#37474f" font-size="8">FHIR R4 API</text>
+<text x="235" y="315" text-anchor="middle" fill="#37474f" font-size="8">HL7 feeds</text>
+<!-- Claims -->
+<rect x="299" y="254" width="102" height="82" rx="4" fill="#f1f8e9" stroke="#558b2f" stroke-width="1"/>
+<text x="350" y="271" text-anchor="middle" fill="#33691e" font-size="9" font-weight="800">CLAIMS DB</text>
+<text x="350" y="287" text-anchor="middle" fill="#37474f" font-size="8">Amazon RDS</text>
+<text x="350" y="301" text-anchor="middle" fill="#37474f" font-size="8">Claims history</text>
+<text x="350" y="315" text-anchor="middle" fill="#37474f" font-size="8">Auth records</text>
+<!-- Member DB -->
+<rect x="414" y="254" width="102" height="82" rx="4" fill="#f1f8e9" stroke="#558b2f" stroke-width="1"/>
+<text x="465" y="271" text-anchor="middle" fill="#33691e" font-size="9" font-weight="800">MEMBER DB</text>
+<text x="465" y="287" text-anchor="middle" fill="#37474f" font-size="8">Amazon RDS</text>
+<text x="465" y="301" text-anchor="middle" fill="#37474f" font-size="8">Demographics</text>
+<text x="465" y="315" text-anchor="middle" fill="#37474f" font-size="8">Care plans</text>
+<!-- Data layer note -->
+<text x="349" y="363" text-anchor="middle" fill="#37474f" font-size="8">Amazon S3 — care plan docs · imaging · prior auth records</text>
+<text x="349" y="379" text-anchor="middle" fill="#37474f" font-size="8">Amazon ElastiCache — hot member data cache · session store</text>
+<text x="349" y="395" text-anchor="middle" fill="#37474f" font-size="8">VPC Endpoints — private connectivity to Bedrock &amp; AgentCore</text>
+<text x="349" y="414" text-anchor="middle" fill="#2e7d32" font-size="8" font-weight="600">All PHI/PII governed by IAM policies · encrypted at rest (KMS)</text>
+
+<!-- ── Security strip ── -->
+<rect x="173" y="458" width="353" height="66" rx="4" fill="#fff8e1" stroke="#f9a825" stroke-width="1"/>
+<text x="349" y="476" text-anchor="middle" fill="#e65100" font-size="9" font-weight="800">SECURITY &amp; COMPLIANCE</text>
+<text x="349" y="492" text-anchor="middle" fill="#5d4037" font-size="8">AWS KMS · CloudTrail · IAM least-privilege per service</text>
+<text x="349" y="506" text-anchor="middle" fill="#5d4037" font-size="8">VPC-only deployment · No public IPs · AWS Config rules</text>
+<text x="349" y="520" text-anchor="middle" fill="#e65100" font-size="7.5" font-weight="700">HIPAA BAA in place · all services AWS HIPAA-eligible</text>
+
+<!-- ── Delivery box ── -->
+<rect x="173" y="545" width="353" height="80" rx="4" fill="#fafafa" stroke="#b0bec5" stroke-width="1" stroke-dasharray="4,3"/>
+<text x="349" y="563" text-anchor="middle" fill="#455a64" font-size="9" font-weight="800">DELIVERED TO CUSTOMER AS CODE</text>
+<text x="349" y="579" text-anchor="middle" fill="#607d8b" font-size="8">Git repository: agent templates · configuration schema · scaffold CLI</text>
+<text x="349" y="593" text-anchor="middle" fill="#607d8b" font-size="8">IaC modules: AWS CDK · Terraform · Helm charts</text>
+<text x="349" y="608" text-anchor="middle" fill="#607d8b" font-size="8">Customer owns all code and infrastructure at handover</text>
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     PROVIDER ENVIRONMENT — AWS AGENTCORE  (x=578, y=12, w=532, h=700)
+═══════════════════════════════════════════════════════════ -->
+<rect x="578" y="12" width="532" height="700" rx="8" fill="#e8eaf6" stroke="#283593" stroke-width="2" stroke-dasharray="9,4"/>
+<rect x="578" y="12" width="532" height="30" rx="8" fill="#283593"/>
+<rect x="578" y="30" width="532" height="12" fill="#283593"/>
+<text x="844" y="31" text-anchor="middle" fill="white" font-size="10.5" font-weight="800" letter-spacing="1.2">PROVIDER ENVIRONMENT — AWS AGENTCORE</text>
+
+<!-- AgentCore managed runtime boundary -->
+<rect x="592" y="52" width="504" height="448" rx="5" fill="#e8edf8" stroke="#3949ab" stroke-width="1.5" stroke-dasharray="5,3" opacity="0.7"/>
+<text x="606" y="67" fill="#283593" font-size="8.5" font-weight="700">AWS AgentCore — managed runtime · built-in scaling · no infra to manage</text>
+
+<!-- ── Orchestration Engine ── -->
+<rect x="604" y="76" width="198" height="118" rx="5" fill="white" stroke="#0277bd" stroke-width="1.5"/>
+<rect x="604" y="76" width="198" height="22" rx="5" fill="#0277bd"/>
+<rect x="604" y="88" width="198" height="10" fill="#0277bd"/>
+<text x="703" y="91" text-anchor="middle" fill="white" font-size="9.5" font-weight="800" letter-spacing=".3">ORCHESTRATION ENGINE</text>
+<text x="703" y="112" text-anchor="middle" fill="#37474f" font-size="8.5">LangGraph on AgentCore</text>
+<text x="703" y="126" text-anchor="middle" fill="#37474f" font-size="8.5">Multi-step reasoning · planning</text>
+<text x="703" y="140" text-anchor="middle" fill="#37474f" font-size="8.5">Memory · RAG coordination</text>
+<text x="703" y="158" text-anchor="middle" fill="#01579b" font-size="8" font-weight="700">ReAct · Plan-Execute · Reflection · multi-hop</text>
+
+<!-- ── Memory Stores ── -->
+<rect x="830" y="76" width="252" height="118" rx="5" fill="white" stroke="#6a1b9a" stroke-width="1.5"/>
+<rect x="830" y="76" width="252" height="22" rx="5" fill="#6a1b9a"/>
+<rect x="830" y="88" width="252" height="10" fill="#6a1b9a"/>
+<text x="956" y="91" text-anchor="middle" fill="white" font-size="9.5" font-weight="800" letter-spacing=".3">MEMORY STORES</text>
+<text x="956" y="112" text-anchor="middle" fill="#37474f" font-size="8.5">ElastiCache — short-term session memory</text>
+<text x="956" y="126" text-anchor="middle" fill="#37474f" font-size="8.5">RDS Aurora — episodic (case history)</text>
+<text x="956" y="140" text-anchor="middle" fill="#37474f" font-size="8.5">RDS Aurora — semantic (member facts)</text>
+<text x="956" y="158" text-anchor="middle" fill="#4a148c" font-size="8" font-weight="700">4 scopes · domain-aware · per-agent toggleable</text>
+
+<!-- ── Tool Gateway ── -->
+<rect x="604" y="270" width="198" height="108" rx="5" fill="white" stroke="#0277bd" stroke-width="1.5"/>
+<rect x="604" y="270" width="198" height="22" rx="5" fill="#0277bd"/>
+<rect x="604" y="282" width="198" height="10" fill="#0277bd"/>
+<text x="703" y="285" text-anchor="middle" fill="white" font-size="9.5" font-weight="800" letter-spacing=".3">TOOL GATEWAY</text>
+<text x="703" y="306" text-anchor="middle" fill="#37474f" font-size="8.5">AWS AgentCore</text>
+<text x="703" y="320" text-anchor="middle" fill="#37474f" font-size="8.5">Schema-validated tool serving</text>
+<text x="703" y="334" text-anchor="middle" fill="#37474f" font-size="8.5">Tag filtering · allow/deny per agent</text>
+<text x="703" y="352" text-anchor="middle" fill="#01579b" font-size="8" font-weight="700">MCP Server — optional protocol facade</text>
+
+<!-- ── Control Plane ── -->
+<rect x="830" y="220" width="252" height="272" rx="5" fill="white" stroke="#b71c1c" stroke-width="1.5"/>
+<rect x="830" y="220" width="252" height="22" rx="5" fill="#b71c1c"/>
+<rect x="830" y="232" width="252" height="10" fill="#b71c1c"/>
+<text x="956" y="235" text-anchor="middle" fill="white" font-size="9.5" font-weight="800" letter-spacing=".3">CONTROL PLANE</text>
+<!-- Agent Factory -->
+<rect x="842" y="251" width="228" height="48" rx="3" fill="#fff5f5" stroke="#ef9a9a" stroke-width="1"/>
+<text x="956" y="269" text-anchor="middle" fill="#b71c1c" font-size="8.5" font-weight="700">Agent Factory UI</text>
+<text x="956" y="284" text-anchor="middle" fill="#37474f" font-size="8">Configure · scaffold · govern agents — no code</text>
+<!-- Prompt Mgmt -->
+<rect x="842" y="307" width="228" height="48" rx="3" fill="#fff5f5" stroke="#ef9a9a" stroke-width="1"/>
+<text x="956" y="325" text-anchor="middle" fill="#b71c1c" font-size="8.5" font-weight="700">Prompt Management</text>
+<text x="956" y="340" text-anchor="middle" fill="#37474f" font-size="8">Versioning · lifecycle · A/B evaluation</text>
+<!-- Observability -->
+<rect x="842" y="363" width="228" height="48" rx="3" fill="#fff5f5" stroke="#ef9a9a" stroke-width="1"/>
+<text x="956" y="381" text-anchor="middle" fill="#b71c1c" font-size="8.5" font-weight="700">Observability &amp; Eval</text>
+<text x="956" y="396" text-anchor="middle" fill="#37474f" font-size="8">Traces · eval metrics · lineage dashboard</text>
+<!-- Agent Registry -->
+<rect x="842" y="419" width="228" height="48" rx="3" fill="#fff5f5" stroke="#ef9a9a" stroke-width="1"/>
+<text x="956" y="437" text-anchor="middle" fill="#b71c1c" font-size="8.5" font-weight="700">Agent Registry</text>
+<text x="956" y="452" text-anchor="middle" fill="#37474f" font-size="8">Agent catalog · version control · policies</text>
+
+<!-- ── Amazon Bedrock ── -->
+<rect x="592" y="518" width="504" height="90" rx="5" fill="white" stroke="#FF9900" stroke-width="2"/>
+<rect x="592" y="518" width="504" height="22" rx="5" fill="#FF9900"/>
+<rect x="592" y="530" width="504" height="10" fill="#FF9900"/>
+<text x="844" y="533" text-anchor="middle" fill="white" font-size="9.5" font-weight="800" letter-spacing=".3">AMAZON BEDROCK</text>
+<text x="844" y="554" text-anchor="middle" fill="#37474f" font-size="8.5">Claude Haiku · Sonnet · Opus — HIPAA-eligible · Amazon Titan Embeddings</text>
+<text x="844" y="568" text-anchor="middle" fill="#37474f" font-size="8.5">VPC Endpoint access · data stays in AWS region · Amazon Bedrock Guardrails</text>
+<text x="844" y="583" text-anchor="middle" fill="#e65100" font-size="8" font-weight="700">Dynamic model routing by query complexity · Bedrock Knowledge Bases (optional)</text>
+
+<!-- ── Secrets Manager + S3 ── -->
+<rect x="592" y="628" width="240" height="62" rx="4" fill="white" stroke="#90a4ae" stroke-width="1"/>
+<text x="712" y="646" text-anchor="middle" fill="#37474f" font-size="8.5" font-weight="700">AWS Secrets Manager</text>
+<text x="712" y="661" text-anchor="middle" fill="#546e7a" font-size="8">API keys · DB creds · auth tokens</text>
+<text x="712" y="675" text-anchor="middle" fill="#546e7a" font-size="8">Automatic rotation policies</text>
+
+<rect x="848" y="628" width="240" height="62" rx="4" fill="white" stroke="#90a4ae" stroke-width="1"/>
+<text x="968" y="646" text-anchor="middle" fill="#37474f" font-size="8.5" font-weight="700">Amazon S3</text>
+<text x="968" y="661" text-anchor="middle" fill="#546e7a" font-size="8">Prompt artifacts · trace logs</text>
+<text x="968" y="675" text-anchor="middle" fill="#546e7a" font-size="8">IaC state · config bundles</text>
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     EXTERNAL ACTORS (left of customer account)
+═══════════════════════════════════════════════════════════ -->
+<!-- Care Manager circle -->
+<circle cx="55" cy="62" r="20" fill="#e1f5fe" stroke="#0277bd" stroke-width="1.5"/>
+<text x="55" y="67" text-anchor="middle" fill="#01579b" font-size="15">👤</text>
+<text x="55" y="90" text-anchor="middle" fill="#37474f" font-size="8.5" font-weight="700">Care Manager</text>
+
+<!-- Healthcare App box -->
+<rect x="9" y="108" width="124" height="82" rx="5" fill="white" stroke="#0277bd" stroke-width="1.5"/>
+<rect x="9" y="108" width="124" height="22" rx="5" fill="#0277bd"/>
+<rect x="9" y="120" width="124" height="10" fill="#0277bd"/>
+<text x="71" y="123" text-anchor="middle" fill="white" font-size="9" font-weight="800">HEALTHCARE APP</text>
+<text x="71" y="144" text-anchor="middle" fill="#37474f" font-size="8">Care Management UI</text>
+<text x="71" y="158" text-anchor="middle" fill="#37474f" font-size="8">Assessment · Chat · Plans</text>
+<text x="71" y="172" text-anchor="middle" fill="#0277bd" font-size="7.5" font-weight="600">Customer-hosted</text>
+
+<!-- Legend -->
+<rect x="7" y="248" width="132" height="190" rx="5" fill="white" stroke="#e0e0e0" stroke-width="1"/>
+<text x="73" y="267" text-anchor="middle" fill="#0f172a" font-size="9" font-weight="800">LEGEND</text>
+
+<line x1="18" y1="283" x2="54" y2="283" stroke="#FF9900" stroke-width="2" marker-end="url(#ao)"/>
+<text x="60" y="287" fill="#37474f" font-size="8">Agent request flow</text>
+
+<line x1="18" y1="301" x2="54" y2="301" stroke="#0277bd" stroke-width="1.5" marker-end="url(#ab)"/>
+<text x="60" y="305" fill="#37474f" font-size="8">User interaction</text>
+
+<line x1="18" y1="319" x2="54" y2="319" stroke="#2e7d32" stroke-width="1.5" marker-end="url(#ag)"/>
+<text x="60" y="323" fill="#37474f" font-size="8">Tool / data access</text>
+
+<line x1="18" y1="337" x2="54" y2="337" stroke="#6a1b9a" stroke-width="1.5" marker-end="url(#ap)"/>
+<text x="60" y="341" fill="#37474f" font-size="8">Memory read/write</text>
+
+<line x1="18" y1="355" x2="54" y2="355" stroke="#c62828" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#ar)"/>
+<text x="60" y="359" fill="#37474f" font-size="8">Config / governance</text>
+
+<line x1="18" y1="373" x2="54" y2="373" stroke="#FF9900" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#ao)"/>
+<text x="60" y="377" fill="#37474f" font-size="8">LLM inference</text>
+
+<line x1="18" y1="391" x2="36" y2="391" stroke="#FF9900" stroke-width="1" stroke-dasharray="6,3" opacity="0.8"/>
+<text x="60" y="395" fill="#37474f" font-size="8">AWS account</text>
+<rect x="40" y="386" width="13" height="10" rx="2" fill="none" stroke="#FF9900" stroke-width="1" stroke-dasharray="3,2" opacity="0.7"/>
+
+<text x="73" y="420" text-anchor="middle" fill="#78909c" font-size="7.5" font-style="italic">All data encrypted in</text>
+<text x="73" y="432" text-anchor="middle" fill="#78909c" font-size="7.5" font-style="italic">transit (TLS 1.2+) and</text>
+<text x="73" y="444" text-anchor="middle" fill="#78909c" font-size="7.5" font-style="italic">at rest (AES-256 KMS)</text>
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     ARROWS
+═══════════════════════════════════════════════════════════ -->
+
+<!-- Care Manager → App (down) -->
+<line x1="55" y1="84" x2="55" y2="108" stroke="#0277bd" stroke-width="1.5" marker-end="url(#ab)"/>
+
+<!-- App → Agent Runtime (L-shape: right → up → right) -->
+<path d="M133,149 L158,149 L158,130 L173,130" fill="none" stroke="#0277bd" stroke-width="1.5" marker-end="url(#ab)"/>
+
+<!-- Agent Runtime → Orchestration Engine (horizontal right across account gap) -->
+<line x1="341" y1="130" x2="604" y2="135" stroke="#FF9900" stroke-width="2" marker-end="url(#ao)"/>
+<!-- Label for this arrow -->
+<rect x="375" y="112" width="172" height="16" rx="3" fill="#fff8e6"/>
+<text x="461" y="123" text-anchor="middle" fill="#bf360c" font-size="8" font-weight="700">HTTPS · VPC Endpoint · private</text>
+
+<!-- Agent Runtime ↔ Knowledge Store (short right, RAG) -->
+<line x1="341" y1="115" x2="358" y2="115" stroke="#6a1b9a" stroke-width="1.5" marker-end="url(#ap)"/>
+<!-- Label -->
+<text x="349" y="110" text-anchor="middle" fill="#4a148c" font-size="7.5" font-weight="600">RAG</text>
+
+<!-- Orchestration Engine ↔ Memory (right + back) -->
+<line x1="802" y1="128" x2="830" y2="128" stroke="#6a1b9a" stroke-width="1.5" marker-end="url(#ap)"/>
+<line x1="830" y1="140" x2="802" y2="140" stroke="#6a1b9a" stroke-width="1.5" marker-end="url(#ap)"/>
+
+<!-- Orchestration Engine ↔ Tool Gateway (down + up) -->
+<line x1="690" y1="194" x2="690" y2="270" stroke="#0277bd" stroke-width="1.5" marker-end="url(#ab)"/>
+<line x1="707" y1="270" x2="707" y2="194" stroke="#0277bd" stroke-width="1.5" marker-end="url(#ab)"/>
+
+<!-- Tool Gateway → Data Layer (left, via PrivateLink) -->
+<!-- Tool Gateway left edge x=604, Data Layer right edge x=526 (173+353) -->
+<line x1="604" y1="324" x2="526" y2="324" stroke="#2e7d32" stroke-width="1.5" marker-end="url(#ag)"/>
+<rect x="530" y="310" width="70" height="14" rx="2" fill="#f1f8e9"/>
+<text x="565" y="320" text-anchor="middle" fill="#1b5e20" font-size="7.5" font-weight="700">AWS PrivateLink</text>
+
+<!-- Control Plane → Orchestration Engine (L-shape config arrow, dashed red) -->
+<!-- From left edge of Control Plane (830, 295) → left to x=817 → up to y=140 → left to Orch Engine right (802, 140) -->
+<path d="M830,290 L818,290 L818,140 L802,140" fill="none" stroke="#c62828" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#ar)"/>
+<rect x="803" y="204" width="40" height="14" rx="2" fill="white" opacity="0.9"/>
+<text x="823" y="214" text-anchor="middle" fill="#c62828" font-size="7.5" font-weight="700">config</text>
+
+<!-- AgentCore → Bedrock (short down arrow, LLM inference) -->
+<!-- AgentCore boundary bottom: y=52+448=500, Bedrock top: y=518 -->
+<line x1="844" y1="500" x2="844" y2="518" stroke="#FF9900" stroke-width="2" stroke-dasharray="5,3" marker-end="url(#ao)"/>
+<rect x="756" y="504" width="88" height="14" rx="2" fill="#fff8e6"/>
+<text x="800" y="514" text-anchor="middle" fill="#bf360c" font-size="7.5" font-weight="700">LLM inference</text>
+
+</svg>
+</div>
+
+<div class="footer-bar">
+  <span>Internal — Sales &amp; Solutions Enablement · AWS Practice</span>
+  <span>Intelligent Agent Accelerator for Healthcare · Reference Architecture</span>
+</div>
+
+</div>
+</body>
+</html>

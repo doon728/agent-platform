@@ -1,0 +1,98 @@
+[
+  {
+    "memory_id": "mem_a597a065c04f",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "th-new",
+    "role": "user",
+    "content": "suammary",
+    "metadata": {
+      "assessment_id": "asmt-000001"
+    },
+    "created_at": "2026-04-05T03:47:07.203067+00:00"
+  },
+  {
+    "memory_id": "mem_dec6d42852fb",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "th-new",
+    "role": "assistant",
+    "content": "**Summary of Assessment (asmt-000001)**\n\n- **Member Information:**\n  - Name: Mia Martinez\n  - DOB: October 21, 1954\n  - Gender: X\n  - State: MD\n  - Plan ID: Medicaid MD\n  - Chronic Conditions: I50.9\n\n- **Assessment Details:**\n  - Type: Reassessment\n  - Status: Complete\n  - Priority: Low\n  - Created At: June 28, 2024\n  - Completed At: November 5, 2025\n  - Overall Risk Level: Medium\n  - Summary: Focus on adherence and recent utilization.\n\n- **Care Plan:**\n  - ID: cp-004529\n  - Program: Asthma\n  - Start Date: April 3, 2024\n  - Status: Active\n  - Goals: Reduce exacerbations; improve inhaler technique; trigger avoidance.\n\n- **Responses:**\n  - Medical Stability: Rated 3 and 4 (flagged risk)\n  - Behavioral Stability: Rated 2 and 3\n  - Medication Adherence: Rated 4\n  - New Medical Issues: Yes\n  - No new SDOH issues reported.\n\n- **Recent Case Notes:**\n  - Member has shown hostility and is reported as not listening.\n  - Previous notes indicate member was traveling and had periods of improvement.\n\nThis assessment highlights the need for ongoing monitoring and potential intervention regarding behavioral stability and medical issues.",
+    "metadata": {
+      "assessment_id": "asmt-000001"
+    },
+    "created_at": "2026-04-05T03:47:07.205158+00:00"
+  },
+  {
+    "memory_id": "mem_ab45dc88d323",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "th-new",
+    "role": "user",
+    "content": "whats the member id",
+    "metadata": {
+      "assessment_id": "asmt-000001"
+    },
+    "created_at": "2026-04-05T03:47:57.072746+00:00"
+  },
+  {
+    "memory_id": "mem_6a708ae71b6a",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "th-new",
+    "role": "assistant",
+    "content": "The member ID is not available.",
+    "metadata": {
+      "assessment_id": "asmt-000001"
+    },
+    "created_at": "2026-04-05T03:47:57.075301+00:00"
+  },
+  {
+    "memory_id": "mem_29a7a08f39f3",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "th-new",
+    "role": "user",
+    "content": "member name",
+    "metadata": {
+      "assessment_id": "asmt-000001"
+    },
+    "created_at": "2026-04-05T03:48:42.906682+00:00"
+  },
+  {
+    "memory_id": "mem_dbb514a86b66",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "th-new",
+    "role": "assistant",
+    "content": "The member's name is Mia Martinez.",
+    "metadata": {
+      "assessment_id": "asmt-000001"
+    },
+    "created_at": "2026-04-05T03:48:42.908197+00:00"
+  },
+  {
+    "memory_id": "mem_08f86172057a",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "th-new",
+    "role": "user",
+    "content": "update note: next assesment next week",
+    "metadata": {
+      "assessment_id": "asmt-000001"
+    },
+    "created_at": "2026-04-05T03:50:11.763008+00:00"
+  },
+  {
+    "memory_id": "mem_91394bead2de",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "th-new",
+    "role": "assistant",
+    "content": "[APPROVAL_REQUIRED] Awaiting human approval for tool: write_case_note",
+    "metadata": {
+      "assessment_id": "asmt-000001"
+    },
+    "created_at": "2026-04-05T03:50:11.763935+00:00"
+  }
+]

@@ -1,0 +1,38 @@
+[
+  {
+    "memory_id": "mem_c88d43ec1976",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "test-thread-2",
+    "role": "user",
+    "content": "what is the assessment status for this member?",
+    "metadata": {
+      "member_id": "m-001",
+      "assessment_id": "a-001",
+      "agent_type": "chat_agent_simple",
+      "reasoning_strategy": "simple",
+      "turn_id": "run_dd0557f1",
+      "thread_id": "test-thread-2",
+      "tenant_id": "t1"
+    },
+    "created_at": "2026-04-11T22:24:24.253956+00:00"
+  },
+  {
+    "memory_id": "mem_b804ca3938d4",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "test-thread-2",
+    "role": "assistant",
+    "content": "The assessment summary for ID a-001 was not found, and there is no data available.",
+    "metadata": {
+      "member_id": "m-001",
+      "assessment_id": "a-001",
+      "agent_type": "chat_agent_simple",
+      "reasoning_strategy": "simple",
+      "turn_id": "run_dd0557f1",
+      "thread_id": "test-thread-2",
+      "tenant_id": "t1"
+    },
+    "created_at": "2026-04-11T22:24:24.254277+00:00"
+  }
+]

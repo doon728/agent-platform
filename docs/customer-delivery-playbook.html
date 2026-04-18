@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Intelligent Agent Accelerator for Healthcare — Customer Delivery Playbook</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#f8fafc;color:#0f172a;font-size:14px;line-height:1.6;}
+
+.page{max-width:900px;margin:0 auto;padding:48px 48px 80px;}
+
+/* Cover */
+.cover{text-align:center;padding:60px 0 48px;border-bottom:3px solid #FF9900;margin-bottom:48px;}
+.cover .eyebrow{font-size:12px;font-weight:800;letter-spacing:3px;text-transform:uppercase;color:#FF9900;margin-bottom:16px;}
+.cover h1{font-size:38px;font-weight:900;letter-spacing:-.5px;line-height:1.15;margin-bottom:12px;color:#0f172a;}
+.cover .tagline{font-size:18px;color:#475569;font-weight:500;margin-bottom:32px;}
+.cover .meta{display:flex;justify-content:center;gap:32px;flex-wrap:wrap;}
+.cover .meta-item{font-size:12px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:1px;}
+.cover .meta-item span{display:block;font-size:14px;color:#334155;font-weight:700;text-transform:none;letter-spacing:0;margin-top:2px;}
+
+/* AWS badge */
+.aws-badge{display:inline-flex;align-items:center;gap:8px;background:#232f3e;color:#FF9900;padding:6px 16px;border-radius:6px;font-size:12px;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin-bottom:24px;}
+
+/* Sections */
+.section{margin-bottom:44px;}
+.section-num{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:2px;color:#FF9900;margin-bottom:4px;}
+.section h2{font-size:22px;font-weight:900;color:#0f172a;margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid #e2e8f0;}
+.section h3{font-size:15px;font-weight:800;color:#1e293b;margin:18px 0 8px;}
+
+p{margin-bottom:12px;color:#334155;}
+ul{margin:8px 0 12px 0;list-style:none;}
+ul li{padding:3px 0 3px 16px;position:relative;color:#334155;}
+ul li::before{content:"→";position:absolute;left:0;color:#FF9900;font-weight:700;}
+
+/* Highlight box */
+.highlight{background:#fff8e6;border-left:4px solid #FF9900;padding:14px 18px;border-radius:0 8px 8px 0;margin:16px 0;}
+.highlight strong{color:#92400e;}
+
+/* Two col */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:16px 0;}
+.col-box{background:white;border:1.5px solid #e2e8f0;border-radius:10px;padding:16px 18px;}
+.col-box h4{font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin-bottom:10px;}
+.col-box ul li{font-size:13px;}
+
+/* Capability table */
+table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13px;}
+th{background:#232f3e;color:#FF9900;padding:10px 14px;text-align:left;font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:.8px;}
+td{padding:9px 14px;border-bottom:1px solid #f1f5f9;color:#334155;vertical-align:top;}
+tr:nth-child(even) td{background:#fafafa;}
+.tag{display:inline-block;font-size:10px;font-weight:800;padding:2px 8px;border-radius:10px;white-space:nowrap;}
+.tag-built{background:#dcfce7;color:#166534;}
+.tag-mvp{background:#fef9c3;color:#854d0e;}
+.tag-roadmap{background:#f1f5f9;color:#475569;}
+
+/* Phases */
+.phases{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:16px 0;}
+.phase-box{background:white;border:1.5px solid #e2e8f0;border-radius:10px;padding:14px 12px;text-align:center;}
+.phase-box .phase-num{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:1px;color:#FF9900;margin-bottom:4px;}
+.phase-box .phase-name{font-size:13px;font-weight:800;color:#0f172a;margin-bottom:6px;}
+.phase-box .phase-dur{font-size:11px;color:#64748b;font-weight:600;margin-bottom:8px;}
+.phase-box ul{margin:0;}
+.phase-box ul li{font-size:11px;padding:2px 0 2px 12px;text-align:left;}
+.phase-box ul li::before{font-size:10px;}
+
+/* Use case cards */
+.uc-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin:16px 0;}
+.uc-card{background:white;border:1.5px solid #e2e8f0;border-radius:10px;padding:14px;}
+.uc-card .uc-icon{font-size:24px;margin-bottom:6px;}
+.uc-card .uc-title{font-size:13px;font-weight:800;color:#0f172a;margin-bottom:4px;}
+.uc-card .uc-roi{font-size:11px;color:#16a34a;font-weight:700;margin-bottom:6px;}
+.uc-card .uc-desc{font-size:11px;color:#64748b;}
+.placeholder{background:#f8fafc;border:1.5px dashed #cbd5e1;border-radius:8px;padding:10px 14px;font-size:11px;color:#94a3b8;font-style:italic;}
+
+/* Deployment stack */
+.deploy-stack{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0;}
+.deploy-box{background:white;border:1.5px solid #e2e8f0;border-radius:10px;padding:16px;}
+.deploy-box h4{font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;}
+.deploy-box.aws h4{color:#FF9900;}
+.deploy-box.compliance h4{color:#dc2626;}
+.deploy-box.iac h4{color:#7c3aed;}
+.deploy-box.model h4{color:#0ea5e9;}
+
+/* Footer */
+.footer{margin-top:60px;padding-top:20px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;}
+.footer .conf{font-size:11px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:1px;}
+
+/* Page break hint */
+.break{border:none;border-top:1px dashed #e2e8f0;margin:48px 0;}
+
+/* Flow diagram (Section 5 — request flow) */
+.flow{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:20px 0 12px;align-items:stretch;}
+.flow-step{background:white;border:1.5px solid #e2e8f0;border-top:3px solid #FF9900;border-radius:10px;padding:14px 12px;position:relative;}
+.flow-step .fs-tag{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:1px;color:#FF9900;margin-bottom:4px;}
+.flow-step .fs-title{font-size:13px;font-weight:800;color:#0f172a;margin-bottom:4px;line-height:1.25;}
+.flow-step .fs-role{font-size:11px;color:#64748b;font-weight:600;margin-bottom:8px;font-style:italic;}
+.flow-step ul{margin:0;}
+.flow-step ul li{font-size:11px;padding:2px 0 2px 12px;line-height:1.4;}
+.flow-step ul li::before{font-size:10px;}
+.flow-step .fs-aws{margin-top:8px;padding-top:8px;border-top:1px dashed #e2e8f0;font-size:10px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:.5px;}
+.flow-arrows{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:-4px 0 12px;}
+.flow-arrow{text-align:center;font-size:18px;color:#FF9900;font-weight:900;line-height:1;}
+.flow-arrow.empty{visibility:hidden;}
+.flow-request{background:#232f3e;color:#FF9900;padding:8px 14px;border-radius:6px;font-size:11px;font-weight:700;display:inline-block;margin-bottom:4px;}
+
+/* Deployment flow (Section 7) */
+.deploy-flow{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin:20px 0;align-items:stretch;}
+.deploy-col{background:white;border:1.5px solid #e2e8f0;border-radius:10px;padding:16px 14px;}
+.deploy-col.dev{border-top:3px solid #0ea5e9;}
+.deploy-col.ci{border-top:3px solid #7c3aed;}
+.deploy-col.prod{border-top:3px solid #FF9900;}
+.deploy-col .dc-tag{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:4px;}
+.deploy-col.dev .dc-tag{color:#0ea5e9;}
+.deploy-col.ci .dc-tag{color:#7c3aed;}
+.deploy-col.prod .dc-tag{color:#FF9900;}
+.deploy-col .dc-title{font-size:14px;font-weight:800;color:#0f172a;margin-bottom:6px;}
+.deploy-col .dc-sub{font-size:11px;color:#64748b;font-weight:600;margin-bottom:10px;font-style:italic;}
+.deploy-col ul li{font-size:11px;padding:2px 0 2px 12px;line-height:1.4;}
+.deploy-col ul li::before{font-size:10px;}
+.deploy-col .dc-stack{margin-top:10px;padding-top:10px;border-top:1px dashed #e2e8f0;font-size:10px;color:#64748b;line-height:1.5;}
+.deploy-col .dc-stack strong{color:#334155;}
+
+/* Swim-lane lifecycle flow */
+.swim{display:grid;grid-template-columns:130px repeat(5,1fr);gap:6px;margin:20px 0 12px;}
+.swim-header{background:#232f3e;color:#FF9900;padding:10px 8px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;text-align:center;border-radius:6px;line-height:1.3;}
+.swim-header.corner{background:transparent;color:#94a3b8;font-size:9px;letter-spacing:1.5px;text-align:left;padding-left:4px;}
+.swim-actor{background:#f1f5f9;padding:10px;font-size:11px;font-weight:800;color:#0f172a;border-radius:6px;display:flex;align-items:center;line-height:1.3;}
+.swim-actor .sa-role{display:block;font-size:9px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-top:2px;font-style:normal;}
+.swim-cell{background:white;border:1.5px dashed #e2e8f0;padding:8px 10px;font-size:11px;color:#cbd5e1;border-radius:6px;min-height:62px;display:flex;align-items:center;line-height:1.4;}
+.swim-cell.filled{background:#fff8e6;border:1.5px solid #FF9900;color:#334155;font-weight:500;}
+.swim-cell.filled-blue{background:#eff6ff;border:1.5px solid #0ea5e9;color:#334155;font-weight:500;}
+.swim-cell.filled-green{background:#f0fdf4;border:1.5px solid #16a34a;color:#334155;font-weight:500;}
+.swim-cell.filled-purple{background:#faf5ff;border:1.5px solid #7c3aed;color:#334155;font-weight:500;}
+
+/* Container artifact cards (What Gets Built Per Container) */
+.cc{background:white;border:1.5px solid #e2e8f0;border-top:3px solid #FF9900;border-radius:10px;padding:16px 18px;margin:16px 0;}
+.cc-head{display:flex;align-items:center;gap:12px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px dashed #e2e8f0;flex-wrap:wrap;}
+.cc-badge{background:#232f3e;color:#FF9900;padding:4px 10px;border-radius:4px;font-size:11px;font-weight:900;letter-spacing:.5px;}
+.cc-title{font-size:15px;font-weight:800;color:#0f172a;}
+.cc-role{font-size:12px;color:#64748b;font-weight:600;font-style:italic;margin-left:auto;}
+.cc-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.cc-sec h5{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:1px;color:#FF9900;margin-bottom:6px;}
+.cc-sec ul{margin:0;}
+.cc-sec ul li{font-size:11px;padding:2px 0 2px 12px;line-height:1.45;}
+.cc-sec ul li::before{font-size:10px;}
+.cc-wire{margin-top:12px;padding-top:10px;border-top:1px dashed #e2e8f0;font-size:11px;color:#475569;line-height:1.55;}
+.cc-wire strong{color:#0f172a;}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- COVER -->
+  <div class="cover">
+    <div class="aws-badge">⚡ AWS Practice</div>
+    <div class="eyebrow">Customer Delivery Playbook — Companion Document</div>
+    <h1>Intelligent Agent Accelerator<br/>for Healthcare</h1>
+    <p class="tagline">How delivery teams apply the accelerator<br/>to healthcare payer customer engagements.</p>
+    <div class="meta">
+      <div class="meta-item">Companion To<span>Offering Proposal Summary</span></div>
+      <div class="meta-item">Audience<span>Engagement Leads · Architects · Delivery Teams</span></div>
+      <div class="meta-item">Runtime<span>AWS AgentCore + Bedrock</span></div>
+      <div class="meta-item">Status<span>Delivery Playbook · v1.0</span></div>
+    </div>
+  </div>
+
+
+  <!-- INTRO -->
+  <div class="section">
+    <h2>About This Document</h2>
+    <p>This is the Customer Delivery Playbook for the <strong>Intelligent Agent Accelerator for Healthcare</strong>. It describes how delivery teams apply the accelerator to customer engagements — from discovery to handoff. The playbook is itself an artifact this offering produces; every engagement follows it.</p>
+    <p>For the business case behind the accelerator (opportunity, offering, ROI, build plan, ask), see the <em>Offering Proposal Summary</em>. For platform architecture, per-container detail, deployment model, repo governance, and technical limitations, see the <em>Accelerator Technical Design</em> companion document.</p>
+
+    <div class="highlight">
+      <strong>How to read this document:</strong> every customer engagement uses the same phased structure and the same discovery motion. Team composition, timelines, and deliverables flex based on scope — the framework does not.
+    </div>
+  </div>
+
+  <hr class="break"/>
+
+<!-- ══ 1. ENGAGEMENT STRUCTURE ══ -->
+  <div class="section">
+    <div class="section-num">Section 1</div>
+    <h2>Customer Delivery Engagement — How the Accelerator Is Applied</h2>
+
+    <p>A typical customer delivery engagement runs <strong>12–16 weeks</strong> across 5 phases. The accelerator is the starting point — delivery teams fork an engagement copy from the master accelerator repo, tailor it to the customer's systems and workflows, and deploy it into the customer's AWS account. Timeline and team composition flex based on number of agents, integration complexity, and customer environment. Structure below is indicative — final scope, staffing, and pricing are determined per engagement.</p>
+
+    <h3>Four Modes of Accelerator Use</h3>
+    <p>Not every customer will accept every part of the accelerator into their environment. Healthcare payers have strict policies on what runs in their AWS accounts, what code they accept from outside, and which open-source dependencies they approve. The accelerator is structured so it delivers value across a spectrum — from full deployment down to reference-only use — without losing its core benefit to the delivery team. The mode for a given engagement is agreed during Phase 1 Discovery, after the customer's InfoSec and architecture reviews.</p>
+
+    <table>
+      <tr>
+        <th style="width:120px;">Mode</th>
+        <th>Summary</th>
+      </tr>
+      <tr>
+        <td><strong>1. Full deployment</strong></td>
+        <td>Entire accelerator deployed into customer AWS; full ownership transferred at end</td>
+      </tr>
+      <tr>
+        <td><strong>2. Partial / hybrid</strong></td>
+        <td>Selected components deployed; others rebuilt or swapped for customer-standard equivalents</td>
+      </tr>
+      <tr>
+        <td><strong>3. Reference only</strong></td>
+        <td>Nothing deployed; customer builds their own version using our architecture as blueprint</td>
+      </tr>
+      <tr>
+        <td><strong>4. Enablement only</strong></td>
+        <td>No deployment, no code sharing; accelerator used for design, demo, and enablement inside the engagement</td>
+      </tr>
+    </table>
+
+    <h4>Mode 1 — Full Deployment</h4>
+    <p><strong>What the customer receives.</strong> The complete accelerator deployed into the customer's AWS account: all four containers (C1 agent runtime, C2 platform services, C3 tool gateway, C4 control plane), the full catalog of six reference agents included in the accelerator, the Agent Factory UI, and all Infrastructure as Code. During the engagement, two to three of the reference agents are selected and tailored to the customer's specific workflows as their production agents; the remaining reference agents are handed over as working examples the customer's AI COE can extend later. At engagement end, the customer receives their engagement repo as a full master copy — platform code, templates, reference agents, IaC — in their own Git organization.</p>
+    <p><strong>Deployment shape.</strong> C1 agent shells deploy on AWS AgentCore Runtime (one per agent). C2 platform services, C3 tool gateway, and C4 control plane deploy on ECS/Fargate within the customer's AWS account. Typically per-LOB multi-account (agent shells per line of business, one shared C2/C3/C4 per tenant), or single-account for smaller customers. All infrastructure deployed via IaC; security evidence package reviewed by customer InfoSec before go-live.</p>
+    <p><strong>Customer AI COE role post-handoff.</strong> The customer's AI COE becomes the equivalent of our Platform Team internally. They own the platform code and templates going forward, can scaffold new agents via the Agent Factory UI on their own, can modify templates to evolve the platform for their internal needs, and can pull upstream releases from the practice (<code>v1.1</code>, <code>v1.2</code>) at their cadence — or freeze on the version they received.</p>
+    <p><strong>When this mode fits.</strong> Customer has AWS-native posture, has an internal AI COE or plans to build one, wants full IP transfer, and InfoSec is comfortable with the security evidence package.</p>
+
+    <h4>Mode 2 — Partial / Hybrid Deployment</h4>
+    <p><strong>What the customer receives.</strong> A subset of the accelerator components, chosen during Phase 1. Common patterns: accept the agent runtime and templates, swap the tool gateway for a customer-standard API gateway; or accept the control plane (Agent Factory UI, observability) but deploy C1 agents inside the customer's existing Kubernetes cluster instead of ECS. Engagement repo handed over with the modifications; customer-standard components are wired in.</p>
+    <p><strong>Deployment shape.</strong> C1 agent shells on AWS AgentCore Runtime, C2/C3/C4 on ECS/Fargate (our defaults); some components may be rebuilt on customer-chosen substrates. Our IaC covers what we deploy; customer IaC teams integrate with their existing stack for the rest.</p>
+    <p><strong>Customer AI COE role post-handoff.</strong> Owns the deployed portion of the accelerator. May also own the custom integration layer where we rebuilt to their standards. Upstream release adoption depends on which components they accepted — fully for accepted ones, selectively for swapped ones.</p>
+    <p><strong>When this mode fits.</strong> Customer has established internal platform standards they cannot or will not displace (their own tool gateway, their own observability stack, their own container orchestration). Accelerator fills specific gaps rather than replacing their full platform.</p>
+
+    <h4>Mode 3 — Reference Only</h4>
+    <p><strong>What the customer receives.</strong> Documentation, architecture diagrams, design patterns, and optionally read-only access to our demo environment. No accelerator code deployed into the customer's environment. Customer's engineering team builds their own equivalent using our reference architecture as a blueprint.</p>
+    <p><strong>Deployment shape.</strong> None in customer environment. Our team may provide design reviews, pattern walk-throughs, and implementation guidance during the engagement; customer does the build.</p>
+    <p><strong>Customer AI COE role post-handoff.</strong> Owns the platform they built. No ongoing upstream relationship with us on platform code.</p>
+    <p><strong>When this mode fits.</strong> Customer has strict prohibitions on accepting outside code (some Medicaid MCOs, some compliance-driven orgs), or has an existing internal platform team that prefers to build everything themselves but wants the architecture patterns de-risked. The accelerator's architecture work compresses their design phase from months to weeks; they spend the engagement fee on guidance, not on deployed code.</p>
+
+    <h4>Mode 4 — Enablement Only</h4>
+    <p><strong>What the customer receives.</strong> Access to our running demo environment (practice-hosted, non-customer data), workshops, design sessions, and strategy guidance. No accelerator code enters the customer's environment in any form; no documentation or architecture content is transferred.</p>
+    <p><strong>Deployment shape.</strong> None. The engagement is scoped as strategy and capability uplift, not as implementation.</p>
+    <p><strong>Customer AI COE role post-handoff.</strong> Customer uses the enablement to make better build-vs-buy decisions and to scope their own internal work.</p>
+    <p><strong>When this mode fits.</strong> Customer is early in their AI strategy, wants senior guidance before committing to a build, or is evaluating whether to use the accelerator in a future engagement. For the delivery team, this mode still uses the accelerator internally for design, demo, and training — no team starts from whiteboard.</p>
+
+    <div class="highlight">
+      <strong>The key point:</strong> the value of building the accelerator does not depend on any single customer accepting full deployment. Every engagement captures some subset of the value. In the worst case (mode 4), the practice still skips the whiteboard phase, arrives with a credible working demo, and delivers faster than it would without the accelerator.
+    </div>
+
+    <h3>How the Engagement Begins</h3>
+    <p>Every engagement opens with a focused discovery motion. The goal in the first two weeks is to agree on what we are building, why it matters, and how we will measure success.</p>
+    <ul>
+      <li><strong>Pick two anchor workflows.</strong> One member-facing (e.g., pre-call assessment, care gap outreach) and one back-office (e.g., prior authorization remediation, claims triage). Each must be painful, frequent, and measurable.</li>
+      <li><strong>Define success metrics up front.</strong> Cycle-time reduction, manual-effort reduction, appeal approval rate, cost-per-case, audit-exception rate, care manager throughput — whichever apply to the chosen workflows.</li>
+      <li><strong>Map system-of-record boundaries.</strong> Claims core, care management platform, prior-auth system, member database, data warehouse, IAM, logging.</li>
+      <li><strong>Identify tool candidates.</strong> Read and write actions the agent needs exposed through the Tool Gateway to automate the workflow end to end.</li>
+      <li><strong>Confirm compliance posture.</strong> HIPAA controls, BAA coverage, data-residency expectations, audit-trail requirements.</li>
+    </ul>
+    <p>The output of discovery is a signed-off workflow map, success metrics, and an AWS deployment plan — enough to commit the build phase scope.</p>
+
+    <h3>Phases and Timeline</h3>
+
+    <div class="phases">
+      <div class="phase-box">
+        <div class="phase-num">Phase 1</div>
+        <div class="phase-name">Discovery</div>
+        <div class="phase-dur">Weeks 1–2</div>
+        <ul>
+          <li>Use case prioritization</li>
+          <li>AWS account + data audit</li>
+          <li>Claims / care-mgmt / auth systems inventory</li>
+          <li>Compliance requirements</li>
+          <li>Agent type selection</li>
+        </ul>
+      </div>
+      <div class="phase-box">
+        <div class="phase-num">Phase 2</div>
+        <div class="phase-name">Design</div>
+        <div class="phase-dur">Weeks 3–4</div>
+        <ul>
+          <li>Reference architecture finalized</li>
+          <li>Agent design docs</li>
+          <li>Tool / API inventory</li>
+          <li>Memory + RAG strategy</li>
+          <li>HITL workflow design</li>
+        </ul>
+      </div>
+      <div class="phase-box">
+        <div class="phase-num">Phase 3</div>
+        <div class="phase-name">Build</div>
+        <div class="phase-dur">Weeks 5–10</div>
+        <ul>
+          <li>Accelerator deployed</li>
+          <li>IaC provisioned</li>
+          <li>Integrations wired</li>
+          <li>Agents configured</li>
+          <li>PII + guardrails live</li>
+        </ul>
+      </div>
+      <div class="phase-box">
+        <div class="phase-num">Phase 4</div>
+        <div class="phase-name">Deploy</div>
+        <div class="phase-dur">Weeks 11–13</div>
+        <ul>
+          <li>UAT with clinical team</li>
+          <li>HITL flows tested</li>
+          <li>Compliance sign-off</li>
+          <li>Performance baseline</li>
+          <li>Go-live</li>
+        </ul>
+      </div>
+      <div class="phase-box">
+        <div class="phase-num">Phase 5</div>
+        <div class="phase-name">Operate</div>
+        <div class="phase-dur">Weeks 14–16</div>
+        <ul>
+          <li>Hypercare support</li>
+          <li>Admin team trained</li>
+          <li>Runbook handed over</li>
+          <li>Roadmap scoped</li>
+          <li>Optional managed svc</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="two-col" style="margin-top:20px;">
+      <div class="col-box">
+        <h4>Team Structure <span style="font-weight:500;font-size:11px;color:#94a3b8;text-transform:none;letter-spacing:0;">(indicative — varies by engagement)</span></h4>
+        <ul>
+          <li><strong>Engagement Lead</strong> — overall delivery, customer relationship</li>
+          <li><strong>Solution Architect</strong> — AWS architecture, AgentCore, IaC</li>
+          <li><strong>AI Engineer × 2</strong> — agent development, LangGraph, integrations</li>
+          <li><strong>Healthcare Payer SME</strong> — claims, care management, utilization workflows (part-time)</li>
+        </ul>
+        <p style="font-size:11px;color:#94a3b8;margin-top:8px;margin-bottom:0;">Pricing to be determined. T&amp;M or fixed-fee options available depending on scope clarity at project start.</p>
+      </div>
+      <div class="col-box">
+        <h4>Deliverables</h4>
+        <ul>
+          <li>Deployed accelerator in customer AWS account</li>
+          <li>2–3 production agents (use cases agreed in Phase 1)</li>
+          <li>Full IaC — Terraform and CDK for all infrastructure</li>
+          <li>Agent Factory UI — configured and handed over</li>
+          <li>HIPAA compliance documentation package</li>
+          <li>Knowledge transfer and internal build guide</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3>Security &amp; Compliance Evidence Comes Bundled</h3>
+    <p>One of the most common customer objections to adopting outside code — especially in healthcare — is <em>"we do not trust code we did not write."</em> The accelerator answers this objection directly by shipping with a complete security and compliance evidence package, produced during the build of each release.</p>
+
+    <div class="two-col">
+      <div class="col-box">
+        <h4>Scans &amp; Tests Run by Practice on Every Release</h4>
+        <ul>
+          <li><strong>SAST / DAST / SCA</strong> — static, dynamic, and dependency analysis automated in CI for every <code>v1.x</code> release</li>
+          <li><strong>SBOM</strong> — full software bill of materials generated per release; dependencies vulnerability-scanned against CVE feeds</li>
+          <li><strong>Container image scans</strong> — Trivy or equivalent run on every image before tag</li>
+          <li><strong>Secrets &amp; credential scans</strong> — pre-commit hooks plus repo-wide scans on every PR</li>
+          <li><strong>Internal penetration test</strong> — performed against each major release; findings remediated before release is tagged</li>
+        </ul>
+      </div>
+      <div class="col-box">
+        <h4>Documentation Bundled With the Release</h4>
+        <ul>
+          <li><strong>HIPAA controls matrix</strong> — every control, how the accelerator implements it, where it is enforced in code</li>
+          <li><strong>Architecture security review</strong> — threat model, data flow diagrams, encryption, auth, and audit documentation</li>
+          <li><strong>Scan reports</strong> — signed, version-tagged, tied to the exact code being deployed</li>
+          <li><strong>BAA-eligibility evidence</strong> — every AWS service used is HIPAA-eligible under BAA</li>
+          <li><strong>Pen-test report with remediation trail</strong></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="highlight">
+      <strong>What this changes for the engagement:</strong> the customer's InfoSec team receives the full evidence package at kickoff. Their review validates work already completed rather than uncovering issues from scratch. If they require their own penetration test on top (many payers do), they start from a known-clean baseline. Approval cycles typically compress from weeks or months to days.
+    </div>
+
+    <h3>How the Engagement Team Works in the Repo</h3>
+    <p>The delivery team does not start from a blank repo. At kickoff, the Platform Team creates an <strong>engagement repo</strong> — a fork of the master accelerator repo, dedicated to this customer. All assigned developers clone this single shared repo and work in it together for the duration of the engagement.</p>
+    <ul>
+      <li>Engagement repo is access-controlled — only the assigned team has visibility</li>
+      <li>Forking to personal namespaces is disabled; all work happens on branches of the shared repo</li>
+      <li><code>main</code> is branch-protected; changes go through pull requests with required reviews</li>
+      <li>Infra changes in the <code>iac/</code> folder get their own reviewer requirements via CODEOWNERS</li>
+      <li>When the practice ships a new accelerator release (<code>v1.1</code>, <code>v1.2</code>, …), the engagement architect can pull upstream improvements at a sprint boundary</li>
+    </ul>
+    <p style="margin-top:4px;color:#64748b;font-size:12px;"><em>For the full repo governance model — including how the master accelerator repo is maintained and how individual developers access it for exploration — see the Accelerator Technical Design companion document.</em></p>
+
+    <h3>Pattern Handoff at Engagement End</h3>
+    <p>At the end of the engagement, the customer receives more than code. They inherit the <strong>entire Git governance model</strong> — the repo structure, branch protection rules, CI/CD templates, CODEOWNERS, exploration sandbox pattern, and the update path for pulling future releases of the accelerator. The customer leaves the engagement with a running agent platform <em>and</em> a way to operate it sustainably.</p>
+
+    <div class="two-col">
+      <div class="col-box">
+        <h4>What the Customer Inherits</h4>
+        <ul>
+          <li><strong>Master copy of the engagement repo</strong> in their own Git organization — their versioned gold copy</li>
+          <li><strong>Branch protection and PR workflow</strong> already configured for their own change governance</li>
+          <li><strong>Exploration sandbox pattern</strong> — their developers can POC new agents safely, off the master</li>
+          <li><strong>Upgrade path</strong> — they can pull future releases of the accelerator on their own cadence</li>
+          <li><strong>CI/CD templates</strong> they own and can extend for their pipelines</li>
+        </ul>
+      </div>
+      <div class="col-box">
+        <h4>Why the Handoff Model Matters</h4>
+        <ul>
+          <li>The customer is not left with a black-box deployment — they know how to operate it</li>
+          <li>Creates a natural <strong>continuing relationship</strong> — they pull our accelerator upgrades as we release them</li>
+          <li>Reduces the customer objection of "what happens after you leave?"</li>
+          <li>Turns accelerator release cadence into a recurring customer touchpoint</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <div class="conf">Internal — Sales &amp; Solutions Enablement · AWS Practice</div>
+    <div class="conf">Intelligent Agent Accelerator for Healthcare · Customer Delivery Playbook · v1.0</div>
+  </div>
+
+</div>
+</body>
+</html>

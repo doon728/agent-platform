@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Platform — Architecture Planes</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#e8eaf0;color:#0f172a;}
+.cover{background:linear-gradient(135deg,#0f1f45 0%,#1a237e 55%,#3730a3 100%);color:white;padding:44px 60px 36px;}
+.cover-tag{font-size:13px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:rgba(255,255,255,0.45);margin-bottom:10px;}
+.cover h1{font-size:34px;font-weight:800;letter-spacing:-0.5px;margin-bottom:10px;}
+.cover-sub{font-size:15px;color:rgba(255,255,255,0.72);line-height:1.75;max-width:1100px;}
+.cover-pills{display:flex;gap:8px;flex-wrap:wrap;margin-top:20px;}
+.pill{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.22);color:rgba(255,255,255,0.88);padding:5px 16px;border-radius:20px;font-size:12px;font-weight:600;}
+.wrap{max-width:2300px;margin:0 auto;padding:36px 32px;}
+.card{background:white;border-radius:16px;padding:28px;box-shadow:0 4px 28px rgba(0,0,0,0.08);overflow-x:auto;}
+svg{min-width:2100px;display:block;}
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div class="cover-tag">Enterprise AI Agent Platform</div>
+  <h1>Architecture Planes — Logical View</h1>
+  <div class="cover-sub">Five logical planes: <strong>Control · Execution · Tool · Memory/Knowledge · Model.</strong> Three explicit boundaries shown: <strong>Config Resolution</strong> (authoring → runtime → execution), <strong>Policy Enforcement Point</strong> (tool + memory gate), and <strong>Observability &amp; Eval</strong> as a named cross-cutting layer — not generic logging. Deployment topology (Two-VPC / Single-VPC / On-Prem) is separate from this logical view.</div>
+  <div class="cover-pills">
+    <span class="pill">Control Plane</span>
+    <span class="pill">Execution Plane</span>
+    <span class="pill">Tool Plane</span>
+    <span class="pill">Memory / Knowledge Plane</span>
+    <span class="pill">Model Plane</span>
+    <span class="pill">Policy Enforcement Point</span>
+    <span class="pill">Config Resolution Boundary</span>
+    <span class="pill">Observability &amp; Eval</span>
+  </div>
+</div>
+
+<div class="wrap">
+<div class="card">
+<svg viewBox="0 0 2140 1380" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI',system-ui,sans-serif">
+
+<defs>
+  <marker id="ar"        markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#94a3b8"/></marker>
+  <marker id="ar-blue"   markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#2563eb"/></marker>
+  <marker id="ar-green"  markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#16a34a"/></marker>
+  <marker id="ar-amber"  markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#d97706"/></marker>
+  <marker id="ar-purple" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#7c3aed"/></marker>
+  <marker id="ar-red"    markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#dc2626"/></marker>
+  <marker id="ar-dark"   markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#334155"/></marker>
+  <filter id="sh"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#00000012"/></filter>
+  <filter id="sh2"><feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="#0000001a"/></filter>
+</defs>
+
+
+<!-- ══════════════════════════════════════════════════════
+     LEFT PLANE LABEL STRIP  (x 0–150)
+══════════════════════════════════════════════════════ -->
+
+<rect x="0" y="40"   width="150" height="218" fill="#ede9fe" opacity=".55"/>
+<text x="75" y="157" text-anchor="middle" font-size="16" font-weight="800" fill="#6d28d9"
+      transform="rotate(-90,75,157)" letter-spacing="2.5">CONTROL PLANE</text>
+
+<rect x="0" y="316"  width="150" height="258" fill="#dbeafe" opacity=".55"/>
+<text x="75" y="447" text-anchor="middle" font-size="16" font-weight="800" fill="#1d4ed8"
+      transform="rotate(-90,75,447)" letter-spacing="2.5">EXECUTION PLANE</text>
+
+<rect x="0" y="632"  width="150" height="218" fill="#dcfce7" opacity=".55"/>
+<text x="75" y="749" text-anchor="middle" font-size="16" font-weight="800" fill="#15803d"
+      transform="rotate(-90,75,749)" letter-spacing="2.5">TOOL PLANE</text>
+
+<rect x="0" y="908"  width="150" height="218" fill="#fef3c7" opacity=".55"/>
+<text x="75" y="1025" text-anchor="middle" font-size="16" font-weight="800" fill="#b45309"
+      transform="rotate(-90,75,1025)" letter-spacing="2.5">MEMORY / KNOWLEDGE</text>
+
+<rect x="0" y="1184" width="150" height="156" fill="#dbeafe" opacity=".45"/>
+<text x="75" y="1269" text-anchor="middle" font-size="16" font-weight="800" fill="#1e40af"
+      transform="rotate(-90,75,1269)" letter-spacing="2.5">MODEL PLANE</text>
+
+
+<!-- ══════════════════════════════════════════════════════
+     PLANE 1 — CONTROL PLANE
+══════════════════════════════════════════════════════ -->
+<rect x="158" y="40" width="1560" height="218" rx="14" fill="#faf5ff" stroke="#c4b5fd" stroke-width="2"/>
+
+<!-- Agent Factory UI -->
+<g filter="url(#sh)">
+  <rect x="178" y="58" width="340" height="180" rx="10" fill="white" stroke="#7c3aed" stroke-width="2"/>
+  <rect x="178" y="58" width="340" height="40" rx="10" fill="#ede9fe"/>
+  <rect x="178" y="88"  width="340" height="10" fill="#ede9fe"/>
+  <text x="348" y="84"  text-anchor="middle" font-size="19" font-weight="700" fill="#6d28d9">Agent Factory UI</text>
+  <text x="196" y="116" font-size="15" fill="#475569">▸  Create / configure agents</text>
+  <text x="196" y="136" font-size="15" fill="#475569">▸  Agent Registry · config tabs</text>
+  <text x="196" y="156" font-size="15" fill="#475569">▸  Prompt Governance</text>
+  <text x="196" y="176" font-size="15" fill="#475569">▸  Observability dashboard</text>
+  <rect x="228" y="222" width="240" height="12" rx="3" fill="#ede9fe"/>
+  <text x="348" y="231" text-anchor="middle" font-size="13" font-weight="700" fill="#6d28d9">Design time · authoring</text>
+</g>
+
+<!-- Support API -->
+<g filter="url(#sh)">
+  <rect x="538" y="58" width="300" height="180" rx="10" fill="white" stroke="#7c3aed" stroke-width="2"/>
+  <rect x="538" y="58" width="300" height="40" rx="10" fill="#ede9fe"/>
+  <rect x="538" y="88"  width="300" height="10" fill="#ede9fe"/>
+  <text x="688" y="84"  text-anchor="middle" font-size="19" font-weight="700" fill="#6d28d9">Support API</text>
+  <text x="556" y="116" font-size="15" fill="#475569">▸  Registry R/W</text>
+  <text x="556" y="136" font-size="15" fill="#475569">▸  Config-lab file R/W</text>
+  <text x="556" y="156" font-size="15" fill="#475569">▸  Agent scaffold</text>
+  <text x="556" y="176" font-size="15" fill="#475569">▸  YAML validate</text>
+  <rect x="588" y="222" width="200" height="12" rx="3" fill="#ede9fe"/>
+  <text x="688" y="231" text-anchor="middle" font-size="13" font-weight="700" fill="#6d28d9">Config store</text>
+</g>
+
+<!-- Prompt Governance -->
+<g filter="url(#sh)">
+  <rect x="858" y="58" width="320" height="180" rx="10" fill="white" stroke="#7c3aed" stroke-width="2"/>
+  <rect x="858" y="58" width="320" height="40" rx="10" fill="#ede9fe"/>
+  <rect x="858" y="88"  width="320" height="10" fill="#ede9fe"/>
+  <text x="1018" y="84" text-anchor="middle" font-size="19" font-weight="700" fill="#6d28d9">Prompt Governance</text>
+  <text x="876" y="116" font-size="15" fill="#475569">▸  Prompt seeds per overlay</text>
+  <text x="876" y="136" font-size="15" fill="#475569">▸  Version history</text>
+  <text x="876" y="156" font-size="15" fill="#475569">▸  Eval-driven iteration</text>
+  <text x="876" y="176" font-size="15" fill="#475569">▸  A/B compare (roadmap)</text>
+  <rect x="908" y="222" width="220" height="12" rx="3" fill="#ede9fe"/>
+  <text x="1018" y="231" text-anchor="middle" font-size="13" font-weight="700" fill="#6d28d9">Prompt authoring</text>
+</g>
+
+<!-- Tool Admin UI -->
+<g filter="url(#sh)">
+  <rect x="1198" y="58" width="300" height="180" rx="10" fill="white" stroke="#16a34a" stroke-width="2"/>
+  <rect x="1198" y="58" width="300" height="40" rx="10" fill="#dcfce7"/>
+  <rect x="1198" y="88"  width="300" height="10" fill="#dcfce7"/>
+  <text x="1348" y="84" text-anchor="middle" font-size="19" font-weight="700" fill="#15803d">Tool Admin UI</text>
+  <text x="1216" y="116" font-size="15" fill="#475569">▸  Tool spec management</text>
+  <text x="1216" y="136" font-size="15" fill="#475569">▸  Enable / disable tools</text>
+  <text x="1216" y="156" font-size="15" fill="#475569">▸  KB document upload</text>
+  <text x="1216" y="176" font-size="15" fill="#475569">▸  Synth data editor</text>
+  <rect x="1248" y="222" width="200" height="12" rx="3" fill="#dcfce7"/>
+  <text x="1348" y="231" text-anchor="middle" font-size="13" font-weight="700" fill="#15803d">Tool authoring</text>
+</g>
+
+<!-- AgentCore TG (optional) -->
+<g filter="url(#sh)">
+  <rect x="1518" y="58" width="180" height="180" rx="10" fill="white" stroke="#9333ea" stroke-width="1.5" stroke-dasharray="7,4"/>
+  <rect x="1518" y="58" width="180" height="40" rx="10" fill="#fdf4ff"/>
+  <rect x="1518" y="88"  width="180" height="10" fill="#fdf4ff"/>
+  <text x="1608" y="84"  text-anchor="middle" font-size="16" font-weight="700" fill="#9333ea">AgentCore TG</text>
+  <text x="1534" y="116" font-size="14" fill="#475569">▸  AWS managed</text>
+  <text x="1534" y="135" font-size="14" fill="#475569">▸  Auth · sandbox</text>
+  <text x="1534" y="154" font-size="14" fill="#475569">▸  Rate limiting</text>
+  <text x="1534" y="173" font-size="14" fill="#475569">▸  Connects to MCP</text>
+  <rect x="1548" y="222" width="120" height="12" rx="3" fill="#fdf4ff"/>
+  <text x="1608" y="231" text-anchor="middle" font-size="12" font-weight="700" fill="#9333ea">OPTIONAL</text>
+</g>
+
+
+<!-- ══════════════════════════════════════════════════════
+     CONFIG RESOLUTION BOUNDARY
+══════════════════════════════════════════════════════ -->
+<rect x="158" y="266" width="1560" height="44" rx="8" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="10,5"/>
+<rect x="178" y="273" width="248" height="22" rx="5" fill="#475569"/>
+<text x="302" y="288" text-anchor="middle" font-size="14" font-weight="800" fill="white" letter-spacing="1.5">CONFIG RESOLUTION BOUNDARY</text>
+<text x="960" y="294" text-anchor="middle" font-size="14" fill="#475569">
+  <tspan font-weight="700">1. Authoring</tspan>  agent.yaml · prompts · policies written at design time
+  <tspan dx="30" font-weight="700">→</tspan>
+  <tspan font-weight="700">  2. Runtime resolve</tspan>  usecase_config_loader hydrates context per request
+  <tspan dx="30" font-weight="700">→</tspan>
+  <tspan font-weight="700">  3. Execution</tspan>  injected into LangGraph
+</text>
+
+
+<!-- ══════════════════════════════════════════════════════
+     PLANE 2 — EXECUTION PLANE
+══════════════════════════════════════════════════════ -->
+<rect x="158" y="316" width="1560" height="258" rx="14" fill="#eff6ff" stroke="#93c5fd" stroke-width="2"/>
+
+<!-- C1 Agent Runtime -->
+<g filter="url(#sh2)">
+  <rect x="178" y="334" width="480" height="218" rx="12" fill="white" stroke="#ea580c" stroke-width="2.5"/>
+  <rect x="178" y="334" width="480" height="44" rx="12" fill="#fff7ed"/>
+  <rect x="178" y="368" width="480" height="10" fill="#fff7ed"/>
+  <text x="418" y="363" text-anchor="middle" font-size="20" font-weight="700" fill="#ea580c">C1 — Agent Runtime</text>
+  <text x="418" y="379" text-anchor="middle" font-size="14" fill="#f97316" font-weight="600">per-agent · per-customer environment</text>
+  <text x="196" y="405" font-size="15" fill="#334155">▸  /chat · /invocations  (entry points)</text>
+  <text x="196" y="425" font-size="15" fill="#334155">▸  LangGraph runner  (pre / in / post graph)</text>
+  <text x="196" y="445" font-size="15" fill="#334155">▸  Context hydration · scope resolution</text>
+  <text x="196" y="465" font-size="15" fill="#334155">▸  HITL approval state machine</text>
+  <text x="196" y="485" font-size="15" fill="#334155">▸  Delegates all reasoning → C2  (thin shell)</text>
+  <rect x="278" y="532" width="280" height="14" rx="4" fill="#fff7ed"/>
+  <text x="418" y="542" text-anchor="middle" font-size="13" font-weight="700" fill="#ea580c">Customer environment</text>
+</g>
+
+<!-- Arrow C1 → C2 -->
+<line x1="658" y1="443" x2="718" y2="443" stroke="#2563eb" stroke-width="3.5" marker-end="url(#ar-blue)"/>
+<rect x="660" y="425" width="54" height="16" rx="4" fill="#2563eb"/>
+<text x="687" y="437" text-anchor="middle" font-size="13" font-weight="800" fill="white">HTTPS</text>
+
+<!-- C2 Reasoning Engine -->
+<g filter="url(#sh2)">
+  <rect x="720" y="334" width="980" height="218" rx="12" fill="white" stroke="#2563eb" stroke-width="2.5"/>
+  <rect x="720" y="334" width="980" height="44" rx="12" fill="#eff6ff"/>
+  <rect x="720" y="368" width="980" height="10" fill="#eff6ff"/>
+  <text x="1210" y="363" text-anchor="middle" font-size="20" font-weight="700" fill="#2563eb">C2 — Reasoning Engine</text>
+  <text x="1210" y="379" text-anchor="middle" font-size="14" fill="#3b82f6" font-weight="600">LangGraph · Planner → Executor → Responder · shared · provider environment</text>
+
+  <!-- Pre-graph sub-box -->
+  <rect x="740" y="392" width="260" height="96" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
+  <text x="870" y="412" text-anchor="middle" font-size="16" font-weight="700" fill="#334155">Pre-Graph</text>
+  <text x="758" y="432" font-size="13" fill="#475569">▸  Config resolve</text>
+  <text x="758" y="450" font-size="13" fill="#475569">▸  Memory read</text>
+  <text x="758" y="468" font-size="13" fill="#475569">▸  RAG inject · context hydrate</text>
+  <line x1="1000" y1="440" x2="1018" y2="440" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#ar)"/>
+
+  <!-- In-graph sub-box -->
+  <rect x="1020" y="392" width="340" height="96" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
+  <text x="1190" y="412" text-anchor="middle" font-size="16" font-weight="700" fill="#334155">In-Graph</text>
+  <text x="1038" y="432" font-size="13" fill="#475569">▸  Planner → Executor → Responder</text>
+  <text x="1038" y="450" font-size="13" fill="#475569">▸  Reasoning strategy execution</text>
+  <text x="1038" y="468" font-size="13" fill="#475569">▸  Tool calls → MCP → C3</text>
+  <text x="1038" y="484" font-size="13" fill="#475569">▸  HITL signal → C1</text>
+  <line x1="1360" y1="440" x2="1378" y2="440" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#ar)"/>
+
+  <!-- Post-graph sub-box -->
+  <rect x="1380" y="392" width="298" height="96" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
+  <text x="1529" y="412" text-anchor="middle" font-size="16" font-weight="700" fill="#334155">Post-Graph</text>
+  <text x="1398" y="432" font-size="13" fill="#475569">▸  Memory write</text>
+  <text x="1398" y="450" font-size="13" fill="#475569">▸  Summary trigger</text>
+  <text x="1398" y="468" font-size="13" fill="#475569">▸  Trace emit</text>
+  <text x="1398" y="484" font-size="13" fill="#475569">▸  Eval score (async)</text>
+
+  <rect x="1060" y="532" width="300" height="14" rx="4" fill="#eff6ff"/>
+  <text x="1210" y="542" text-anchor="middle" font-size="13" font-weight="700" fill="#2563eb">Provider environment</text>
+</g>
+
+
+<!-- ══════════════════════════════════════════════════════
+     POLICY ENFORCEMENT BOUNDARY
+══════════════════════════════════════════════════════ -->
+<rect x="158" y="580" width="1560" height="48" rx="8" fill="#fff1f2" stroke="#fca5a5" stroke-width="2" stroke-dasharray="10,5"/>
+<rect x="178" y="587" width="240" height="24" rx="5" fill="#dc2626"/>
+<text x="298" y="603" text-anchor="middle" font-size="14" font-weight="800" fill="white" letter-spacing="1">POLICY ENFORCEMENT POINT</text>
+<text x="960" y="598" text-anchor="middle" font-size="14" fill="#991b1b" font-weight="700">Tool allow / deny  ·  HITL approval gate  ·  Read / write scope controls  ·  PHI masking / data constraints</text>
+<text x="960" y="617" text-anchor="middle" font-size="13" fill="#b91c1c">All tool invocations and memory writes pass through here — enforced in C2 before routing to Tool Plane or Memory Plane</text>
+
+
+<!-- ══════════════════════════════════════════════════════
+     PLANE 3 — TOOL PLANE
+══════════════════════════════════════════════════════ -->
+<rect x="158" y="632" width="1560" height="218" rx="14" fill="#f0fdf4" stroke="#86efac" stroke-width="2"/>
+
+<!-- C3 Tool Gateway -->
+<g filter="url(#sh2)">
+  <rect x="178" y="650" width="560" height="178" rx="12" fill="white" stroke="#16a34a" stroke-width="2.5"/>
+  <rect x="178" y="650" width="560" height="44" rx="12" fill="#dcfce7"/>
+  <rect x="178" y="684" width="560" height="10" fill="#dcfce7"/>
+  <text x="458" y="679" text-anchor="middle" font-size="20" font-weight="700" fill="#15803d">C3 — Tool Gateway</text>
+  <text x="458" y="695" text-anchor="middle" font-size="14" fill="#22c55e" font-weight="600">Canonical tool-serving layer  ·  HTTP-native  ·  Provider environment</text>
+  <text x="196" y="722" font-size="15" fill="#334155">▸  Tool registry + OpenAPI specs</text>
+  <text x="196" y="742" font-size="15" fill="#334155">▸  /tools/invoke — executes tool, calls customer APIs over HTTPS</text>
+  <text x="196" y="762" font-size="15" fill="#334155">▸  Tool bucket tag filtering  ·  result schema validation</text>
+  <text x="196" y="782" font-size="15" fill="#334155">▸  Synth data store for dev / test</text>
+  <rect x="288" y="812" width="340" height="12" rx="4" fill="#dcfce7"/>
+  <text x="458" y="821" text-anchor="middle" font-size="13" font-weight="700" fill="#15803d">Shared · per-industry</text>
+</g>
+
+<!-- MCP Adapter -->
+<g filter="url(#sh)">
+  <rect x="758" y="650" width="300" height="178" rx="12" fill="white" stroke="#16a34a" stroke-width="1.5" stroke-dasharray="7,4"/>
+  <rect x="758" y="650" width="300" height="44" rx="12" fill="#f0fdf4"/>
+  <rect x="758" y="684" width="300" height="10" fill="#f0fdf4"/>
+  <text x="908" y="679" text-anchor="middle" font-size="19" font-weight="700" fill="#16a34a">MCP Adapter</text>
+  <text x="908" y="695" text-anchor="middle" font-size="14" fill="#22c55e" font-weight="600">Stateless protocol facade on C3</text>
+  <text x="776" y="722" font-size="15" fill="#334155">▸  Exposes C3 tools via MCP protocol</text>
+  <text x="776" y="742" font-size="15" fill="#334155">▸  SSE / stdio transport</text>
+  <text x="776" y="762" font-size="15" fill="#334155">▸  Zero business logic</text>
+  <text x="776" y="782" font-size="15" fill="#334155">▸  Same tools · different wire format</text>
+  <rect x="808" y="812" width="200" height="12" rx="4" fill="#f0fdf4"/>
+  <text x="908" y="821" text-anchor="middle" font-size="13" font-weight="700" fill="#16a34a">HTTP today · MCP facade</text>
+</g>
+
+<!-- Customer Systems -->
+<g filter="url(#sh)">
+  <rect x="1078" y="650" width="620" height="178" rx="12" fill="white" stroke="#0369a1" stroke-width="2"/>
+  <rect x="1078" y="650" width="620" height="44" rx="12" fill="#e0f2fe"/>
+  <rect x="1078" y="684" width="620" height="10" fill="#e0f2fe"/>
+  <text x="1388" y="679" text-anchor="middle" font-size="19" font-weight="700" fill="#0369a1">Customer Systems  ·  API Layer</text>
+  <text x="1388" y="695" text-anchor="middle" font-size="14" fill="#0284c7" font-weight="600">Customer environment  ·  Data never leaves</text>
+  <text x="1096" y="722" font-size="15" fill="#334155">▸  EHR (Epic · Cerner)  ·  Member DB  ·  Claims DB</text>
+  <text x="1096" y="742" font-size="15" fill="#334155">▸  Clinical Data  ·  Care Plans  ·  Vector DB (RAG)</text>
+  <text x="1096" y="762" font-size="15" fill="#334155">▸  All exposed as secured HTTPS APIs</text>
+  <text x="1096" y="782" font-size="15" fill="#334155">▸  C3 calls over HTTPS only  ·  C2 calls Vector DB for RAG</text>
+  <rect x="1218" y="812" width="340" height="12" rx="4" fill="#e0f2fe"/>
+  <text x="1388" y="821" text-anchor="middle" font-size="13" font-weight="700" fill="#0369a1">C3 → these APIs  (cross-environment HTTPS)</text>
+</g>
+
+
+<!-- ══════════════════════════════════════════════════════
+     PLANE 4 — MEMORY / KNOWLEDGE
+══════════════════════════════════════════════════════ -->
+<rect x="158" y="908" width="1560" height="218" rx="14" fill="#fffbeb" stroke="#fcd34d" stroke-width="2"/>
+
+<!-- Short-Term -->
+<g filter="url(#sh)">
+  <rect x="178" y="926" width="340" height="178" rx="10" fill="white" stroke="#d97706" stroke-width="2"/>
+  <rect x="178" y="926" width="340" height="40" rx="10" fill="#fef3c7"/>
+  <rect x="178" y="956" width="340" height="10" fill="#fef3c7"/>
+  <text x="348" y="951" text-anchor="middle" font-size="19" font-weight="700" fill="#d97706">Short-Term</text>
+  <text x="196" y="980" font-size="15" fill="#475569">▸  Conversation turns  ·  per session</text>
+  <text x="196" y="1000" font-size="15" fill="#475569">▸  Written every turn (post-graph)</text>
+  <text x="196" y="1020" font-size="15" fill="#475569">▸  Read: pre-graph</text>
+  <text x="196" y="1040" font-size="15" fill="#475569">▸  Scoped to thread</text>
+  <rect x="228" y="1088" width="220" height="12" rx="3" fill="#fef3c7"/>
+  <text x="348" y="1097" text-anchor="middle" font-size="13" font-weight="700" fill="#d97706">Redis / in-memory</text>
+</g>
+
+<!-- Episodic -->
+<g filter="url(#sh)">
+  <rect x="538" y="926" width="340" height="178" rx="10" fill="white" stroke="#d97706" stroke-width="2"/>
+  <rect x="538" y="926" width="340" height="40" rx="10" fill="#fef3c7"/>
+  <rect x="538" y="956" width="340" height="10" fill="#fef3c7"/>
+  <text x="708" y="951" text-anchor="middle" font-size="19" font-weight="700" fill="#d97706">Episodic</text>
+  <text x="556" y="980" font-size="15" fill="#475569">▸  Key events · decisions made</text>
+  <text x="556" y="1000" font-size="15" fill="#475569">▸  Case / assessment scope</text>
+  <text x="556" y="1020" font-size="15" fill="#475569">▸  Conditional write (post-graph)</text>
+  <text x="556" y="1040" font-size="15" fill="#475569">▸  Read: pre-graph</text>
+  <rect x="578" y="1088" width="260" height="12" rx="3" fill="#fef3c7"/>
+  <text x="708" y="1097" text-anchor="middle" font-size="13" font-weight="700" fill="#d97706">Postgres / File</text>
+</g>
+
+<!-- Semantic + Summary -->
+<g filter="url(#sh)">
+  <rect x="898" y="926" width="400" height="178" rx="10" fill="white" stroke="#d97706" stroke-width="1.5" stroke-dasharray="7,4"/>
+  <rect x="898" y="926" width="400" height="40" rx="10" fill="#fef3c7"/>
+  <rect x="898" y="956" width="400" height="10" fill="#fef3c7"/>
+  <text x="1098" y="951" text-anchor="middle" font-size="19" font-weight="700" fill="#d97706">Semantic · Summary</text>
+  <text x="916" y="980" font-size="15" fill="#475569">▸  Member-level facts · cross-case patterns</text>
+  <text x="916" y="1000" font-size="15" fill="#475569">▸  Pre-computed scope summaries</text>
+  <text x="916" y="1020" font-size="15" fill="#475569">▸  LLM-extracted · RAG-retrievable</text>
+  <text x="916" y="1040" font-size="15" fill="#475569">▸  Written post-graph (conditional)</text>
+  <rect x="968" y="1088" width="260" height="12" rx="3" fill="#fef3c7"/>
+  <text x="1098" y="1097" text-anchor="middle" font-size="13" font-weight="700" fill="#d97706">pgvector · OPTIONAL</text>
+</g>
+
+<!-- Vector / RAG -->
+<g filter="url(#sh)">
+  <rect x="1318" y="926" width="380" height="178" rx="10" fill="white" stroke="#ea580c" stroke-width="2"/>
+  <rect x="1318" y="926" width="380" height="40" rx="10" fill="#fff7ed"/>
+  <rect x="1318" y="956" width="380" height="10" fill="#fff7ed"/>
+  <text x="1508" y="951" text-anchor="middle" font-size="19" font-weight="700" fill="#ea580c">Vector / RAG</text>
+  <text x="1336" y="980" font-size="15" fill="#475569">▸  3-dimensional RAG engine</text>
+  <text x="1336" y="1000" font-size="15" fill="#475569">▸  Dim 1: method (semantic/hybrid/graph)</text>
+  <text x="1336" y="1020" font-size="15" fill="#475569">▸  Dim 2: injection stage (pre/planner)</text>
+  <text x="1336" y="1040" font-size="15" fill="#475569">▸  Dim 3: pattern (standard / agentic)</text>
+  <rect x="1378" y="1088" width="260" height="12" rx="3" fill="#fff7ed"/>
+  <text x="1508" y="1097" text-anchor="middle" font-size="13" font-weight="700" fill="#ea580c">Customer-managed Vector DB</text>
+</g>
+
+
+<!-- ══════════════════════════════════════════════════════
+     PLANE 5 — MODEL PLANE
+══════════════════════════════════════════════════════ -->
+<rect x="158" y="1184" width="1560" height="156" rx="14" fill="#eff6ff" stroke="#93c5fd" stroke-width="2"/>
+
+<g filter="url(#sh2)">
+  <rect x="178" y="1200" width="1520" height="128" rx="12" fill="white" stroke="#1d4ed8" stroke-width="2.5"/>
+  <rect x="178" y="1200" width="1520" height="44" rx="12" fill="#dbeafe"/>
+  <rect x="178" y="1234" width="1520" height="10" fill="#dbeafe"/>
+  <text x="938" y="1230" text-anchor="middle" font-size="22" font-weight="700" fill="#1d4ed8">LLM API  ·  External  ·  Outbound HTTPS only</text>
+  <text x="360" y="1264" font-size="15" fill="#334155">▸  Planner: tool selection + intent routing</text>
+  <text x="360" y="1286" font-size="15" fill="#334155">▸  Responder: final answer synthesis</text>
+  <text x="820" y="1264" font-size="15" fill="#334155">▸  Summarizer: scope summary generation</text>
+  <text x="820" y="1286" font-size="15" fill="#334155">▸  Semantic extraction (roadmap)</text>
+  <text x="1280" y="1264" font-size="15" fill="#334155">▸  Anthropic Claude  ·  OpenAI</text>
+  <text x="1280" y="1286" font-size="15" fill="#334155">▸  AWS Bedrock (token visibility)</text>
+  <rect x="1418" y="1308" width="260" height="14" rx="4" fill="#dbeafe"/>
+  <text x="1548" y="1318" text-anchor="middle" font-size="13" font-weight="700" fill="#1d4ed8">EXTERNAL · HTTPS 443</text>
+</g>
+
+
+<!-- ══════════════════════════════════════════════════════
+     RIGHT COLUMN — CROSS-CUTTING CONCERNS
+══════════════════════════════════════════════════════ -->
+<rect x="1742" y="40" width="382" height="1300" rx="14" fill="#f8fafc" stroke="#e2e8f0" stroke-width="2"/>
+<rect x="1762" y="52" width="342" height="28" rx="6" fill="#0f172a"/>
+<text x="1933" y="71" text-anchor="middle" font-size="15" font-weight="800" fill="white" letter-spacing="1">CROSS-CUTTING CONCERNS</text>
+
+<!-- Observability & Eval -->
+<rect x="1762" y="92" width="342" height="330" rx="10" fill="white" stroke="#0ea5e9" stroke-width="2"/>
+<rect x="1762" y="92" width="342" height="40" rx="10" fill="#e0f2fe"/>
+<rect x="1762" y="122" width="342" height="10" fill="#e0f2fe"/>
+<text x="1933" y="118" text-anchor="middle" font-size="18" font-weight="700" fill="#0284c7">Observability &amp; Eval</text>
+<text x="1933" y="140" text-anchor="middle" font-size="13" fill="#0369a1" font-style="italic">Not generic logging — differentiated capability</text>
+<text x="1778" y="164" font-size="14" fill="#334155" font-weight="700">Trace Layer</text>
+<text x="1778" y="182" font-size="13" fill="#475569">▸  pre / in / post graph trace events</text>
+<text x="1778" y="199" font-size="13" fill="#475569">▸  Per-overlay payload content</text>
+<text x="1778" y="216" font-size="13" fill="#475569">▸  Lineage reads /api/traces  (no DB)</text>
+<text x="1778" y="242" font-size="14" fill="#334155" font-weight="700">Metrics Layer</text>
+<text x="1778" y="260" font-size="13" fill="#475569">▸  Per-overlay eval metrics</text>
+<text x="1778" y="277" font-size="13" fill="#475569">▸  Strategy-level scoring</text>
+<text x="1778" y="294" font-size="13" fill="#475569">▸  SQLite append-only (time-series)</text>
+<text x="1778" y="320" font-size="14" fill="#334155" font-weight="700">Analytics UI  (roadmap)</text>
+<text x="1778" y="338" font-size="13" fill="#475569">▸  Lineage graph · metrics dashboard</text>
+<text x="1778" y="355" font-size="13" fill="#475569">▸  Prompt eval · A/B compare</text>
+<text x="1778" y="372" font-size="13" fill="#475569">▸  Spans all planes — not one service</text>
+<rect x="1822" y="406" width="222" height="12" rx="3" fill="#e0f2fe"/>
+<text x="1933" y="415" text-anchor="middle" font-size="13" font-weight="700" fill="#0284c7">Spans Execution + Tool + Memory</text>
+
+<!-- Policy Enforcement -->
+<rect x="1762" y="434" width="342" height="264" rx="10" fill="white" stroke="#dc2626" stroke-width="2"/>
+<rect x="1762" y="434" width="342" height="40" rx="10" fill="#fee2e2"/>
+<rect x="1762" y="464" width="342" height="10" fill="#fee2e2"/>
+<text x="1933" y="460" text-anchor="middle" font-size="18" font-weight="700" fill="#dc2626">Policy Enforcement</text>
+<text x="1778" y="490" font-size="14" fill="#334155" font-weight="700">Tool Gate  (bindings.py)</text>
+<text x="1778" y="508" font-size="13" fill="#475569">▸  Allow / deny per agent + usecase</text>
+<text x="1778" y="525" font-size="13" fill="#475569">▸  Bucket tag filtering</text>
+<text x="1778" y="550" font-size="14" fill="#334155" font-weight="700">Approval Gate  (HITL)</text>
+<text x="1778" y="568" font-size="13" fill="#475569">▸  Pre-action approval required</text>
+<text x="1778" y="585" font-size="13" fill="#475569">▸  Suspend / resume workflow</text>
+<text x="1778" y="610" font-size="14" fill="#334155" font-weight="700">Data Controls  (scope_resolver)</text>
+<text x="1778" y="628" font-size="13" fill="#475569">▸  Read / write scope enforcement</text>
+<text x="1778" y="645" font-size="13" fill="#475569">▸  PHI masking (roadmap)</text>
+<text x="1778" y="662" font-size="13" fill="#475569">▸  Guardrails (roadmap — pluggable)</text>
+<rect x="1822" y="682" width="222" height="12" rx="3" fill="#fee2e2"/>
+<text x="1933" y="691" text-anchor="middle" font-size="13" font-weight="700" fill="#dc2626">Enforced in C2 before C3 / Memory</text>
+
+<!-- Config Resolution -->
+<rect x="1762" y="710" width="342" height="254" rx="10" fill="white" stroke="#475569" stroke-width="2"/>
+<rect x="1762" y="710" width="342" height="40" rx="10" fill="#f1f5f9"/>
+<rect x="1762" y="740" width="342" height="10" fill="#f1f5f9"/>
+<text x="1933" y="736" text-anchor="middle" font-size="18" font-weight="700" fill="#334155">Config Resolution</text>
+<text x="1778" y="764" font-size="14" fill="#334155" font-weight="700">1. Authoring  (design time)</text>
+<text x="1778" y="782" font-size="13" fill="#475569">▸  agent.yaml · prompt-defaults.yaml</text>
+<text x="1778" y="799" font-size="13" fill="#475569">▸  policy config · tool bindings</text>
+<text x="1778" y="823" font-size="14" fill="#334155" font-weight="700">2. Runtime Resolve  (per request)</text>
+<text x="1778" y="841" font-size="13" fill="#475569">▸  usecase_config_loader hydrates</text>
+<text x="1778" y="858" font-size="13" fill="#475569">▸  Memory scope + tool bindings set</text>
+<text x="1778" y="882" font-size="14" fill="#334155" font-weight="700">3. Execution Context</text>
+<text x="1778" y="900" font-size="13" fill="#475569">▸  Hydrated context injected to graph</text>
+<text x="1778" y="917" font-size="13" fill="#475569">▸  Immutable for graph lifetime</text>
+<rect x="1822" y="950" width="222" height="12" rx="3" fill="#f1f5f9"/>
+<text x="1933" y="959" text-anchor="middle" font-size="13" font-weight="700" fill="#334155">C2 · per request · not per turn</text>
+
+<!-- Tool / MCP canonical statement -->
+<rect x="1762" y="974" width="342" height="116" rx="10" fill="white" stroke="#16a34a" stroke-width="2"/>
+<rect x="1762" y="974" width="342" height="40" rx="10" fill="#dcfce7"/>
+<rect x="1762" y="1004" width="342" height="10" fill="#dcfce7"/>
+<text x="1933" y="1000" text-anchor="middle" font-size="18" font-weight="700" fill="#15803d">Tool / MCP Boundary</text>
+<text x="1778" y="1028" font-size="14" fill="#334155">C3 is the canonical tool layer.</text>
+<text x="1778" y="1048" font-size="14" fill="#334155">HTTP-native today.</text>
+<text x="1778" y="1068" font-size="14" fill="#334155">MCP = stateless protocol adapter on C3.</text>
+<text x="1778" y="1082" font-size="13" fill="#64748b" font-style="italic">Same tools. Different wire protocol.</text>
+
+
+<!-- ══════════════════════════════════════════════════════
+     DEPLOYMENT NOTE
+══════════════════════════════════════════════════════ -->
+<rect x="158" y="1354" width="1560" height="14" rx="6" fill="#fef9c3" stroke="#fde047" stroke-width="1.5"/>
+<text x="938" y="1364" text-anchor="middle" font-size="13" fill="#713f12" font-weight="600">Deployment topology is separate from this logical view  ·  Options: Two-VPC (default) · Single VPC · On-Prem · Cloud-agnostic  ·  C1 → customer env · C2/C3/Memory → provider env</text>
+
+
+<!-- ══════════════════════════════════════════════════════
+     VERTICAL FLOW ARROWS  (left spine, between planes)
+══════════════════════════════════════════════════════ -->
+<!-- Control → (Config Resolution) → Execution -->
+<line x1="88" y1="258" x2="88" y2="266" stroke="#7c3aed" stroke-width="2.5"/>
+<line x1="88" y1="310" x2="88" y2="316" stroke="#7c3aed" stroke-width="2.5" marker-end="url(#ar-purple)"/>
+<text x="92" y="296" font-size="12" fill="#7c3aed" font-weight="600">config</text>
+
+<!-- Execution → (Policy) → Tool -->
+<line x1="88" y1="574" x2="88" y2="580" stroke="#2563eb" stroke-width="2.5"/>
+<line x1="88" y1="628" x2="88" y2="632" stroke="#2563eb" stroke-width="2.5" marker-end="url(#ar-blue)"/>
+<text x="92" y="615" font-size="12" fill="#2563eb" font-weight="600">tool call</text>
+
+<!-- Execution → Memory (read/write) -->
+<line x1="112" y1="574" x2="112" y2="908" stroke="#d97706" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#ar-amber)"/>
+<text x="116" y="748" font-size="12" fill="#d97706" font-weight="600">memory</text>
+<text x="116" y="762" font-size="12" fill="#d97706" font-weight="600">r/w</text>
+
+<!-- Tool → Memory (RAG) -->
+<line x1="88" y1="850" x2="88" y2="908" stroke="#ea580c" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#ar)"/>
+<text x="92" y="884" font-size="12" fill="#ea580c" font-weight="600">RAG</text>
+
+<!-- Execution → Model -->
+<line x1="136" y1="574" x2="136" y2="1184" stroke="#1d4ed8" stroke-width="2" stroke-dasharray="8,4" marker-end="url(#ar-blue)"/>
+<text x="118" y="888" font-size="12" fill="#1d4ed8" font-weight="600" transform="rotate(-90,118,888)">LLM calls</text>
+
+</svg>
+</div>
+</div>
+</body>
+</html>

@@ -5,3 +5,5 @@ generated-repos/
 node_modules/
 dist/
 .env
+**/*.egg-info/
+*.bak

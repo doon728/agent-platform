@@ -1171,6 +1171,7 @@ def workspace_start(
         "resolved_app_port": resolved_app_port,
         "tool_gateway_url": "http://localhost:8080",
         "agent_runtime_url": f"http://localhost:{resolved_runtime_port}",
+        "platform_services_url": "http://localhost:8002",
         "app_ui_url": f"http://localhost:{resolved_app_port}",
     }
     _save_workspace_state(LAST_WORKSPACE_STATE)
@@ -1192,6 +1193,7 @@ def workspace_start(
         "urls": {
             "tool_gateway_url": "http://localhost:8080",
             "agent_runtime_url": f"http://localhost:{resolved_runtime_port}",
+            "platform_services_url": "http://localhost:8002",
             "app_ui_url": f"http://localhost:{resolved_app_port}",
         },
     }
@@ -1825,6 +1827,74 @@ def filesystem_agents(capability_name: str):
 
 
 # =========================================================
+# CONFIG LAB — read/write overlay YAML files for the test harness
+# ================================================================
+
+_ALLOWED_CONFIG_FILES = {"agent.yaml", "prompt-defaults.yaml", "memory.yaml"}
+
+
+class WriteConfigFileRequest(BaseModel):
+    capability_name: str
+    usecase_name: str
+    agent_type: str
+    filename: str   # agent.yaml | prompt-defaults.yaml | memory.yaml
+    content: str    # raw YAML text
+
+
+@app.get("/config-lab/file")
+def config_lab_read_file(capability_name: str, usecase_name: str, agent_type: str, filename: str):
+    if filename not in _ALLOWED_CONFIG_FILES:
+        raise HTTPException(status_code=400, detail=f"filename must be one of {_ALLOWED_CONFIG_FILES}")
+    agents = list_agents(capability_name, usecase_name)
+    agent_record = next((a for a in agents if a.get("agent_type") == agent_type), None)
+    if not agent_record:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    config_dir = _get_agent_config_dir(capability_name, usecase_name, agent_type, agent_record["agent_repo_name"])
+    filepath = config_dir / filename
+    if not filepath.exists():
+        raise HTTPException(status_code=404, detail=f"{filename} not found at {filepath}")
+    return {"ok": True, "filename": filename, "content": filepath.read_text()}
+
+
+@app.post("/config-lab/file")
+def config_lab_write_file(payload: WriteConfigFileRequest):
+    if payload.filename not in _ALLOWED_CONFIG_FILES:
+        raise HTTPException(status_code=400, detail=f"filename must be one of {_ALLOWED_CONFIG_FILES}")
+    # Validate YAML before writing
+    try:
+        yaml.safe_load(payload.content)
+    except yaml.YAMLError as e:
+        raise HTTPException(status_code=422, detail=f"Invalid YAML: {e}")
+    agents = list_agents(payload.capability_name, payload.usecase_name)
+    agent_record = next((a for a in agents if a.get("agent_type") == payload.agent_type), None)
+    if not agent_record:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    config_dir = _get_agent_config_dir(
+        payload.capability_name, payload.usecase_name,
+        payload.agent_type, agent_record["agent_repo_name"]
+    )
+    filepath = config_dir / payload.filename
+    filepath.write_text(payload.content)
+
+    # Restart platform-services so new config is picked up
+    ws = _load_workspace_state()
+    agent_repo = agent_record.get("agent_repo_name", "")
+    repo_path = resolve_repo_path(agent_repo)
+    restart_msg = "config written"
+    try:
+        subprocess.Popen(
+            [DOCKER_BIN, "compose", "restart", "platform-services"],
+            cwd=str(repo_path),
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        restart_msg = "platform-services restarting"
+    except Exception as e:
+        restart_msg = f"write ok but restart failed: {e}"
+
+    return {"ok": True, "filename": payload.filename, "path": str(filepath), "restart": restart_msg}
+
+
 # AGENT MINI UI — serves the static HTML mini UI for an agent
 # =========================================================
 
@@ -1832,7 +1902,7 @@ def filesystem_agents(capability_name: str):
 def agent_mini_ui(capability_name: str, agent_repo_name: str, agent_type: str):
     """Serve the per-agent mini UI HTML file (chat or summary)."""
     # Map agent_type prefix to UI folder
-    if "summary" in agent_type:
+    if "summar" in agent_type:
         ui_folder = "summary-ui"
     else:
         ui_folder = "chat-ui"

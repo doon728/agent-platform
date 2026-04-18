@@ -1,0 +1,98 @@
+[
+  {
+    "memory_id": "mem_db1dab367c5f",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "test-thread-1",
+    "role": "user",
+    "content": "hello",
+    "metadata": {
+      "agent_type": "chat_agent_simple",
+      "reasoning_strategy": "simple",
+      "turn_id": "run_77fbdd2a",
+      "thread_id": "test-thread-1",
+      "tenant_id": "t1"
+    },
+    "created_at": "2026-04-11T22:24:16.062518+00:00"
+  },
+  {
+    "memory_id": "mem_11acfb3a84cf",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "test-thread-1",
+    "role": "assistant",
+    "content": "Hello! How can I assist you today?",
+    "metadata": {
+      "agent_type": "chat_agent_simple",
+      "reasoning_strategy": "simple",
+      "turn_id": "run_77fbdd2a",
+      "thread_id": "test-thread-1",
+      "tenant_id": "t1"
+    },
+    "created_at": "2026-04-11T22:24:16.062903+00:00"
+  },
+  {
+    "memory_id": "mem_989c6d7ec2cd",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "test-thread-1",
+    "role": "user",
+    "content": "what did I just ask you?",
+    "metadata": {
+      "agent_type": "chat_agent_simple",
+      "reasoning_strategy": "simple",
+      "turn_id": "run_585d419f",
+      "thread_id": "test-thread-1",
+      "tenant_id": "t1"
+    },
+    "created_at": "2026-04-11T22:24:40.129222+00:00"
+  },
+  {
+    "memory_id": "mem_ecad01a7cb75",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "test-thread-1",
+    "role": "assistant",
+    "content": "Hello! How can I assist you today?",
+    "metadata": {
+      "agent_type": "chat_agent_simple",
+      "reasoning_strategy": "simple",
+      "turn_id": "run_585d419f",
+      "thread_id": "test-thread-1",
+      "tenant_id": "t1"
+    },
+    "created_at": "2026-04-11T22:24:40.130208+00:00"
+  },
+  {
+    "memory_id": "mem_576cc191d5a9",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "test-thread-1",
+    "role": "user",
+    "content": "what did I just ask you?",
+    "metadata": {
+      "agent_type": "chat_agent_simple",
+      "reasoning_strategy": "simple",
+      "turn_id": "run_1718222b",
+      "thread_id": "test-thread-1",
+      "tenant_id": "t1"
+    },
+    "created_at": "2026-04-11T22:24:49.389505+00:00"
+  },
+  {
+    "memory_id": "mem_09bec9ee2641",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "test-thread-1",
+    "role": "assistant",
+    "content": "You asked, \"what did I just ask you?\"",
+    "metadata": {
+      "agent_type": "chat_agent_simple",
+      "reasoning_strategy": "simple",
+      "turn_id": "run_1718222b",
+      "thread_id": "test-thread-1",
+      "tenant_id": "t1"
+    },
+    "created_at": "2026-04-11T22:24:49.390008+00:00"
+  }
+]

@@ -1,0 +1,36 @@
+[
+  {
+    "memory_id": "mem_ce7a0508dbe6",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "test-new-123",
+    "role": "user",
+    "content": "summary",
+    "metadata": {
+      "member_id": "m-001715",
+      "agent_type": "chat_agent_simple",
+      "reasoning_strategy": "simple",
+      "turn_id": "900c2dd1-db43-4349-83c0-320c24c8de97",
+      "thread_id": "test-new-123",
+      "tenant_id": "t1"
+    },
+    "created_at": "2026-04-10T13:21:25.801090+00:00"
+  },
+  {
+    "memory_id": "mem_4607c9742839",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "test-new-123",
+    "role": "assistant",
+    "content": "No relevant data was found for the assessment ID m-001715.",
+    "metadata": {
+      "member_id": "m-001715",
+      "agent_type": "chat_agent_simple",
+      "reasoning_strategy": "simple",
+      "turn_id": "900c2dd1-db43-4349-83c0-320c24c8de97",
+      "thread_id": "test-new-123",
+      "tenant_id": "t1"
+    },
+    "created_at": "2026-04-10T13:21:25.802859+00:00"
+  }
+]

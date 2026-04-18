@@ -23,6 +23,7 @@ services:
       - ./state:/app/state
       - ./services/agent-runtime/config:/app/config
       - ./domain.yaml:/app/domain.yaml
+      - ./overlays:/app/overlays
     extra_hosts:
       - "host.docker.internal:host-gateway"
 

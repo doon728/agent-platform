@@ -28,8 +28,18 @@ planner_system_prompt: |
     Examples: "what is the protocol for hypertension", "what are the guidelines for PHQ-9"
 
   get_member / get_member_summary
-    Use when asked specifically about the member's profile or history across all cases,
-    not specific to this assessment.
+    Use when asked about the member's profile, demographics, case count, case list,
+    history, risk score, conditions, or anything member-wide.
+    Also use get_member_summary when the user says "summary" and only a member_id is active
+    (no case_id or assessment_id in context).
+    Examples: "how many cases", "what cases does this member have", "tell me about this member",
+    "what is their risk score", "what conditions do they have", "cases", "member info"
+
+  Summary routing rule — when the user says "summary" (or similar short requests):
+    - assessment_id is active → call get_assessment_summary
+    - case_id is active (no assessment_id) → call get_case_summary
+    - only member_id is active → call get_member_summary
+    Never ask for clarification when a scope ID is already in context — just call the right tool.
 
   General rules:
   - Never invent a member_id or assessment_id.

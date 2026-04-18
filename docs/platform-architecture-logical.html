@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Platform — Architecture Logical View</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#eaeaf0;color:#0f172a;}
+
+.page{max-width:1440px;margin:0 auto;padding:48px 24px 64px;}
+
+.title-block{text-align:center;margin-bottom:36px;}
+.title-block h1{font-size:32px;font-weight:900;letter-spacing:-.5px;margin-bottom:6px;}
+.title-block .sub{font-size:16px;color:#64748b;}
+
+/*
+  OUTER GRID — 4 columns:
+    [runs-on]  [actors]  [main layers]  [right panel]
+     130px      90px        1fr           230px
+
+  Actors col is only populated in execution row (row 3).
+  Sits immediately left of the main execution layer so arrow → C1 is short and clear.
+*/
+.grid{
+  display:grid;
+  grid-template-columns:130px 90px 1fr 230px;
+  grid-template-rows: auto 30px auto 30px auto 30px auto;
+  column-gap:12px;
+  row-gap:0;
+  align-items:stretch;
+}
+
+/* ── Actors column — external, left of execution layer ── */
+.actors-col{
+  grid-column:2;grid-row:3;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:flex-start;
+  padding-top:14px;
+  gap:8px;
+}
+.actor-box{
+  background:white;border-radius:10px;
+  padding:9px 8px;
+  box-shadow:0 2px 6px rgba(0,0,0,.08);
+  text-align:center;width:82px;
+}
+.actor-icon{font-size:20px;margin-bottom:3px;}
+.actor-name{font-size:11px;font-weight:700;color:#0f172a;line-height:1.3;}
+.actor-sub{font-size:9px;color:#94a3b8;margin-top:2px;}
+.actor-arrow{
+  display:flex;align-items:center;justify-content:flex-end;
+  width:100%;padding-right:0;
+}
+.actor-resp{
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:9.5px;font-weight:800;color:#16a34a;
+  background:#f0fdf4;border:1px solid #86efac;
+  border-radius:20px;padding:3px 8px;white-space:nowrap;
+}
+
+/* ── Runs-on column ── */
+.ro{display:flex;flex-direction:column;justify-content:center;padding:10px 6px;}
+.ro-label{font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;margin-bottom:7px;}
+.ro-item{font-size:13px;color:#334155;padding:3px 0;display:flex;align-items:baseline;gap:5px;font-weight:500;}
+.ro-item::before{content:"·";color:#94a3b8;flex-shrink:0;}
+.ro-highlight{color:#7c3aed;font-weight:700;}
+
+.ro-control{grid-column:1;grid-row:1;}
+.ro-exec   {grid-column:1;grid-row:3;}
+.ro-sib    {grid-column:1;grid-row:5;}
+.ro-data   {grid-column:1;grid-row:7;}
+
+/* ── Layers ── */
+.layer{border-radius:18px;padding:20px 18px 18px;}
+.lcontrol{background:#ede9fe;grid-column:3;grid-row:1;}
+.lexec   {background:#dbeafe;grid-column:3;grid-row:3;}
+.ldata   {background:#ccfbf1;grid-column:3;grid-row:7;}
+
+/* ── Layer badge ── */
+.badge{display:table;margin:0 auto 14px;padding:5px 22px;border-radius:20px;font-size:12px;font-weight:900;letter-spacing:2px;color:white;white-space:nowrap;}
+.bpur{background:#7c3aed;} .bind{background:#4338ca;}
+.byel{background:#a16207;} .bgrn{background:#166534;}
+.bpnk{background:#9d174d;} .btel{background:#0d9488;}
+.bslate{background:#475569;}
+
+/* ── Cards ── */
+.cards{display:grid;gap:10px;}
+.g4{grid-template-columns:1fr 1fr 1fr 1fr;}
+.g3{grid-template-columns:1fr 1fr 1fr;}
+.g2{grid-template-columns:1fr 1fr;}
+
+.card{background:white;border-radius:12px;padding:13px 13px 11px;box-shadow:0 2px 8px rgba(0,0,0,.07);}
+.ch{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
+.ci{font-size:20px;line-height:1;}
+.ct{font-size:13.5px;font-weight:700;}
+.ctag{margin-left:auto;font-size:9px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;background:#f1f5f9;color:#64748b;padding:2px 7px;border-radius:8px;white-space:nowrap;}
+ul.bl{list-style:none;}
+ul.bl li{font-size:12px;color:#475569;padding:1.5px 0;display:flex;align-items:baseline;gap:6px;}
+ul.bl li::before{content:"•";color:#cbd5e1;flex-shrink:0;}
+ul.bl.g2c{display:grid;grid-template-columns:1fr 1fr;gap:0 10px;}
+
+/* ── Execution layer — simple stack, no inner grid ── */
+.exec-stack{display:flex;flex-direction:column;gap:0;}
+.exec-resp{margin-bottom:10px;}
+
+/* C2 phase grid */
+.phases{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px;}
+.phase{background:#f8fafc;border-radius:8px;padding:10px;}
+.ph{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;}
+.ph-pre{color:#7c3aed;} .ph-in{color:#2563eb;} .ph-post{color:#16a34a;}
+.ctx{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.5px;background:#fef9c3;color:#854d0e;border:1px solid #fde68a;padding:1px 6px;border-radius:5px;margin-bottom:4px;}
+.pc-tag{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.5px;background:#ede9fe;color:#6d28d9;border:1px solid #c4b5fd;padding:1px 8px;border-radius:5px;margin-left:6px;}
+
+/* ── Sibling layers — own row, 3 cols inside col-3 ── */
+.sib-grid{
+  grid-column:3;grid-row:5;
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  gap:12px;
+}
+.layer-sib{border-radius:18px;padding:18px 16px 16px;}
+.lllm{background:#fef9c3;}
+.ltool{background:#dcfce7;}
+.lmem{background:#fce7f3;}
+
+/* ── Arrows (main column) ── */
+.arw{display:flex;align-items:center;justify-content:center;}
+.arw1{grid-column:3;grid-row:2;}
+.arw2{grid-column:3;grid-row:4;}
+.arw3{grid-column:3;grid-row:6;}
+
+/* ── Right panel ── */
+.rp1{grid-column:4;grid-row:1/3;display:flex;flex-direction:column;}
+.rp3{grid-column:4;grid-row:3/5;display:flex;flex-direction:column;padding-top:10px;}
+.rp5{grid-column:4;grid-row:5/7;display:flex;flex-direction:column;padding-top:10px;}
+.rp7{grid-column:4;grid-row:7;  display:flex;flex-direction:column;padding-top:10px;}
+
+.sc{border-radius:14px;padding:13px 12px;flex:1;min-height:0;display:flex;flex-direction:column;gap:9px;}
+.scpur{background:#f5f3ff;border:1.5px solid #c4b5fd;}
+.scred{background:#fff5f5;border:1.5px solid #fca5a5;}
+.scorg{background:#fff7ed;border:1.5px solid #fed7aa;}
+.scgrn{background:#f0fdf4;border:1.5px solid #86efac;}
+
+.st{font-size:12.5px;font-weight:800;display:flex;align-items:center;gap:6px;}
+.ssl{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.9px;color:#94a3b8;margin-bottom:3px;}
+.sdesc{font-size:10.5px;color:#64748b;line-height:1.45;margin-bottom:2px;}
+.ss{margin:0;}
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="title-block">
+  <h1>Enterprise AI Agent Platform</h1>
+  <p class="sub">Decisioning Layer for Enterprise Workflows</p>
+</div>
+
+<div class="grid">
+
+  <!-- ══════════════════════════════════
+       ACTORS — external, left of exec layer
+       Application on top → aligns with C1
+       User below (uses Application)
+  ══════════════════════════════════ -->
+  <div class="actors-col">
+    <div class="actor-box">
+      <div class="actor-icon">🖥️</div>
+      <div class="actor-name">Application</div>
+      <div class="actor-sub">React · Browser</div>
+    </div>
+    <div class="actor-arrow">
+      <svg width="82" height="18" viewBox="0 0 82 18">
+        <line x1="2" y1="9" x2="70" y2="9" stroke="#2563eb" stroke-width="2"/>
+        <polygon points="61,4 73,9 61,14" fill="#2563eb"/>
+      </svg>
+    </div>
+    <div style="font-size:10px;color:#94a3b8;font-weight:600;text-align:center;">↑ uses</div>
+    <div class="actor-box">
+      <div class="actor-icon">👤</div>
+      <div class="actor-name">User</div>
+      <div class="actor-sub">Nurse · Care Mgr</div>
+    </div>
+    <div class="actor-resp" style="margin-top:4px;">↑ Response</div>
+  </div>
+
+
+  <!-- ══════════════════════════════════
+       RUNS-ON LABELS (col 2)
+  ══════════════════════════════════ -->
+
+  <div class="ro ro-control">
+    <div class="ro-label">Runs on</div>
+    <div class="ro-item">AWS · Azure · GCP</div>
+    <div class="ro-item">Any cloud provider</div>
+    <div class="ro-item">On-Prem possible</div>
+  </div>
+
+  <div class="ro ro-exec">
+    <div class="ro-label">C1 — Runs on</div>
+    <div class="ro-item">Customer AWS / Azure</div>
+    <div class="ro-item">Customer GCP</div>
+    <div class="ro-item">On-Prem / Docker</div>
+    <div style="margin-top:8px" class="ro-label">C2 — Runs on</div>
+    <div class="ro-item">Provider AWS / Azure</div>
+    <div class="ro-item ro-highlight">AWS AgentCore ✦</div>
+  </div>
+
+  <div class="ro ro-sib">
+    <div class="ro-label">LLM</div>
+    <div class="ro-item">Anthropic API</div>
+    <div class="ro-item">AWS Bedrock</div>
+    <div class="ro-item ro-highlight">AgentCore native ✦</div>
+    <div style="margin-top:8px" class="ro-label">C3 — Runs on</div>
+    <div class="ro-item">Provider AWS / Azure</div>
+    <div class="ro-item ro-highlight">AWS AgentCore ✦</div>
+    <div style="margin-top:8px" class="ro-label">Memory</div>
+    <div class="ro-item">AWS ElastiCache</div>
+    <div class="ro-item">AWS RDS / Azure DB</div>
+  </div>
+
+  <div class="ro ro-data">
+    <div class="ro-label">Runs on</div>
+    <div class="ro-item">Customer AWS / Azure</div>
+    <div class="ro-item">Customer GCP</div>
+    <div class="ro-item">On-Prem data center</div>
+    <div class="ro-item ro-highlight">Databricks ✦</div>
+  </div>
+
+
+  <!-- ══════════════════════════════════
+       CONTROL PLANE (col 3, row 1)
+  ══════════════════════════════════ -->
+  <div class="layer lcontrol">
+    <div class="badge bpur">CONTROL PLANE</div>
+    <div class="cards g4">
+
+      <div class="card">
+        <div class="ch"><span class="ci">🏭</span><span class="ct">Agent Factory</span></div>
+        <ul class="bl">
+          <li>Configure &amp; scaffold agents</li>
+          <li>Agent Registry + config tabs</li>
+          <li>Tool Admin UI</li>
+          <li>Create agent wizard</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="ch"><span class="ci">⚙️</span><span class="ct">Governance &amp; Config</span></div>
+        <ul class="bl">
+          <li>agent.yaml — per overlay</li>
+          <li>prompt-defaults.yaml</li>
+          <li>domain.yaml — per capability</li>
+          <li>Support API reads / writes all</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="ch"><span class="ci">📝</span><span class="ct">Prompt Management</span></div>
+        <ul class="bl">
+          <li>Prompt versioning &amp; lifecycle</li>
+          <li>Draft → active → deprecated</li>
+          <li>A/B prompt eval</li>
+          <li>Per-overlay prompt seeds</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="ch"><span class="ci">📊</span><span class="ct">Observability &amp; Eval</span></div>
+        <ul class="bl">
+          <li>Per-overlay trace events</li>
+          <li>Strategy-level eval metrics</li>
+          <li>Lineage graph</li>
+          <li>Analytics dashboard (roadmap)</li>
+        </ul>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Arrow 1: Control → Execution -->
+  <div class="arw arw1">
+    <svg width="28" height="30" viewBox="0 0 28 30"><line x1="14" y1="2" x2="14" y2="28" stroke="#94a3b8" stroke-width="2"/><polygon points="8,19 14,29 20,19" fill="#94a3b8"/><polygon points="8,11 14,1 20,11" fill="#94a3b8"/></svg>
+  </div>
+
+
+  <!-- ══════════════════════════════════
+       EXECUTION LAYER (col 3, row 3)
+       Actors are OUTSIDE in col 1
+  ══════════════════════════════════ -->
+  <div class="layer lexec">
+    <div class="badge bind">EXECUTION LAYER</div>
+
+    <!-- C1 -->
+    <div class="card" style="margin-bottom:8px;">
+      <div class="ch">
+        <span class="ci">🤖</span>
+        <span class="ct">Agent Runtime — C1</span>
+      </div>
+      <ul class="bl g2c">
+        <li>Entry points (/chat, /invocations)</li>
+        <li>HITL approval state machine</li>
+        <li>Context hydration &amp; scope resolution</li>
+        <li>Thin shell — delegates all reasoning to C2</li>
+      </ul>
+    </div>
+
+    <div style="text-align:center;font-size:12px;color:#6366f1;font-weight:700;padding:6px 0;">
+      ↓ <span style="color:#94a3b8;font-weight:500;">delegates to C2</span>
+    </div>
+
+    <!-- C2 -->
+    <div class="card">
+      <div class="ch">
+        <span class="ci">🔄</span>
+        <span class="ct">Orchestrator — C2 (LangGraph)</span>
+        <span class="pc-tag">+ Platform-Core</span>
+      </div>
+      <div class="phases">
+        <div class="phase">
+          <div class="ph ph-pre">Pre-Graph</div>
+          <div class="ctx">Context Assembly</div>
+          <ul class="bl">
+            <li>Config resolve (agent.yaml + overlays)</li>
+            <li>Memory scope hydration</li>
+            <li>RAG inject (Dim 1/2/3 orchestration)</li>
+            <li>Context built → immutable for graph</li>
+          </ul>
+        </div>
+        <div class="phase">
+          <div class="ph ph-in">In-Graph</div>
+          <div class="ctx">Context Assembly</div>
+          <ul class="bl">
+            <li>Planner → <strong>LLM call</strong> → plan</li>
+            <li>Executor → tool calls → MCP → C3</li>
+            <li>Responder → <strong>LLM call</strong> → answer</li>
+            <li>Agent types: chat · summarization · extraction · triage · monitoring · workflow · multi_agent</li>
+            <li>Strategies: simple · react · plan_execute · multi_hop · reflection</li>
+            <li>Additional RAG enrichment mid-graph</li>
+          </ul>
+        </div>
+        <div class="phase">
+          <div class="ph ph-post">Post-Graph</div>
+          <ul class="bl">
+            <li>Memory write (conditional)</li>
+            <li>Summary trigger</li>
+            <li>Trace emit</li>
+            <li>Eval score (async)</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end lexec -->
+
+  <!-- Arrow 2: Execution → siblings (3 arrows) -->
+  <div class="arw arw2">
+    <svg width="100%" height="30" viewBox="0 0 600 30" preserveAspectRatio="none">
+      <line x1="300" y1="2" x2="300" y2="14" stroke="#94a3b8" stroke-width="2"/>
+      <line x1="100" y1="14" x2="500" y2="14" stroke="#94a3b8" stroke-width="2"/>
+      <line x1="100" y1="14" x2="100" y2="28" stroke="#94a3b8" stroke-width="2"/>
+      <line x1="300" y1="14" x2="300" y2="28" stroke="#94a3b8" stroke-width="2"/>
+      <line x1="500" y1="14" x2="500" y2="28" stroke="#94a3b8" stroke-width="2"/>
+      <polygon points="94,22 100,30 106,22" fill="#94a3b8"/>
+      <polygon points="294,22 300,30 306,22" fill="#94a3b8"/>
+      <polygon points="494,22 500,30 506,22" fill="#94a3b8"/>
+    </svg>
+  </div>
+
+
+  <!-- ══════════════════════════════════
+       SIBLING LAYERS: LLM · TOOL · MEMORY
+  ══════════════════════════════════ -->
+  <div class="sib-grid">
+
+    <div class="layer-sib lllm">
+      <div class="badge byel">LLM</div>
+      <div class="card">
+        <div class="ch"><span class="ci">🧠</span><span class="ct">Language Model</span><span class="ctag">C2 ORCHESTRATES</span></div>
+        <ul class="bl">
+          <li>Claude · OpenAI · Bedrock</li>
+          <li>Planner + Responder (in-graph)</li>
+          <li>Summarizer (post-graph)</li>
+          <li>Outbound HTTPS · external</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="layer-sib ltool">
+      <div class="badge bgrn">TOOL LAYER</div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <div class="card" style="background:#f8fffe;border:1.5px dashed #6ee7b7;">
+          <div class="ch"><span class="ci">🔌</span><span class="ct">MCP Server</span><span class="ctag">OPTIONAL</span></div>
+          <ul class="bl">
+            <li>Protocol facade — MCP wire format</li>
+            <li>Stateless · zero business logic</li>
+            <li>Routes into C3 ↓</li>
+          </ul>
+        </div>
+        <div style="text-align:center;font-size:11px;color:#94a3b8;">↓ or direct HTTP</div>
+        <div class="card">
+          <div class="ch"><span class="ci">🔧</span><span class="ct">Tool Gateway — C3</span><span class="ctag">HTTP-NATIVE</span></div>
+          <ul class="bl">
+            <li>Canonical tool-serving layer</li>
+            <li>Tool registry + OpenAPI specs</li>
+            <li>Calls customer APIs over HTTPS</li>
+            <li>Tag filtering · schema validation</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="layer-sib lmem">
+      <div class="badge bpnk">MEMORY</div>
+      <div class="card">
+        <div class="ch"><span class="ci">💾</span><span class="ct">Memory Stores</span><span class="ctag">C2 ORCHESTRATES</span></div>
+        <ul class="bl">
+          <li>Short-term — per session · every turn</li>
+          <li>Episodic — per case · conditional write</li>
+          <li>Semantic + Summary — member-level</li>
+          <li>Read pre-graph · Write post-graph</li>
+          <li>Provider-managed · not customer data</li>
+        </ul>
+      </div>
+    </div>
+
+  </div><!-- end sib-grid -->
+
+  <!-- Arrow 3: Tool → Data only -->
+  <div class="arw arw3">
+    <svg width="100%" height="30" viewBox="0 0 600 30" preserveAspectRatio="none">
+      <line x1="300" y1="2" x2="300" y2="28" stroke="#94a3b8" stroke-width="2"/>
+      <polygon points="294,20 300,30 306,20" fill="#94a3b8"/>
+    </svg>
+  </div>
+
+
+  <!-- ══════════════════════════════════
+       DATA LAYER (col 3, row 7)
+  ══════════════════════════════════ -->
+  <div class="layer ldata">
+    <div class="badge btel">DATA LAYER  ·  CUSTOMER ENVIRONMENT</div>
+    <div class="cards g2">
+
+      <div class="card">
+        <div class="ch"><span class="ci">🗄️</span><span class="ct">Knowledge Store</span><span class="ctag">RAG SOURCE</span></div>
+        <ul class="bl">
+          <li>Semantic — vector similarity (pgvector / Pinecone)</li>
+          <li>Keyword — BM25 (Elasticsearch / OpenSearch)</li>
+          <li>Hybrid — vector + BM25, RRF merge</li>
+          <li>Graph — graph DB traversal</li>
+          <li>Databricks Delta Lake · Unity Catalog</li>
+          <li>Customer-managed · C2 retrieves over HTTPS</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="ch"><span class="ci">🏢</span><span class="ct">Enterprise Systems</span><span class="ctag">C3 CALLS OVER HTTPS</span></div>
+        <ul class="bl">
+          <li>EHR (Epic · Cerner) · Member DB</li>
+          <li>Claims DB · Clinical Data</li>
+          <li>Care Plans · Case Management</li>
+          <li>All exposed as secured HTTPS APIs</li>
+          <li>Data never leaves customer environment</li>
+        </ul>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════
+       RIGHT PANEL — CROSS-CUTTING (col 4)
+  ══════════════════════════════════ -->
+
+  <div class="rp1">
+    <div class="sc scpur">
+      <div class="st">🔀 Config Resolution</div>
+      <div class="ss">
+        <div class="ssl">1 — Design Time</div>
+        <ul class="bl">
+          <li>agent.yaml authored</li>
+          <li>prompt-defaults.yaml set</li>
+          <li>domain.yaml packaged</li>
+        </ul>
+      </div>
+      <div class="ss">
+        <div class="ssl">2 — Per Request</div>
+        <ul class="bl">
+          <li>config_loader resolves overlay</li>
+          <li>Key: customer + usecase + overlay</li>
+          <li>Memory scope + tool bindings set</li>
+        </ul>
+      </div>
+      <div class="ss">
+        <div class="ssl">3 — Execution</div>
+        <ul class="bl">
+          <li>Hydrated context → graph</li>
+          <li>Immutable for graph lifetime</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="rp3">
+    <div class="sc scred">
+      <div class="st">🛡️ Policy &amp; HITL</div>
+      <div class="sdesc">Policy = what the agent is allowed to do.<br/>HITL = human approval for specific actions.</div>
+      <div class="ss">
+        <div class="ssl">Tool Gate (Policy)</div>
+        <ul class="bl">
+          <li>Allow / deny per agent</li>
+          <li>Bucket tag filtering</li>
+        </ul>
+      </div>
+      <div class="ss">
+        <div class="ssl">Approval Gate (HITL)</div>
+        <ul class="bl">
+          <li>Pre-action approval required</li>
+          <li>Suspend / resume workflow</li>
+        </ul>
+      </div>
+      <div class="ss">
+        <div class="ssl">Data Controls (Policy)</div>
+        <ul class="bl">
+          <li>Read / write scope rules</li>
+          <li>PHI masking (roadmap)</li>
+          <li>Guardrails (roadmap)</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="rp5">
+    <div class="sc scorg">
+      <div class="st">⚡ Exception Handling</div>
+      <div class="ss">
+        <div class="ssl">Wraps all external calls</div>
+        <ul class="bl">
+          <li>C2 → LLM API</li>
+          <li>C2 → C3 (tools)</li>
+          <li>C2 → Memory stores</li>
+          <li>C2 → Knowledge Store (RAG)</li>
+          <li>C1 → C2</li>
+        </ul>
+      </div>
+      <div class="ss">
+        <div class="ssl">Strategies</div>
+        <ul class="bl">
+          <li>Retry with backoff</li>
+          <li>Circuit breaker</li>
+          <li>Timeout + fallback</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="rp7">
+    <div class="sc scgrn">
+      <div class="st">🌐 Deployment</div>
+      <div class="ss">
+        <div class="ssl">Customer Environment</div>
+        <ul class="bl">
+          <li>C1 Agent Runtime</li>
+          <li>Data Layer (Knowledge Store + Enterprise Systems)</li>
+          <li>AWS / Azure / GCP / On-Prem</li>
+        </ul>
+      </div>
+      <div class="ss">
+        <div class="ssl">Provider Environment</div>
+        <ul class="bl">
+          <li>Control Plane (Agent Factory, Governance, Prompts, Observability)</li>
+          <li>C2 Orchestrator · C3 Tool Gateway</li>
+          <li>AWS AgentCore / Provider cloud</li>
+        </ul>
+      </div>
+      <div class="ss">
+        <div class="ssl">Topology Options</div>
+        <ul class="bl">
+          <li>Two-VPC (default)</li>
+          <li>Single VPC</li>
+          <li>On-Prem / Cloud-agnostic</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+</div><!-- end grid -->
+</div><!-- end page -->
+</body>
+</html>

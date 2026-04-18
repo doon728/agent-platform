@@ -1,0 +1,104 @@
+[
+  {
+    "memory_id": "mem_4e4c87a673a7",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "member-m-001715-19d7fa144c4",
+    "role": "user",
+    "content": "summary",
+    "metadata": {
+      "member_id": "m-001715",
+      "agent_type": "chat_agent_simple",
+      "reasoning_strategy": "simple",
+      "turn_id": "run_a092fd3b",
+      "thread_id": "member-m-001715-19d7fa144c4",
+      "tenant_id": "t1"
+    },
+    "created_at": "2026-04-12T02:59:37.601019+00:00"
+  },
+  {
+    "memory_id": "mem_20efdfe07513",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "member-m-001715-19d7fa144c4",
+    "role": "assistant",
+    "content": "Mia Martinez, a 69-year-old member from Maryland, is enrolled in Medicaid and has a risk score of 1.26. She has a chronic condition coded as I50.9 (heart failure). Her primary care provider is Dr. Miller at Miller Clinic, a cardiology practice in Georgia.\n\nMia has two active care plans: one for asthma, focusing on reducing exacerbations and improving inhaler technique, and another for maternity, emphasizing prenatal visit adherence. She also has a closed post-discharge care plan aimed at stabilizing her condition and ensuring medication adherence.\n\nHer latest assessment is a scheduled reassessment for Q2 2026. Recent claims indicate she has received various services, all of which have been paid. However, a recent authorization request for durable medical equipment was denied.\n\nFor further details, her PCP can be contacted at 876-589-2404.",
+    "metadata": {
+      "member_id": "m-001715",
+      "agent_type": "chat_agent_simple",
+      "reasoning_strategy": "simple",
+      "turn_id": "run_a092fd3b",
+      "thread_id": "member-m-001715-19d7fa144c4",
+      "tenant_id": "t1"
+    },
+    "created_at": "2026-04-12T02:59:37.602237+00:00"
+  },
+  {
+    "memory_id": "mem_a6c31e57179f",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "member-m-001715-19d7fa144c4",
+    "role": "user",
+    "content": "what is the depressiob olicy",
+    "metadata": {
+      "member_id": "m-001715",
+      "agent_type": "chat_agent_simple",
+      "reasoning_strategy": "simple",
+      "turn_id": "run_95907e33",
+      "thread_id": "member-m-001715-19d7fa144c4",
+      "tenant_id": "t1"
+    },
+    "created_at": "2026-04-12T03:07:14.108058+00:00"
+  },
+  {
+    "memory_id": "mem_70581c39b50f",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "member-m-001715-19d7fa144c4",
+    "role": "assistant",
+    "content": "The depression policy states that members at risk for depression should receive behavioral health follow-up, social needs screening, and documented case management outreach. High-risk members should be escalated for timely intervention and care coordination.",
+    "metadata": {
+      "member_id": "m-001715",
+      "agent_type": "chat_agent_simple",
+      "reasoning_strategy": "simple",
+      "turn_id": "run_95907e33",
+      "thread_id": "member-m-001715-19d7fa144c4",
+      "tenant_id": "t1"
+    },
+    "created_at": "2026-04-12T03:07:14.109203+00:00"
+  },
+  {
+    "memory_id": "mem_6a683ad14bb9",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "member-m-001715-19d7fa144c4",
+    "role": "user",
+    "content": "clear",
+    "metadata": {
+      "member_id": "m-001715",
+      "agent_type": "chat_agent_simple",
+      "reasoning_strategy": "simple",
+      "turn_id": "run_d02f6b6f",
+      "thread_id": "member-m-001715-19d7fa144c4",
+      "tenant_id": "t1"
+    },
+    "created_at": "2026-04-12T03:26:07.393603+00:00"
+  },
+  {
+    "memory_id": "mem_481ad3ed449b",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "member-m-001715-19d7fa144c4",
+    "role": "assistant",
+    "content": "It seems there was a misunderstanding. Please provide a specific question or context for me to assist you effectively.",
+    "metadata": {
+      "member_id": "m-001715",
+      "agent_type": "chat_agent_simple",
+      "reasoning_strategy": "simple",
+      "turn_id": "run_d02f6b6f",
+      "thread_id": "member-m-001715-19d7fa144c4",
+      "tenant_id": "t1"
+    },
+    "created_at": "2026-04-12T03:26:07.395388+00:00"
+  }
+]

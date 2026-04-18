@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Platform Architecture — Container Split</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f2f8;color:#0f172a;font-size:14px;}
+
+.cover{background:linear-gradient(135deg,#0f1f45 0%,#1a237e 55%,#3730a3 100%);color:white;padding:56px 60px 44px;}
+.cover-tag{font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:rgba(255,255,255,0.45);margin-bottom:12px;}
+.cover h1{font-size:32px;font-weight:800;letter-spacing:-0.5px;margin-bottom:10px;}
+.cover-sub{font-size:14px;color:rgba(255,255,255,0.68);max-width:620px;line-height:1.65;}
+.cover-pills{display:flex;gap:8px;flex-wrap:wrap;margin-top:22px;}
+.pill{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.85);padding:3px 12px;border-radius:20px;font-size:11px;font-weight:600;}
+
+.page{max-width:1100px;margin:0 auto;padding:40px;}
+
+/* ── CONTAINER STRIP ── */
+.container-strip{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:40px;}
+.c-card{border-radius:12px;padding:20px 24px;border:2px solid;}
+.c-card.c1{background:#fff7ed;border-color:#f97316;}
+.c-card.c2{background:#eff6ff;border-color:#3b82f6;}
+.c-card.c3{background:#f0fdf4;border-color:#22c55e;}
+.c-card-label{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:2px;margin-bottom:6px;}
+.c-card.c1 .c-card-label{color:#ea580c;}
+.c-card.c2 .c-card-label{color:#2563eb;}
+.c-card.c3 .c-card-label{color:#16a34a;}
+.c-card h3{font-size:15px;font-weight:700;margin-bottom:4px;}
+.c-card p{font-size:12px;color:#64748b;line-height:1.55;}
+.c-card ul{margin-top:10px;padding-left:0;list-style:none;}
+.c-card ul li{font-size:11.5px;color:#475569;padding:2px 0;display:flex;align-items:flex-start;gap:6px;}
+.c-card ul li::before{content:"→";color:#94a3b8;flex-shrink:0;margin-top:1px;}
+
+/* ── FLOW DIAGRAM ── */
+.flow-wrap{background:white;border-radius:16px;padding:32px;box-shadow:0 2px 16px rgba(0,0,0,0.07);margin-bottom:40px;}
+.flow-title{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:2px;color:#64748b;margin-bottom:24px;}
+
+.phase-row{margin-bottom:28px;}
+.phase-header{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+.phase-badge{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;padding:3px 10px;border-radius:4px;}
+.phase-badge.pre{background:#fff7ed;color:#ea580c;border:1px solid #fed7aa;}
+.phase-badge.in{background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;}
+.phase-badge.post{background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;}
+.phase-container{font-size:10px;font-weight:700;color:#94a3b8;letter-spacing:1px;}
+
+.steps{display:flex;align-items:center;gap:0;flex-wrap:wrap;}
+.step{display:flex;flex-direction:column;align-items:center;position:relative;}
+.step-box{padding:10px 14px;border-radius:8px;text-align:center;min-width:110px;}
+.step-box.c1-box{background:#fff7ed;border:1.5px solid #f97316;}
+.step-box.c2-box{background:#eff6ff;border:1.5px solid #3b82f6;}
+.step-box.c3-box{background:#f0fdf4;border:1.5px solid #22c55e;}
+.step-box.hitl-box{background:#fdf4ff;border:1.5px dashed #a855f7;}
+.step-name{font-size:12px;font-weight:700;margin-bottom:3px;}
+.step-sub{font-size:10px;color:#64748b;line-height:1.4;}
+.step-tag{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-top:4px;padding:1px 6px;border-radius:3px;}
+.tag-llm{background:#ede9fe;color:#7c3aed;}
+.tag-tool{background:#dcfce7;color:#16a34a;}
+.tag-mem{background:#fef3c7;color:#d97706;}
+.tag-rag{background:#dbeafe;color:#1d4ed8;}
+.tag-hitl{background:#fdf4ff;color:#9333ea;}
+
+.arrow{font-size:18px;color:#cbd5e1;margin:0 6px;padding-bottom:20px;}
+.arrow-down{display:flex;justify-content:center;font-size:22px;color:#cbd5e1;margin:8px 0;}
+
+/* ── MEMORY TYPES ── */
+.mem-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:40px;}
+.mem-card{background:white;border-radius:10px;padding:16px;border:1px solid #e2e8f0;box-shadow:0 1px 4px rgba(0,0,0,0.04);}
+.mem-card h4{font-size:13px;font-weight:700;margin-bottom:6px;}
+.mem-card p{font-size:11.5px;color:#64748b;line-height:1.5;}
+.mem-card .when{font-size:10px;font-weight:600;color:#94a3b8;margin-top:6px;text-transform:uppercase;letter-spacing:0.5px;}
+
+/* ── RAG DIMS ── */
+.rag-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:40px;}
+.rag-card{background:white;border-radius:10px;padding:18px;border:1px solid #e2e8f0;}
+.rag-card .dim{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:2px;color:#2563eb;margin-bottom:6px;}
+.rag-card h4{font-size:14px;font-weight:700;margin-bottom:6px;}
+.rag-card p{font-size:12px;color:#475569;line-height:1.55;}
+.rag-card .options{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px;}
+.rag-opt{font-size:10px;padding:2px 8px;border-radius:4px;background:#eff6ff;color:#2563eb;font-weight:600;border:1px solid #bfdbfe;}
+
+/* ── SECTION HEADERS ── */
+.sec{margin-bottom:32px;}
+.sec-label{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:2.5px;color:#4f46e5;margin-bottom:6px;}
+.sec h2{font-size:22px;font-weight:800;color:#0f1f45;margin-bottom:8px;}
+.sec p{font-size:13.5px;color:#64748b;max-width:760px;line-height:1.7;}
+
+/* ── FILE MAP ── */
+.file-map{background:white;border-radius:12px;padding:24px;box-shadow:0 1px 8px rgba(0,0,0,0.05);margin-bottom:40px;}
+.file-map table{width:100%;border-collapse:collapse;}
+.file-map th{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;color:#94a3b8;padding:6px 12px;border-bottom:2px solid #f1f5f9;text-align:left;}
+.file-map td{padding:8px 12px;border-bottom:1px solid #f8fafc;font-size:12.5px;vertical-align:top;}
+.file-map tr:last-child td{border-bottom:none;}
+.file-map td:first-child{font-family:monospace;font-size:11.5px;color:#1e40af;white-space:nowrap;}
+.c1-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#f97316;margin-right:4px;}
+.c2-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#3b82f6;margin-right:4px;}
+.c3-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#22c55e;margin-right:4px;}
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div class="cover-tag">Enterprise AI Agent Platform</div>
+  <h1>Architecture — Container Split</h1>
+  <div class="cover-sub">Full platform architecture showing the C1/C2/C3 container split, pre/in/post-graph phases, memory system, RAG dimensions, and HITL pattern.</div>
+  <div class="cover-pills">
+    <span class="pill">C1 Agent Runtime Shell</span>
+    <span class="pill">C2 Platform Services</span>
+    <span class="pill">C3 Tool Gateway</span>
+    <span class="pill">Pre / In / Post Graph</span>
+    <span class="pill">4-Type Memory</span>
+    <span class="pill">3-Dim RAG</span>
+    <span class="pill">HITL</span>
+  </div>
+</div>
+
+<div class="page">
+
+  <!-- CONTAINER OVERVIEW -->
+  <div class="sec" style="margin-top:8px;">
+    <div class="sec-label">Deployment Model</div>
+    <h2>Three Containers, Three Responsibilities</h2>
+    <p>Each container has a distinct deployment scope and responsibility. C1 is per-agent per-customer. C2 is shared across all agents for a customer. C3 is shared across all customers in an industry.</p>
+  </div>
+
+  <div class="container-strip">
+    <div class="c-card c1">
+      <div class="c-card-label">C1 — Per Agent · Per Customer</div>
+      <h3>Agent Runtime Shell</h3>
+      <p>Thin FastAPI shell. Owns auth, context, HITL approval state, and HTTP client orchestration. Zero business logic.</p>
+      <ul>
+        <li>Auth + tenant isolation</li>
+        <li>Context build + scope hydration</li>
+        <li>LangGraph runner (pre/in/post phases)</li>
+        <li>HITL approval_store (SQLite)</li>
+        <li>HTTP clients → C2</li>
+        <li>/chat, /invocations, /hitl/*, /summarize, /debug/memory</li>
+      </ul>
+    </div>
+    <div class="c-card c2">
+      <div class="c-card-label">C2 — Shared · Per Customer</div>
+      <h3>Platform Services</h3>
+      <p>All business logic. Config, memory, RAG, reasoning (planner/executor/responder), tools, observability, summarize.</p>
+      <ul>
+        <li>/config — agent + domain config</li>
+        <li>/memory/read + write</li>
+        <li>/rag/retrieve</li>
+        <li>/reasoning/run — full in-graph cycle</li>
+        <li>/tools/invoke</li>
+        <li>/summarize — scoped summary</li>
+        <li>/observability/traces</li>
+      </ul>
+    </div>
+    <div class="c-card c3">
+      <div class="c-card-label">C3 — Shared · Per Industry</div>
+      <h3>Tool Gateway</h3>
+      <p>Industry-specific tool execution and knowledge base. Deployed once, shared across all agents in the industry.</p>
+      <ul>
+        <li>Tool registry + specs</li>
+        <li>/tools/invoke — executes tools</li>
+        <li>KB / vector store</li>
+        <li>Synth data store (dev/test)</li>
+        <li>Tool Admin UI (port 5200)</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- FLOW DIAGRAM -->
+  <div class="flow-wrap">
+    <div class="flow-title">Full Request Flow — Pre · In · Post Graph</div>
+
+    <!-- PRE-GRAPH -->
+    <div class="phase-row">
+      <div class="phase-header">
+        <span class="phase-badge pre">Pre-Graph</span>
+        <span class="phase-container">C1 ORCHESTRATES → C2 EXECUTES</span>
+      </div>
+      <div class="steps">
+        <div class="step">
+          <div class="step-box c1-box">
+            <div class="step-name">User Message</div>
+            <div class="step-sub">Auth · context build<br/>scope hydration</div>
+            <span class="step-tag" style="background:#fff7ed;color:#ea580c;">C1</span>
+          </div>
+        </div>
+        <div class="arrow">→</div>
+        <div class="step">
+          <div class="step-box c2-box">
+            <div class="step-name">Config Load</div>
+            <div class="step-sub">agent.yaml · prompts<br/>tool policy · retrieval</div>
+            <span class="step-tag tag-rag">C1→C2</span>
+          </div>
+        </div>
+        <div class="arrow">→</div>
+        <div class="step">
+          <div class="step-box c2-box">
+            <div class="step-name">Memory Read</div>
+            <div class="step-sub">short-term · episodic<br/>semantic · summary</div>
+            <span class="step-tag tag-mem">C1→C2</span>
+          </div>
+        </div>
+        <div class="arrow">→</div>
+        <div class="step">
+          <div class="step-box c2-box">
+            <div class="step-name">Pre-Graph RAG</div>
+            <div class="step-sub">KB retrieval · inject<br/>into context silently</div>
+            <span class="step-tag tag-rag">C1→C2 (if enabled)</span>
+          </div>
+        </div>
+        <div class="arrow">→</div>
+        <div class="step">
+          <div class="step-box c1-box">
+            <div class="step-name">Thread History</div>
+            <div class="step-sub">last N turns from<br/>memory context</div>
+            <span class="step-tag" style="background:#fff7ed;color:#ea580c;">C1</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow-down">↓</div>
+
+    <!-- IN-GRAPH -->
+    <div class="phase-row">
+      <div class="phase-header">
+        <span class="phase-badge in">In-Graph</span>
+        <span class="phase-container">C2 PLATFORM-SERVICES (REASONING)</span>
+      </div>
+      <div class="steps">
+        <div class="step">
+          <div class="step-box c2-box">
+            <div class="step-name">Planner</div>
+            <div class="step-sub">LLM decides which<br/>tool to call</div>
+            <span class="step-tag tag-llm">LLM</span>
+          </div>
+        </div>
+        <div class="arrow">→</div>
+        <div class="step">
+          <div class="step-box c2-box">
+            <div class="step-name">Router</div>
+            <div class="step-sub">resolve tool input<br/>from context</div>
+            <span class="step-tag tag-tool">C2</span>
+          </div>
+        </div>
+        <div class="arrow">→</div>
+        <div class="step">
+          <div class="step-box c2-box">
+            <div class="step-name">Executor</div>
+            <div class="step-sub">invoke tool<br/>via C3 gateway</div>
+            <span class="step-tag tag-tool">C2→C3</span>
+          </div>
+        </div>
+        <div class="arrow">→</div>
+        <div class="step">
+          <div class="step-box hitl-box">
+            <div class="step-name">HITL Gate</div>
+            <div class="step-sub">NEEDS_HITL signal<br/>→ C1 approval_store</div>
+            <span class="step-tag tag-hitl">C2 signal → C1</span>
+          </div>
+        </div>
+        <div class="arrow">→</div>
+        <div class="step">
+          <div class="step-box c2-box">
+            <div class="step-name">Responder</div>
+            <div class="step-sub">LLM synthesises<br/>final answer</div>
+            <span class="step-tag tag-llm">LLM</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow-down">↓</div>
+
+    <!-- POST-GRAPH -->
+    <div class="phase-row" style="margin-bottom:0;">
+      <div class="phase-header">
+        <span class="phase-badge post">Post-Graph</span>
+        <span class="phase-container">C1 ORCHESTRATES → C2 WRITES</span>
+      </div>
+      <div class="steps">
+        <div class="step">
+          <div class="step-box c2-box">
+            <div class="step-name">Short-Term Write</div>
+            <div class="step-sub">every turn<br/>conversation scope</div>
+            <span class="step-tag tag-mem">C1→C2</span>
+          </div>
+        </div>
+        <div class="arrow">→</div>
+        <div class="step">
+          <div class="step-box c2-box">
+            <div class="step-name">Episodic Write</div>
+            <div class="step-sub">on write-tool call<br/>case/assessment scope</div>
+            <span class="step-tag tag-mem">C1→C2 (conditional)</span>
+          </div>
+        </div>
+        <div class="arrow">→</div>
+        <div class="step">
+          <div class="step-box c2-box">
+            <div class="step-name">Summary Write</div>
+            <div class="step-sub">turn_count / token<br/>threshold trigger</div>
+            <span class="step-tag tag-mem">C1→C2 (conditional)</span>
+          </div>
+        </div>
+        <div class="arrow">→</div>
+        <div class="step">
+          <div class="step-box c1-box">
+            <div class="step-name">Response</div>
+            <div class="step-sub">answer + memory_trace<br/>returned to client</div>
+            <span class="step-tag" style="background:#fff7ed;color:#ea580c;">C1</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MEMORY -->
+  <div class="sec">
+    <div class="sec-label">Memory System</div>
+    <h2>4 Memory Types — Read Pre-Graph · Write Post-Graph</h2>
+    <p>Each type has independent read and write policies, configurable per agent in memory.yaml. All reads happen before the planner. All writes happen after the responder.</p>
+  </div>
+  <div class="mem-grid">
+    <div class="mem-card">
+      <h4>Short-Term</h4>
+      <p>Last N conversation turns. Written every turn. Read every turn. Keeps the agent aware of what was just discussed.</p>
+      <div class="when">Scope: conversation (thread)</div>
+    </div>
+    <div class="mem-card">
+      <h4>Episodic</h4>
+      <p>Significant clinical events — tool calls, HITL approvals, case notes written. Written on write-tool success. Read when case/assessment scope is active.</p>
+      <div class="when">Scope: case / assessment</div>
+    </div>
+    <div class="mem-card">
+      <h4>Summary</h4>
+      <p>Compressed narrative of the conversation. Written on turn_count or token_threshold trigger. Prevents context window overflow in long sessions.</p>
+      <div class="when">Scope: conversation / member</div>
+    </div>
+    <div class="mem-card">
+      <h4>Semantic</h4>
+      <p>Vector-embedded facts stored for similarity retrieval. Written from agent observations. Read via embedding search. Enables knowledge that persists across sessions.</p>
+      <div class="when">Scope: member / case</div>
+    </div>
+  </div>
+
+  <!-- RAG -->
+  <div class="sec">
+    <div class="sec-label">RAG System</div>
+    <h2>3 Dimensions of Retrieval</h2>
+    <p>Each dimension is independently configurable in agent.yaml. Two retrieval stages (pre-graph and planner-tool) can each have different settings across all three dimensions.</p>
+  </div>
+  <div class="rag-grid">
+    <div class="rag-card">
+      <div class="dim">Dimension 1</div>
+      <h4>Strategy</h4>
+      <p>How the vector search query is executed against the knowledge base.</p>
+      <div class="options">
+        <span class="rag-opt">semantic</span>
+        <span class="rag-opt">keyword</span>
+        <span class="rag-opt">hybrid</span>
+      </div>
+    </div>
+    <div class="rag-card">
+      <div class="dim">Dimension 2</div>
+      <h4>Stage</h4>
+      <p>When retrieval runs relative to the agent reasoning loop.</p>
+      <div class="options">
+        <span class="rag-opt">pre_graph — silent inject</span>
+        <span class="rag-opt">planner_tool — LLM decides</span>
+      </div>
+    </div>
+    <div class="rag-card">
+      <div class="dim">Dimension 3</div>
+      <h4>Pattern</h4>
+      <p>How the retrieval query is constructed and refined.</p>
+      <div class="options">
+        <span class="rag-opt">naive</span>
+        <span class="rag-opt">self_corrective</span>
+        <span class="rag-opt">multi_hop</span>
+        <span class="rag-opt">hyde</span>
+        <span class="rag-opt">agentic</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- NEXT 10 BUILD PRIORITIES -->
+  <div class="sec">
+    <div class="sec-label">Roadmap</div>
+    <h2>Next 10 Items to Build — Prioritized</h2>
+  </div>
+  <div class="flow-wrap" style="margin-bottom:40px;">
+    <div class="flow-title">Ordered by production impact and dependency. Pattern: Items 1/2/6 = separate pluggable services. Items 3/5/9/10 = overlay/config only. Items 4/7/8 = platform-core + UI.</div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:20px;">
+      <thead>
+        <tr style="background:#f1f5f9;">
+          <th style="text-align:center;padding:8px 12px;border-bottom:2px solid #e2e8f0;font-weight:700;width:36px;">#</th>
+          <th style="text-align:left;padding:8px 12px;border-bottom:2px solid #e2e8f0;font-weight:700;">Item</th>
+          <th style="text-align:left;padding:8px 12px;border-bottom:2px solid #e2e8f0;font-weight:700;">Type</th>
+          <th style="text-align:left;padding:8px 12px;border-bottom:2px solid #e2e8f0;font-weight:700;">Why Now</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="background:white;">
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;font-weight:800;color:#dc2626;">1</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-weight:700;font-size:11px;">Exception Handling & Recovery</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-size:11px;"><span style="background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">PLUGGABLE SERVICE</span></td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Agents silently fail on tool timeout, LLM API error, network failure. Production blocker. Covers all calls — not tool-only.</td>
+        </tr>
+        <tr style="background:#fafafa;">
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;font-weight:800;color:#dc2626;">2</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-weight:700;font-size:11px;">Event-Driven Agents (Event Bus)</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-size:11px;"><span style="background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">PLUGGABLE SERVICE</span></td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Most production agents are event-triggered. Webhook/queue/CDC/cron → AgentEvent → /invocations. Agents don't change.</td>
+        </tr>
+        <tr style="background:white;">
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;font-weight:800;color:#ea580c;">3</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-weight:700;font-size:11px;">multi_hop + reflection strategies</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-size:11px;"><span style="background:#fef9c3;color:#854d0e;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">OVERLAY ONLY</span></td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Completes reasoning strategy set. New strategy files only. Zero platform changes, low risk.</td>
+        </tr>
+        <tr style="background:#fafafa;">
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;font-weight:800;color:#ea580c;">4</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-weight:700;font-size:11px;">Observability UI — Lineage + Metrics</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-size:11px;"><span style="background:#eff6ff;color:#2563eb;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">UI + PLATFORM-CORE</span></td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Demo-critical. Trace viewer + quality/latency/token metrics. Reads existing /api/traces. No backend changes.</td>
+        </tr>
+        <tr style="background:white;">
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;font-weight:800;color:#ea580c;">5</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-weight:700;font-size:11px;">Routing tab in Agent Registry (3f)</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-size:11px;"><span style="background:#fef9c3;color:#854d0e;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">UI + YAML ONLY</span></td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Completes Agent Registry. Config-driven hard routes. Small, self-contained change.</td>
+        </tr>
+        <tr style="background:#fafafa;">
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;font-weight:800;color:#ea580c;">6</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-weight:700;font-size:11px;">Guardrails (10m)</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-size:11px;"><span style="background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">PLUGGABLE SERVICE</span></td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Healthcare/enterprise safety requirement. Pre-LLM input + post-LLM output policy check. Config-driven per agent.</td>
+        </tr>
+        <tr style="background:white;">
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;font-weight:800;color:#16a34a;">7</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-weight:700;font-size:11px;">Context Engineering (7)</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-size:11px;"><span style="background:#eff6ff;color:#2563eb;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">PLATFORM-CORE</span></td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Token budgeting + priority truncation in context_builder.py. Needed before real member data hits context limits.</td>
+        </tr>
+        <tr style="background:#fafafa;">
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;font-weight:800;color:#16a34a;">8</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-weight:700;font-size:11px;">Goal Definition & Tracking (14)</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-size:11px;"><span style="background:#eff6ff;color:#2563eb;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">PLATFORM-CORE</span></td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Persistent multi-step objectives across turns. New goal_state memory type + goal_tracker node in graph.</td>
+        </tr>
+        <tr style="background:white;">
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;font-weight:800;color:#16a34a;">9</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-weight:700;font-size:11px;">Resource-Aware Optimization</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-size:11px;"><span style="background:#fef9c3;color:#854d0e;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">PLATFORM-CORE CONFIG</span></td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Query classifier + model router. Haiku → Sonnet → Opus by complexity. Direct customer cost impact.</td>
+        </tr>
+        <tr style="background:#fafafa;">
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;font-weight:800;color:#16a34a;">10</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-weight:700;font-size:11px;">summarization_agent_rag overlay</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-size:11px;"><span style="background:#fef9c3;color:#854d0e;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">OVERLAY ONLY</span></td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">KB-enriched summaries. New capability, zero platform risk. Pre-graph RAG + updated synthesis prompt.</td>
+        </tr>
+      </tbody>
+    </table>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;font-size:11px;">
+      <div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:10px 14px;">
+        <div style="font-weight:700;color:#dc2626;margin-bottom:4px;">PLUGGABLE SERVICES (1, 2, 6)</div>
+        <div style="color:#475569;line-height:1.6;">Deploy independently. Agents don't change. Exception Handling wraps ALL external calls (not tool-only). Event Bus calls /invocations. Guardrails intercepts LLM calls.</div>
+      </div>
+      <div style="background:#fef9c3;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;">
+        <div style="font-weight:700;color:#854d0e;margin-bottom:4px;">OVERLAY / CONFIG (3, 5, 9, 10)</div>
+        <div style="color:#475569;line-height:1.6;">New files and YAML options only. Zero platform rewrite. Any agent picks up changes by config update.</div>
+      </div>
+      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;">
+        <div style="font-weight:700;color:#2563eb;margin-bottom:4px;">PLATFORM-CORE + UI (4, 7, 8)</div>
+        <div style="color:#475569;line-height:1.6;">Extend context_builder.py, memory store, Agent Factory UI pages. No new services.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- OVERLAY MATRIX -->
+  <div class="sec">
+    <div class="sec-label">Overlay Matrix</div>
+    <h2>Agent Type × Reasoning Strategy × Overlay</h2>
+  </div>
+  <div class="flow-wrap" style="margin-bottom:40px;">
+    <div class="flow-title">Each overlay = one deployable agent. New capability = new overlay, zero platform code changes.</div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead>
+        <tr style="background:#f1f5f9;">
+          <th style="text-align:left;padding:8px 12px;border-bottom:2px solid #e2e8f0;font-weight:700;">Overlay</th>
+          <th style="text-align:left;padding:8px 12px;border-bottom:2px solid #e2e8f0;font-weight:700;">Agent Type</th>
+          <th style="text-align:left;padding:8px 12px;border-bottom:2px solid #e2e8f0;font-weight:700;">Strategy</th>
+          <th style="text-align:center;padding:8px 12px;border-bottom:2px solid #e2e8f0;font-weight:700;">RAG</th>
+          <th style="text-align:center;padding:8px 12px;border-bottom:2px solid #e2e8f0;font-weight:700;">HITL</th>
+          <th style="text-align:center;padding:8px 12px;border-bottom:2px solid #e2e8f0;font-weight:700;">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="background:white;">
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:11px;">chat_agent_simple</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;">chat_agent</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;">simple</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;">opt</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;">✓</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;"><span style="background:#dcfce7;color:#16a34a;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">BUILT</span></td>
+        </tr>
+        <tr style="background:#fafafa;">
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:11px;">chat_agent_react</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;">chat_agent</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;">react</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;">opt</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;">✓</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;"><span style="background:#dcfce7;color:#16a34a;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">BUILT</span></td>
+        </tr>
+        <tr style="background:white;">
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:11px;">chat_agent_plan_execute</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;">chat_agent</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;">plan_execute</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;">opt</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;">✓</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;"><span style="background:#dcfce7;color:#16a34a;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">BUILT</span></td>
+        </tr>
+        <tr style="background:#fafafa;">
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:11px;">chat_agent_multi_hop</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;">chat_agent</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;">multi_hop</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;">opt</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;">✓</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;"><span style="background:#fef9c3;color:#854d0e;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">ROADMAP</span></td>
+        </tr>
+        <tr style="background:white;">
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:11px;">chat_agent_reflection</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;">chat_agent</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;">reflection</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;">opt</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;">✓</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;"><span style="background:#fef9c3;color:#854d0e;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">ROADMAP</span></td>
+        </tr>
+        <tr style="background:#fafafa;">
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:11px;">chat_agent_tree_of_thought</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;">chat_agent</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;">tree_of_thought</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;">opt</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;">✓</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;"><span style="background:#f1f5f9;color:#64748b;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">FUTURE</span></td>
+        </tr>
+        <tr style="background:white;border-top:2px solid #e2e8f0;">
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:11px;">summarization_agent_simple</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;">summarization_agent</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;">simple</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;color:#94a3b8;">—</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;color:#94a3b8;">—</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;"><span style="background:#dcfce7;color:#16a34a;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">BUILT</span></td>
+        </tr>
+        <tr style="background:#fafafa;">
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:11px;">summarization_agent_rag</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;">summarization_agent</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;">simple + pre-graph RAG</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;font-weight:700;color:#2563eb;">REQ</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;color:#94a3b8;">—</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;"><span style="background:#fef9c3;color:#854d0e;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">ROADMAP</span></td>
+        </tr>
+        <tr style="background:white;">
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:11px;">summarization_agent_map_reduce</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;">summarization_agent</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;">map_reduce</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;">opt</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;color:#94a3b8;">—</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;"><span style="background:#f1f5f9;color:#64748b;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">FUTURE</span></td>
+        </tr>
+        <tr style="background:#fafafa;border-top:2px solid #e2e8f0;">
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:11px;">workflow_agent_simple</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;">workflow_agent</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;">simple</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;">opt</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;">✓</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;"><span style="background:#f1f5f9;color:#64748b;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">FUTURE</span></td>
+        </tr>
+        <tr style="background:white;">
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:11px;">workflow_agent_plan_execute</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;">workflow_agent</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;">plan_execute</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;">opt</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;">✓</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;"><span style="background:#f1f5f9;color:#64748b;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">FUTURE</span></td>
+        </tr>
+        <tr style="background:#fafafa;border-top:2px solid #e2e8f0;">
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:11px;">multi_agent_supervisor</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;">multi_agent</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;">supervisor</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;">opt</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;">✓</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;"><span style="background:#f1f5f9;color:#64748b;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">FUTURE</span></td>
+        </tr>
+        <tr style="background:white;">
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:11px;">multi_agent_supervisor_hitl</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;">multi_agent</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;">supervisor+HITL</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;">opt</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;font-weight:700;color:#dc2626;">REQ</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;"><span style="background:#f1f5f9;color:#64748b;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">FUTURE</span></td>
+        </tr>
+      </tbody>
+    </table>
+    <div style="margin-top:16px;display:flex;gap:20px;font-size:11px;color:#64748b;">
+      <span><strong>opt</strong> = optional, configurable in agent.yaml</span>
+      <span><strong>REQ</strong> = required, cannot be disabled</span>
+      <span><strong>—</strong> = locked off for this agent type</span>
+    </div>
+  </div>
+
+  <!-- INVALID PERMUTATIONS -->
+  <div class="sec">
+    <div class="sec-label">Overlay Constraints</div>
+    <h2>Invalid Agent Type × Strategy Permutations</h2>
+  </div>
+  <div class="flow-wrap" style="margin-bottom:40px;">
+    <div class="flow-title">Reasoning loops only make sense for agents that don't know upfront what they need. Batch and single-pass agents are always one-shot.</div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:16px;">
+      <thead>
+        <tr style="background:#f1f5f9;">
+          <th style="text-align:left;padding:8px 12px;border-bottom:2px solid #e2e8f0;font-weight:700;">Agent Type</th>
+          <th style="text-align:left;padding:8px 12px;border-bottom:2px solid #e2e8f0;font-weight:700;">❌ Invalid Strategies</th>
+          <th style="text-align:left;padding:8px 12px;border-bottom:2px solid #e2e8f0;font-weight:700;">Reason</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="background:white;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:11px;">summarization_agent</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#dc2626;font-size:11px;">react, multi_hop, reflection, tree_of_thought</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">You know upfront what data to fetch. No discovery loop needed.</td></tr>
+        <tr style="background:#fafafa;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:11px;">extraction_agent</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#dc2626;font-size:11px;">react, plan_execute, multi_hop, reflection, tree_of_thought</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Single pass: text in → structured fields out. Nothing to iterate over.</td></tr>
+        <tr style="background:white;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:11px;">triage_agent</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#dc2626;font-size:11px;">react, plan_execute, multi_hop, reflection, tree_of_thought</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Classify and route — always one step.</td></tr>
+        <tr style="background:#fafafa;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:11px;">monitoring_agent</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#dc2626;font-size:11px;">multi_hop, reflection, tree_of_thought</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Check threshold → alert. react valid if investigation needed, nothing else.</td></tr>
+        <tr style="background:white;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:11px;">workflow_agent</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#dc2626;font-size:11px;">multi_hop, tree_of_thought</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Workflow = executing steps, not researching questions or exploring branches.</td></tr>
+        <tr style="background:#fafafa;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:11px;">retrieval_agent</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#dc2626;font-size:11px;">reflection, tree_of_thought</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Search doesn't need self-critique loops or branch exploration.</td></tr>
+      </tbody>
+    </table>
+    <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 16px;font-size:12px;color:#1e40af;"><strong>plan_execute is the universal exception</strong> — not a loop, just "plan all fetches upfront, execute in parallel." Valid for any agent type that calls multiple tools. Agent Factory dropdown must filter valid strategies per agent_type — invalid combinations are hidden, not just disabled.</div>
+  </div>
+
+  <!-- PROMPT ALIGNMENT -->
+  <div class="sec">
+    <div class="sec-label">Prompt Alignment</div>
+    <h2>Prompt Strategy Must Match Overlay</h2>
+  </div>
+  <div class="flow-wrap" style="margin-bottom:40px;">
+    <div class="flow-title">prompt-defaults.yaml is per overlay = agent_type content requirements × strategy format requirements. Wrong prompt on wrong strategy = broken agent at runtime.</div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:20px;">
+      <thead>
+        <tr style="background:#f1f5f9;">
+          <th style="text-align:left;padding:8px 12px;border-bottom:2px solid #e2e8f0;font-weight:700;">Strategy</th>
+          <th style="text-align:left;padding:8px 12px;border-bottom:2px solid #e2e8f0;font-weight:700;">Required Prompts</th>
+          <th style="text-align:left;padding:8px 12px;border-bottom:2px solid #e2e8f0;font-weight:700;">Key Format Rule</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="background:white;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:11px;">simple</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">planner_system_prompt</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Pick one tool + argument. No thought field. CoT instructions wasted here.</td></tr>
+        <tr style="background:#fafafa;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:11px;">react</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">react_planner_system_prompt</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Must include Thought: / Action: format. Loop until DONE in Thought.</td></tr>
+        <tr style="background:white;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:11px;">plan_execute</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">plan_execute_planner_system_prompt</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Output full ordered plan as JSON list: [{tool, argument}, ...] before executing.</td></tr>
+        <tr style="background:#fafafa;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:11px;">multi_hop</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">decomposer + sub_planner + synthesizer</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Three distinct prompts for three LLM roles. All required.</td></tr>
+        <tr style="background:white;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:11px;">reflection</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">planner + responder + reflector</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Reflector must output {issues_found, critique, suggested_correction}.</td></tr>
+        <tr style="background:#fafafa;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:11px;">tree_of_thought</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">branching_planner + branch_evaluator + synthesizer</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Evaluator scores branches before pruning; synthesizer selects best path.</td></tr>
+      </tbody>
+    </table>
+    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead>
+        <tr style="background:#f1f5f9;">
+          <th style="text-align:left;padding:8px 12px;border-bottom:2px solid #e2e8f0;font-weight:700;">Agent Type</th>
+          <th style="text-align:left;padding:8px 12px;border-bottom:2px solid #e2e8f0;font-weight:700;">Prompt Content Requirements</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="background:white;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:11px;">chat_agent</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Conversational tone, memory-aware (prior turns), scope-aware (member/case context)</td></tr>
+        <tr style="background:#fafafa;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:11px;">summarization_agent</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Synthesis-focused, structured output (key concerns, next steps), no conversational tone</td></tr>
+        <tr style="background:white;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:11px;">extraction_agent</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Strict JSON output schema, no CoT, no explanation — just extract</td></tr>
+        <tr style="background:#fafafa;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:11px;">triage_agent</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Fixed classification labels in prompt, route decision output only</td></tr>
+        <tr style="background:white;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:11px;">monitoring_agent</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Threshold language, alert vs no-alert decision output</td></tr>
+        <tr style="background:#fafafa;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:11px;">retrieval_agent</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Query reformulation instructions, source citation format, groundedness requirement</td></tr>
+        <tr style="background:white;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:11px;">workflow_agent</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Step execution instructions, handoff format between steps</td></tr>
+      </tbody>
+    </table>
+    <div style="margin-top:14px;background:#fef9c3;border:1px solid #fde68a;border-radius:8px;padding:12px 16px;font-size:12px;color:#854d0e;"><strong>UI enforcement (Agent Registry → Prompts tab):</strong> detect strategy from agent.yaml → show required prompt fields → warn if missing → block save if any required prompt is empty → warn if simple strategy but CoT format detected in prompt.</div>
+  </div>
+
+  <!-- PRE/IN/POST GRAPH UNIVERSAL -->
+  <div class="sec">
+    <div class="sec-label">Graph Phases</div>
+    <h2>Pre / In / Post Graph — Universal for All Agent Types</h2>
+  </div>
+  <div class="flow-wrap" style="margin-bottom:40px;">
+    <div class="flow-title">Same 3-phase boundary for every valid overlay. What changes is what runs inside each phase, not the phases themselves.</div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead>
+        <tr style="background:#f1f5f9;">
+          <th style="text-align:left;padding:8px 12px;border-bottom:2px solid #e2e8f0;font-weight:700;">Phase</th>
+          <th style="text-align:left;padding:8px 12px;border-bottom:2px solid #e2e8f0;font-weight:700;">What Always Runs</th>
+          <th style="text-align:left;padding:8px 12px;border-bottom:2px solid #e2e8f0;font-weight:700;">What Varies by Agent Type</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="background:white;">
+          <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;"><span class="phase-badge pre" style="display:inline-block;">PRE</span></td>
+          <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Memory read, RAG retrieval (if enabled), context build</td>
+          <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Batch agents (extraction, triage, monitoring) skip episodic memory read. summarization_agent_rag runs KB retrieval here.</td>
+        </tr>
+        <tr style="background:#fafafa;">
+          <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;"><span class="phase-badge in" style="display:inline-block;">IN</span></td>
+          <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Reasoning loop — planner → executor → responder</td>
+          <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Graph shape changes per strategy: simple = 2 LLM calls, react = loop, plan_execute = plan then parallel execute, multi_hop = decompose → sub-plans → synthesize</td>
+        </tr>
+        <tr style="background:white;">
+          <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;"><span class="phase-badge post" style="display:inline-block;">POST</span></td>
+          <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Memory write, HITL evaluation, response formatting</td>
+          <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Batch agents skip episodic/semantic write. HITL evaluation only runs for agent types with HITL enabled.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- AGENT REGISTRY CONFIG MATRIX -->
+  <div class="sec">
+    <div class="sec-label">Config Matrix</div>
+    <h2>Agent Registry Config Dimensions — All Agent Types</h2>
+  </div>
+  <div class="flow-wrap" style="margin-bottom:40px;">
+    <div class="flow-title">Every agent type has the same config dimensions. The Agent Capability Matrix determines which options are visible, locked, or required per type.</div>
+    <div style="overflow-x:auto;">
+    <table style="width:100%;border-collapse:collapse;font-size:11px;min-width:800px;">
+      <thead>
+        <tr style="background:#f1f5f9;">
+          <th style="text-align:left;padding:8px 12px;border-bottom:2px solid #e2e8f0;font-weight:700;">Config</th>
+          <th style="text-align:center;padding:8px 12px;border-bottom:2px solid #e2e8f0;font-weight:700;">chat_agent</th>
+          <th style="text-align:center;padding:8px 12px;border-bottom:2px solid #e2e8f0;font-weight:700;">summarization_agent</th>
+          <th style="text-align:center;padding:8px 12px;border-bottom:2px solid #e2e8f0;font-weight:700;">extraction_agent</th>
+          <th style="text-align:center;padding:8px 12px;border-bottom:2px solid #e2e8f0;font-weight:700;">triage_agent</th>
+          <th style="text-align:center;padding:8px 12px;border-bottom:2px solid #e2e8f0;font-weight:700;">monitoring_agent</th>
+          <th style="text-align:center;padding:8px 12px;border-bottom:2px solid #e2e8f0;font-weight:700;">workflow_agent</th>
+          <th style="text-align:center;padding:8px 12px;border-bottom:2px solid #e2e8f0;font-weight:700;">multi_agent</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="background:white;">
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-weight:700;">RAG</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;color:#2563eb;">optional</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;color:#475569;font-size:10px;">simple=off<br/>rag=req</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;color:#94a3b8;">locked off</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;color:#94a3b8;">locked off</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;color:#94a3b8;">locked off</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;color:#2563eb;">optional</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;color:#2563eb;">optional</td>
+        </tr>
+        <tr style="background:#fafafa;">
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-weight:700;">HITL</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;color:#2563eb;">optional</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;color:#94a3b8;">locked off</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;color:#94a3b8;">locked off</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;color:#94a3b8;">locked off</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;color:#94a3b8;">locked off</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;color:#2563eb;">optional</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;color:#dc2626;font-size:10px;">supervisor+<br/>HITL=req</td>
+        </tr>
+        <tr style="background:white;">
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-weight:700;">Memory</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;color:#16a34a;font-size:10px;">full<br/>(all 4 types)</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;color:#475569;font-size:10px;">limited<br/>(short-term)</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;color:#94a3b8;">locked off</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;color:#94a3b8;">locked off</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;color:#94a3b8;">locked off</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;color:#475569;font-size:10px;">limited<br/>(short-term)</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;color:#2563eb;font-size:10px;">shared<br/>namespace</td>
+        </tr>
+        <tr style="background:#fafafa;">
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-weight:700;">Tools</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;color:#2563eb;">configurable</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;color:#2563eb;">configurable</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;color:#2563eb;">configurable</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;color:#2563eb;">configurable</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;color:#2563eb;">configurable</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;color:#2563eb;">configurable</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;color:#475569;font-size:10px;">per<br/>sub-agent</td>
+        </tr>
+        <tr style="background:white;">
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-weight:700;">Prompts</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;color:#dc2626;font-size:10px;">required<br/>(strategy-driven)</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;color:#dc2626;">required</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;color:#dc2626;">required</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;color:#dc2626;">required</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;color:#dc2626;">required</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;color:#dc2626;">required</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;color:#475569;font-size:10px;">per<br/>sub-agent</td>
+        </tr>
+        <tr style="background:#fafafa;">
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-weight:700;">Routing</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;color:#2563eb;">yes</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;color:#94a3b8;">no</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;color:#94a3b8;">no</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;color:#16a34a;font-size:10px;">yes<br/>(IS routing)</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;color:#94a3b8;">no</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;color:#94a3b8;">no</td>
+          <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;color:#475569;font-size:10px;">supervisor<br/>level</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+    <div style="margin-top:14px;font-size:11px;color:#64748b;line-height:1.7;">
+      <strong>triage_agent:</strong> Routing tab IS the entire config — classify input → route to agent/workflow. No planner loop.<br/>
+      <strong>multi_agent:</strong> Supervisor config controls orchestration only. Each sub-agent has its own full overlay config independently.
+    </div>
+  </div>
+
+  <!-- OBSERVABILITY PER OVERLAY -->
+  <div class="sec">
+    <div class="sec-label">Observability</div>
+    <h2>Trace Content — Per Overlay</h2>
+  </div>
+  <div class="flow-wrap" style="margin-bottom:40px;">
+    <div class="flow-title">Same trace event structure (pre/in/post graph) for every overlay. Payload content differs per agent type and strategy. Observability engine is shared — trace fields are overlay-specific.</div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:16px;">
+      <thead>
+        <tr style="background:#f1f5f9;">
+          <th style="text-align:left;padding:8px 12px;border-bottom:2px solid #e2e8f0;font-weight:700;">Overlay / Strategy</th>
+          <th style="text-align:left;padding:8px 12px;border-bottom:2px solid #e2e8f0;font-weight:700;">What the Trace Captures</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="background:white;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:11px;">simple</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">2 LLM calls (planner + responder), 1 tool call, tool output</td></tr>
+        <tr style="background:#fafafa;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:11px;">react</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">N loop iterations — each with thought + action + observation. Loop count, tool order.</td></tr>
+        <tr style="background:white;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:11px;">plan_execute</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Full plan (ordered tool list), each tool result, final synthesis call</td></tr>
+        <tr style="background:#fafafa;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:11px;">multi_hop</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Sub-questions generated, tool call + sub-answer per sub-question, final synthesis</td></tr>
+        <tr style="background:white;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:11px;">reflection</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Initial answer, reflector critique, retry triggered (y/n), final answer delta</td></tr>
+        <tr style="background:#fafafa;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:11px;">summarization_agent</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Tool outputs fetched, synthesis LLM call, structured output fields</td></tr>
+        <tr style="background:white;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:11px;">extraction_agent</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Input text, extracted fields, confidence score per field</td></tr>
+        <tr style="background:#fafafa;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:11px;">triage_agent</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Input, classification label, confidence score, route decision</td></tr>
+        <tr style="background:white;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:11px;">multi_agent</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Supervisor decision, sub-agent invoked, nested sub-agent trace, aggregation</td></tr>
+      </tbody>
+    </table>
+    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 16px;font-size:11px;color:#475569;line-height:1.8;">
+      <strong>Always emitted regardless of overlay:</strong><br/>
+      <code style="background:#f1f5f9;padding:1px 5px;border-radius:3px;">pre_graph_complete</code> — memory loaded, RAG retrieved, context built. Duration + token count.<br/>
+      <code style="background:#f1f5f9;padding:1px 5px;border-radius:3px;">in_graph_step</code> — one event per step (LLM/tool/internal). Duration, input, output.<br/>
+      <code style="background:#f1f5f9;padding:1px 5px;border-radius:3px;">post_graph_complete</code> — memory written, HITL evaluated, final response. Duration.
+    </div>
+  </div>
+
+  <!-- EVAL PER OVERLAY -->
+  <div class="sec">
+    <div class="sec-label">Evaluation</div>
+    <h2>Eval Metrics — Per Overlay</h2>
+  </div>
+  <div class="flow-wrap" style="margin-bottom:40px;">
+    <div class="flow-title">Same eval framework and runner for all overlays. Metric set is overlay-specific — what "good" means differs per agent type and strategy. Eval runner reads from the trace to compute strategy-level metrics.</div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:16px;">
+      <thead>
+        <tr style="background:#f1f5f9;">
+          <th style="text-align:left;padding:8px 12px;border-bottom:2px solid #e2e8f0;font-weight:700;">Agent Type / Strategy</th>
+          <th style="text-align:left;padding:8px 12px;border-bottom:2px solid #e2e8f0;font-weight:700;">What to Evaluate</th>
+          <th style="text-align:left;padding:8px 12px;border-bottom:2px solid #e2e8f0;font-weight:700;">Metrics</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="background:white;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:11px;">chat_agent</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Answer quality, groundedness, tool selection, memory recall</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">LLM-as-judge, groundedness %, tool accuracy, memory hit rate</td></tr>
+        <tr style="background:#fafafa;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:11px;">summarization_agent</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Completeness vs source, factual accuracy, hallucination rate</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">ROUGE/BLEU, LLM-as-judge completeness, hallucination flag rate</td></tr>
+        <tr style="background:white;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:11px;">extraction_agent</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Field accuracy vs ground truth, recall/precision per field</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Exact match %, F1 per field, missed field rate</td></tr>
+        <tr style="background:#fafafa;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:11px;">triage_agent</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Classification accuracy, routing correctness</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Accuracy, precision/recall per class, confusion matrix, misroute rate</td></tr>
+        <tr style="background:white;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:11px;">monitoring_agent</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Alert correctness, false positive rate, missed threshold rate</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Alert precision/recall, false positive %, threshold replay accuracy</td></tr>
+        <tr style="background:#fafafa;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:11px;">multi_agent</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Sub-agent selection, aggregation quality, end-to-end answer</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Routing accuracy, aggregation LLM-as-judge, golden set score</td></tr>
+        <tr style="background:white;border-top:2px solid #e2e8f0;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:11px;">react strategy</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Loop efficiency — right tools, right order, no unnecessary iterations</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Loop count, tool selection accuracy, unnecessary iteration rate</td></tr>
+        <tr style="background:#fafafa;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:11px;">reflection strategy</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Did reflection catch real errors? Did retry improve score?</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Grade delta before/after retry, false critique rate, retry trigger rate</td></tr>
+        <tr style="background:white;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:11px;">plan_execute strategy</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Was the plan correct upfront? Were all planned tools necessary?</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Plan accuracy vs optimal, unnecessary tool rate</td></tr>
+        <tr style="background:#fafafa;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:11px;">multi_hop strategy</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Sub-question quality, sub-answer accuracy, synthesis coherence</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Sub-question coverage, sub-answer accuracy, synthesis coherence score</td></tr>
+      </tbody>
+    </table>
+    <div style="background:#fef9c3;border:1px solid #fde68a;border-radius:8px;padding:12px 16px;font-size:11px;color:#854d0e;line-height:1.7;">
+      <strong>Shared eval framework components:</strong> Golden set (ground truth per overlay) · Eval runner (replays golden set against live agent) · Metric calculator (overlay-specific metric set) · Eval report (score breakdown + regression detection) · LLM-as-judge (shared grader used by chat, summarization, workflow, multi_agent)<br/>
+      <strong>Observability and eval are linked:</strong> eval runner reads from the trace to compute strategy-level metrics. You cannot compute loop count, plan accuracy, or reflection delta without the trace.
+    </div>
+  </div>
+
+  <!-- GAP ANALYSIS -->
+  <div class="sec">
+    <div class="sec-label">Gap Analysis</div>
+    <h2>Agentic Design Patterns — Coverage vs Missing</h2>
+  </div>
+  <div class="flow-wrap" style="margin-bottom:40px;">
+    <div class="flow-title">Source: "Agentic Design Patterns" (Gulli, 424pp). 21 chapters cross-referenced against platform. 14 covered, 10 missing.</div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead>
+        <tr style="background:#f1f5f9;">
+          <th style="text-align:left;padding:8px 12px;border-bottom:2px solid #e2e8f0;font-weight:700;">Book Pattern</th>
+          <th style="text-align:left;padding:8px 12px;border-bottom:2px solid #e2e8f0;font-weight:700;">Our Coverage</th>
+          <th style="text-align:center;padding:8px 12px;border-bottom:2px solid #e2e8f0;font-weight:700;">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="background:white;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-size:11px;">Prompt Chaining</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">plan_execute + simple strategies</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;"><span style="background:#dcfce7;color:#16a34a;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">COVERED</span></td></tr>
+        <tr style="background:#fafafa;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-size:11px;">Routing</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">triage_agent + routing tab</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;"><span style="background:#dcfce7;color:#16a34a;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">COVERED</span></td></tr>
+        <tr style="background:white;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-size:11px;">Parallelization</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">parallel_tools toggle on plan_execute</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;"><span style="background:#dcfce7;color:#16a34a;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">COVERED</span></td></tr>
+        <tr style="background:#fafafa;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-size:11px;">Reflection</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">reflection reasoning strategy</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;"><span style="background:#dcfce7;color:#16a34a;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">COVERED</span></td></tr>
+        <tr style="background:white;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-size:11px;">Tool Use</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Tool Gateway (C3)</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;"><span style="background:#dcfce7;color:#16a34a;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">COVERED</span></td></tr>
+        <tr style="background:#fafafa;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-size:11px;">Planning</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">plan_execute strategy</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;"><span style="background:#dcfce7;color:#16a34a;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">COVERED</span></td></tr>
+        <tr style="background:white;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-size:11px;">Multi-Agent</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">multi_agent type (supervisor/hierarchical)</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;"><span style="background:#dcfce7;color:#16a34a;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">COVERED</span></td></tr>
+        <tr style="background:#fafafa;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-size:11px;">Memory Management</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">4 memory types (short-term/episodic/semantic/summary)</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;"><span style="background:#dcfce7;color:#16a34a;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">COVERED</span></td></tr>
+        <tr style="background:white;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-size:11px;">Goal Setting & Monitoring</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Backlog item 14</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;"><span style="background:#fef9c3;color:#854d0e;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">BACKLOG</span></td></tr>
+        <tr style="background:#fafafa;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-size:11px;">HITL</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Full HITL design (risk scoring, approval store, routing rules)</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;"><span style="background:#dcfce7;color:#16a34a;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">COVERED</span></td></tr>
+        <tr style="background:white;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-size:11px;">RAG / Knowledge Retrieval</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">3D RAG (pre-graph / planner_tool / post-graph)</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;"><span style="background:#dcfce7;color:#16a34a;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">COVERED</span></td></tr>
+        <tr style="background:#fafafa;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-size:11px;">Guardrails / Safety</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Backlog item 10m</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;"><span style="background:#fef9c3;color:#854d0e;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">BACKLOG</span></td></tr>
+        <tr style="background:white;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-size:11px;">Evaluation & Monitoring</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Eval framework design (overlay-specific metrics)</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;"><span style="background:#fef9c3;color:#854d0e;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">BACKLOG</span></td></tr>
+        <tr style="background:#fafafa;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-size:11px;">ReAct + Tree of Thought</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">react ✅ built, tree_of_thought 🔲 roadmap</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;"><span style="background:#dcfce7;color:#16a34a;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">COVERED</span></td></tr>
+        <tr style="background:white;border-top:2px solid #e2e8f0;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-size:11px;">Learning & Adaptation</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">OUT OF SCOPE. RLHF/DPO = Anthropic's job. Semantic memory + eval covers the enterprise version.</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;"><span style="background:#f1f5f9;color:#64748b;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">OUT OF SCOPE</span></td></tr>
+        <tr style="background:#fafafa;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-size:11px;">MCP — Model Context Protocol</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Tool Gateway IS the MCP concept. Future: add MCP adapter for external tool servers if needed.</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;"><span style="background:#dcfce7;color:#16a34a;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">COVERED</span></td></tr>
+        <tr style="background:white;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-size:11px;font-weight:700;">Event-Driven Agents</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">All agents today are request-response. No webhook/queue/CDC/cron trigger mechanism. Most production enterprise agents are event-driven.</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;"><span style="background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">MISSING</span></td></tr>
+        <tr style="background:white;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-size:11px;font-weight:700;">Exception Handling & Recovery</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">self_corrective = quality retry only. No retry/fallback/circuit-breaker/timeout at platform level.</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;"><span style="background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">MISSING</span></td></tr>
+        <tr style="background:#fafafa;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-size:11px;font-weight:700;">A2A — Agent-to-Agent Protocol</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">multi_agent is internal only. No cross-framework interop (LangGraph ↔ CrewAI ↔ ADK).</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;"><span style="background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">MISSING</span></td></tr>
+        <tr style="background:white;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-size:11px;font-weight:700;">Resource-Aware Optimization</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">simple strategy = fewer LLM calls. No dynamic model routing (Haiku for simple, Opus for complex).</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;"><span style="background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">MISSING</span></td></tr>
+        <tr style="background:#fafafa;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-size:11px;">Graph RAG</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Dim 1 retrieval method option (semantic | keyword | hybrid | <strong>graph</strong>). Router selects store. Already in design.</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;"><span style="background:#dcfce7;color:#16a34a;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">COVERED</span></td></tr>
+        <tr style="background:white;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-size:11px;">Agentic RAG</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Dim 3 pattern option (retrieval.pattern: agentic). Applies to all active Dim 2 stages. Already in design.</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;"><span style="background:#dcfce7;color:#16a34a;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">COVERED</span></td></tr>
+        <tr style="background:#fafafa;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-size:11px;font-weight:700;">CoD — Chain of Debates</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">reflection = single model self-critiques. CoD = multiple models critique each other. Different pattern.</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;"><span style="background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">MISSING</span></td></tr>
+        <tr style="background:white;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-size:11px;font-weight:700;">GoD — Graph of Debates</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Non-linear multi-model debate graph. Research-grade. Not in any current design.</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;"><span style="background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">MISSING</span></td></tr>
+        <tr style="background:#fafafa;"><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-size:11px;font-weight:700;">Contractor / Formal Spec</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;color:#475569;font-size:11px;">Agent executes against formal contract with validation criteria + self-validates before submission. New agent type.</td><td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;text-align:center;"><span style="background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">MISSING</span></td></tr>
+      </tbody>
+    </table>
+    <div style="margin-top:14px;display:flex;gap:16px;font-size:11px;color:#64748b;">
+      <span><strong>Near-term missing (enterprise blockers):</strong> MCP, Exception Handling, A2A, Resource-Aware Optimization, Agentic RAG</span>
+    </div>
+  </div>
+
+  <!-- FILE MAP -->
+  <div class="sec">
+    <div class="sec-label">File Structure</div>
+    <h2>Which Files Live in Which Container</h2>
+  </div>
+  <div class="file-map">
+    <table>
+      <thead>
+        <tr>
+          <th>Path</th>
+          <th>Container</th>
+          <th>Purpose</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>agents/&lt;cap&gt;/&lt;agent&gt;/services/agent-runtime/src/platform/app.py</td><td><span class="c1-dot"></span>C1</td><td>FastAPI entrypoint — auth, context, HITL endpoints, proxy to C2</td></tr>
+        <tr><td>agents/&lt;cap&gt;/&lt;agent&gt;/services/agent-runtime/src/platform/langgraph_runner.py</td><td><span class="c1-dot"></span>C1</td><td>Pre/in/post-graph orchestrator — calls C2 HTTP clients</td></tr>
+        <tr><td>agents/&lt;cap&gt;/&lt;agent&gt;/services/agent-runtime/src/clients/</td><td><span class="c1-dot"></span>C1</td><td>HTTP clients: config, memory, rag, strategy, tools</td></tr>
+        <tr><td>agents/&lt;cap&gt;/&lt;agent&gt;/overlays/&lt;type&gt;/config/agent.yaml</td><td><span class="c2-dot"></span>C2 (mounted)</td><td>Agent behavior — reasoning strategy, tools, RAG, HITL, features</td></tr>
+        <tr><td>agents/&lt;cap&gt;/&lt;agent&gt;/overlays/&lt;type&gt;/config/memory.yaml</td><td><span class="c2-dot"></span>C2 (mounted)</td><td>Memory read/write policies per type</td></tr>
+        <tr><td>agents/&lt;cap&gt;/&lt;agent&gt;/overlays/&lt;type&gt;/config/prompt-defaults.yaml</td><td><span class="c2-dot"></span>C2 (mounted)</td><td>Planner system prompt, responder system prompt</td></tr>
+        <tr><td>agents/&lt;cap&gt;/&lt;agent&gt;/domain.yaml</td><td><span class="c2-dot"></span>C2 (mounted)</td><td>Scope definitions, summary_tools per scope</td></tr>
+        <tr><td>shared-infra/platform-services/src/services/reasoning/</td><td><span class="c2-dot"></span>C2</td><td>Planner, router, executor, responder, strategies</td></tr>
+        <tr><td>shared-infra/platform-services/src/services/memory/</td><td><span class="c2-dot"></span>C2</td><td>Memory read/write engine</td></tr>
+        <tr><td>shared-infra/platform-services/src/services/rag/</td><td><span class="c2-dot"></span>C2</td><td>RAG retrieval router, run_rag with 3 dimensions</td></tr>
+        <tr><td>shared-infra/platform-services/src/services/summarize/</td><td><span class="c2-dot"></span>C2</td><td>Scoped summary — parallel tool calls + LLM synthesis</td></tr>
+        <tr><td>platform-core/src/platform_core/</td><td><span class="c2-dot"></span>C2 + C1</td><td>Shared library — tool registry, memory backends, HITL, auth</td></tr>
+        <tr><td>shared-infra/industry-tool-gateway-healthcare/</td><td><span class="c3-dot"></span>C3</td><td>Tool execution, KB/vector store, synth data, tool admin UI</td></tr>
+        <tr><td>platform-tools/agent-factory-support-api/</td><td>Admin</td><td>Scaffold, registry, workspace management, config lab API</td></tr>
+        <tr><td>platform-tools/agent-factory-ui/</td><td>Admin</td><td>Create Agent, Agent Registry, Test / Config Lab, Observability</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+</body>
+</html>

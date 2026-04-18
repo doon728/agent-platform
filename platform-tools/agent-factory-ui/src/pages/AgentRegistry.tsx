@@ -246,15 +246,29 @@ function buildFlowHelp(config: AgentConfig, agentType: string): Record<string, {
 
 // ── Phase band wrapper ────────────────────────────────────────────────────────
 
+function ContainerBadge({ label, color }: { label: string; color: string }) {
+  return (
+    <Box sx={{
+      display: "inline-flex", alignItems: "center", gap: 0.5,
+      px: 1, py: 0.2, borderRadius: 1, border: `1px solid ${color}60`,
+      bgcolor: `${color}10`, fontSize: 9, fontWeight: 700,
+      color, letterSpacing: 0.5, textTransform: "uppercase",
+    }}>{label}</Box>
+  )
+}
+
 function Phaseband({
-  label, color, bgcolor, children,
-}: { label: string; color: string; bgcolor: string; children: React.ReactNode }) {
+  label, color, bgcolor, container, children,
+}: { label: string; color: string; bgcolor: string; container?: string; children: React.ReactNode }) {
   return (
     <Box sx={{ border: `1.5px solid ${color}40`, borderRadius: 2, bgcolor, px: 2, pt: 1.5, pb: 2 }}>
-      <Typography fontSize={10} fontWeight={800} color={color}
-        sx={{ textTransform: "uppercase", letterSpacing: 1, mb: 1.5 }}>
-        {label}
-      </Typography>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
+        <Typography fontSize={10} fontWeight={800} color={color}
+          sx={{ textTransform: "uppercase", letterSpacing: 1 }}>
+          {label}
+        </Typography>
+        {container && <ContainerBadge label={container} color={color} />}
+      </Box>
       {children}
     </Box>
   )
@@ -292,12 +306,12 @@ function DiagramSimple({
     <Box sx={{ display: "flex", flexDirection: "column", gap: 0 }}>
 
       {/* ── PRE-GRAPH ── */}
-      <Phaseband label="Pre-Graph" color="#8b5cf6" bgcolor="#faf5ff">
+      <Phaseband label="Pre-Graph" color="#8b5cf6" bgcolor="#faf5ff" container="C1 → C2">
         <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, flexWrap: "wrap" }}>
-          <FlowNode nodeKey="user_message" onHover={onHover} label="User Message" color="#64748b" tag="input" />
+          <FlowNode nodeKey="user_message" onHover={onHover} label="User Message" color="#64748b" tag="input" sublabel="C1 auth + context" />
           <FlowArrow />
           <FlowNode nodeKey="pre_graph_rag" onHover={onHover} label="Pre-Graph RAG"
-            sublabel={preGraphOn ? `${preGraphStrategy} · ${preGraphPattern}` : "off"}
+            sublabel={preGraphOn ? `C2 · ${preGraphStrategy} · ${preGraphPattern}` : "off"}
             active={preGraphOn} color="#8b5cf6" tag="rag"
           />
         </Box>
@@ -306,22 +320,22 @@ function DiagramSimple({
       <PhaseConnector />
 
       {/* ── IN-GRAPH ── */}
-      <Phaseband label="In-Graph" color="#6366f1" bgcolor="#f5f3ff">
+      <Phaseband label="In-Graph" color="#6366f1" bgcolor="#f5f3ff" container="C2 platform-services">
         <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, flexWrap: "wrap" }}>
           <FlowNode nodeKey="planner" onHover={onHover} label="Planner"
-            sublabel={strategy} active={true} color="#6366f1" tag="llm"
+            sublabel={`C2 · ${strategy}`} active={true} color="#6366f1" tag="llm"
           />
           <FlowArrow label={plannerToolOn ? "search_kb?" : undefined} />
           <FlowNode nodeKey="executor" onHover={onHover} label="Executor"
-            sublabel="tool dispatch" active={true} color="#0ea5e9" tag="tools"
+            sublabel="C2 · tool dispatch" active={true} color="#0ea5e9" tag="tools"
           />
           <FlowArrow />
           <FlowNode nodeKey="hitl_gate" onHover={onHover} label="HITL Gate"
-            sublabel={hitlOn ? "approval on" : "off"} active={hitlOn} color="#f59e0b" tag="approval"
+            sublabel={hitlOn ? "C1 · approval store" : "off"} active={hitlOn} color="#f59e0b" tag="approval"
           />
           <FlowArrow active={hitlOn} />
           <FlowNode nodeKey="responder" onHover={onHover} label="Responder"
-            sublabel="final answer" active={true} color="#10b981" tag="llm"
+            sublabel="C2 · final answer" active={true} color="#10b981" tag="llm"
           />
           <FlowArrow />
           <FlowNode nodeKey="response" onHover={onHover} label="Response" color="#64748b" tag="output" />
@@ -331,7 +345,7 @@ function DiagramSimple({
       <PhaseConnector />
 
       {/* ── POST-GRAPH ── */}
-      <Phaseband label="Post-Graph" color="#14b8a6" bgcolor="#f0fdfa">
+      <Phaseband label="Post-Graph" color="#14b8a6" bgcolor="#f0fdfa" container="C1 → C2">
         <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
           <FlowBranch nodeKey="write_short_term" onHover={onHover} label="Short-Term Write" active={shortTermOn} />
           <FlowBranch nodeKey="write_episodic"   onHover={onHover} label="Episodic Write"   active={episodicWriteOn} />
@@ -367,12 +381,12 @@ function DiagramReact({
     <Box sx={{ display: "flex", flexDirection: "column", gap: 0 }}>
 
       {/* ── PRE-GRAPH ── */}
-      <Phaseband label="Pre-Graph" color="#8b5cf6" bgcolor="#faf5ff">
+      <Phaseband label="Pre-Graph" color="#8b5cf6" bgcolor="#faf5ff" container="C1 → C2">
         <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, flexWrap: "wrap" }}>
-          <FlowNode nodeKey="user_message" onHover={onHover} label="User Message" color="#64748b" tag="input" />
+          <FlowNode nodeKey="user_message" onHover={onHover} label="User Message" color="#64748b" tag="input" sublabel="C1 auth + context" />
           <FlowArrow />
           <FlowNode nodeKey="pre_graph_rag" onHover={onHover} label="Pre-Graph RAG"
-            sublabel={preGraphOn ? `${preGraphStrategy} · ${preGraphPattern}` : "off"}
+            sublabel={preGraphOn ? `C2 · ${preGraphStrategy} · ${preGraphPattern}` : "off"}
             active={preGraphOn} color="#8b5cf6" tag="rag"
           />
         </Box>
@@ -381,22 +395,22 @@ function DiagramReact({
       <PhaseConnector />
 
       {/* ── IN-GRAPH (loop) ── */}
-      <Phaseband label="In-Graph — ReAct Loop" color="#6366f1" bgcolor="#f5f3ff">
+      <Phaseband label="In-Graph — ReAct Loop" color="#6366f1" bgcolor="#f5f3ff" container="C2 platform-services">
         <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, flexWrap: "wrap", mb: writeIntermediateOn ? 1.5 : 0 }}>
           <FlowNode nodeKey="planner" onHover={onHover} label="Planner"
-            sublabel={`think · max ${maxSteps} steps`} active={true} color="#6366f1" tag="llm"
+            sublabel={`C2 · think · max ${maxSteps} steps`} active={true} color="#6366f1" tag="llm"
           />
           <FlowArrow />
           <FlowNode nodeKey="executor" onHover={onHover} label="Executor"
-            sublabel="tool dispatch" active={true} color="#0ea5e9" tag="tools"
+            sublabel="C2 · tool dispatch" active={true} color="#0ea5e9" tag="tools"
           />
           <FlowLoopArrow />
           <FlowNode nodeKey="hitl_gate" onHover={onHover} label="HITL Gate"
-            sublabel={hitlOn ? "approval on" : "off"} active={hitlOn} color="#f59e0b" tag="approval"
+            sublabel={hitlOn ? "C1 · approval store" : "off"} active={hitlOn} color="#f59e0b" tag="approval"
           />
           <FlowArrow />
           <FlowNode nodeKey="responder" onHover={onHover} label="Responder"
-            sublabel="loop ends → respond" active={true} color="#10b981" tag="llm"
+            sublabel="C2 · loop ends → respond" active={true} color="#10b981" tag="llm"
           />
           <FlowArrow />
           <FlowNode nodeKey="response" onHover={onHover} label="Response" color="#64748b" tag="output" />
@@ -435,17 +449,17 @@ function DiagramSummary({
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 0 }}>
 
-      <Phaseband label="Pre-Graph" color="#8b5cf6" bgcolor="#faf5ff">
+      <Phaseband label="Pre-Graph" color="#8b5cf6" bgcolor="#faf5ff" container="C1 → C2">
         <FlowNode nodeKey="user_message" onHover={onHover} label="Input Context"
-          sublabel="scope data injected" color="#64748b" tag="input" />
+          sublabel="C1 · scope data injected" color="#64748b" tag="input" />
       </Phaseband>
 
       <PhaseConnector />
 
-      <Phaseband label="In-Graph" color="#6366f1" bgcolor="#f5f3ff">
+      <Phaseband label="In-Graph" color="#6366f1" bgcolor="#f5f3ff" container="C2 platform-services">
         <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
           <FlowNode nodeKey="planner" onHover={onHover} label="Summarizer"
-            sublabel="single LLM pass" active={true} color="#6366f1" tag="llm"
+            sublabel="C2 · single LLM pass" active={true} color="#6366f1" tag="llm"
           />
           <FlowArrow />
           <FlowNode nodeKey="response" onHover={onHover} label="Summary" color="#10b981" tag="output" />
@@ -457,7 +471,7 @@ function DiagramSummary({
 
       <PhaseConnector />
 
-      <Phaseband label="Post-Graph" color="#14b8a6" bgcolor="#f0fdfa">
+      <Phaseband label="Post-Graph" color="#14b8a6" bgcolor="#f0fdfa" container="C1 → C2">
         <FlowBranch nodeKey="write_short_term" onHover={onHover} label="Short-Term Write" active={shortTermOn} />
       </Phaseband>
 
@@ -677,16 +691,42 @@ function OverviewTab({ agent, manifest, config }: { agent: AgentRecord; manifest
         {/* Identity row */}
         <Box sx={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 1.5 }}>
           {[
-            ["Capability",   agent.capability_name],
-            ["Agent",        agent.agent_repo_name],
-            ["Overlay Type", agent.agent_type],
-            ["Runtime URL",  agent.runtime_url],
+            ["Capability",          agent.capability_name],
+            ["Agent",               agent.agent_repo_name],
+            ["Overlay Type",        agent.agent_type],
+            ["C1 — Agent Runtime",  agent.runtime_url],
           ].map(([label, val]) => (
             <Box key={label} sx={{ p: 1.5, borderRadius: 1.5, bgcolor: "#f8fafc", border: "1px solid #e2e8f0" }}>
               <Typography fontSize={10} fontWeight={600} color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.5, mb: 0.5 }}>{label}</Typography>
               <Typography fontSize={13} fontWeight={600}>{val || "—"}</Typography>
             </Box>
           ))}
+        </Box>
+
+        {/* Container URLs + Mini UI link */}
+        <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 1.5 }}>
+          <Box sx={{ p: 1.5, borderRadius: 1.5, bgcolor: "#f8fafc", border: "1px solid #e2e8f0" }}>
+            <Typography fontSize={10} fontWeight={600} color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.5, mb: 0.5 }}>C2 — Platform Services</Typography>
+            <Typography fontSize={12} fontWeight={600} color="text.secondary">
+              {agent.runtime_url ? agent.runtime_url.replace(":8001", ":8002").replace(":8081", ":8002") : "http://localhost:8002"}
+            </Typography>
+          </Box>
+          <Box sx={{ p: 1.5, borderRadius: 1.5, bgcolor: "#f8fafc", border: "1px solid #e2e8f0" }}>
+            <Typography fontSize={10} fontWeight={600} color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.5, mb: 0.5 }}>Tool Gateway</Typography>
+            <Typography fontSize={12} fontWeight={600} color="text.secondary">http://localhost:8080</Typography>
+          </Box>
+          <Box sx={{ p: 1.5, borderRadius: 1.5, bgcolor: "#f0f4ff", border: "1.5px solid #6366f1" }}>
+            <Typography fontSize={10} fontWeight={600} color="#6366f1" sx={{ textTransform: "uppercase", letterSpacing: 0.5, mb: 0.5 }}>Agent UI</Typography>
+            <Box
+              component="a"
+              href={`http://localhost:8000/agent-ui/${agent.capability_name}/${agent.agent_repo_name}/${agent.agent_type}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              sx={{ fontSize: 12, fontWeight: 700, color: "#6366f1", textDecoration: "none", "&:hover": { textDecoration: "underline" } }}
+            >
+              Open Chat UI ↗
+            </Box>
+          </Box>
         </Box>
 
         {/* Reasoning strategy + features */}
@@ -2234,6 +2274,7 @@ function AgentDetail({ agent }: { agent: AgentRecord }) {
   const [saveAlert, setSaveAlert] = useState<{ type: "success" | "error"; msg: string } | null>(null)
 
   useEffect(() => {
+    setTab(0)
     setLoading(true)
     setConfig(null)
     setManifest(null)
@@ -2303,51 +2344,63 @@ function AgentDetail({ agent }: { agent: AgentRecord }) {
         </Alert>
       )}
 
-      <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ px: 3, borderBottom: "1px solid", borderColor: "divider" }}>
-        {[
-          { label: "Overview", feature: null },
-          { label: "Tools", feature: null },
-          { label: "HITL", feature: "hitl" },
-          { label: "Memory", feature: "memory" },
-          { label: "RAG", feature: "rag" },
-          { label: "Prompts", feature: null },
-          { label: "Routing", feature: null },
-        ].map(({ label, feature }, i) => {
-          const locked = feature ? (agent.locked_features || []).includes(feature) : false
-          return (
-            <Tab
-              key={label}
-              value={i}
-              disabled={locked}
-              label={
-                locked ? (
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                    <LockIcon sx={{ fontSize: 12, color: "#94a3b8" }} />
-                    <span>{label}</span>
-                  </Box>
-                ) : label
-              }
-              sx={{ fontSize: 13, textTransform: "none", minWidth: 72 }}
-            />
-          )
-        })}
-      </Tabs>
-
-      <Box sx={{ flexGrow: 1, overflow: "auto", px: 3, py: 3 }}>
-        {loading && <CircularProgress size={24} />}
-        {!loading && !config && <Typography color="text.secondary">Config not available.</Typography>}
-        {!loading && config && (
+      {/* ── Capability matrix — tabs hidden per agent type ── */}
+      {(() => {
+        const isSummary = agent.agent_type.includes("summar")
+        const ALL_TABS = [
+          { label: "Overview",  feature: null,     hidden: false },
+          { label: "Tools",     feature: null,     hidden: false },
+          { label: "HITL",      feature: "hitl",   hidden: isSummary },
+          { label: "Memory",    feature: "memory", hidden: false },
+          { label: "RAG",       feature: "rag",    hidden: false },
+          { label: "Prompts",   feature: null,     hidden: false },
+          { label: "Routing",   feature: null,     hidden: isSummary },
+        ]
+        const visibleTabs = ALL_TABS.filter(t => !t.hidden)
+        // Ensure current tab index is valid after filtering
+        const activeLabel = visibleTabs[tab]?.label ?? visibleTabs[0]?.label
+        return (
           <>
-            {tab === 0 && <OverviewTab agent={agent} manifest={manifest} config={config} />}
-            {tab === 1 && <ToolsTab config={config} onSave={handleSave} />}
-            {tab === 2 && <HitlTab config={config} onSave={handleSave} />}
-            {tab === 3 && <MemoryTab config={config} onSave={handleSave} />}
-            {tab === 4 && <RagTab config={config} onSave={handleSave} agent={agent} />}
-            {tab === 5 && <PromptsTab config={config} onSave={handleSave} />}
-            {tab === 6 && <RoutingTab config={config} onSave={handleSave} />}
+            <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ px: 3, borderBottom: "1px solid", borderColor: "divider" }}>
+              {visibleTabs.map(({ label, feature }, i) => {
+                const locked = feature ? (agent.locked_features || []).includes(feature) : false
+                return (
+                  <Tab
+                    key={label}
+                    value={i}
+                    disabled={locked}
+                    label={
+                      locked ? (
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                          <LockIcon sx={{ fontSize: 12, color: "#94a3b8" }} />
+                          <span>{label}</span>
+                        </Box>
+                      ) : label
+                    }
+                    sx={{ fontSize: 13, textTransform: "none", minWidth: 72 }}
+                  />
+                )
+              })}
+            </Tabs>
+
+            <Box sx={{ flexGrow: 1, overflow: "auto", px: 3, py: 3 }}>
+              {loading && <CircularProgress size={24} />}
+              {!loading && !config && <Typography color="text.secondary">Config not available.</Typography>}
+              {!loading && config && (
+                <>
+                  {activeLabel === "Overview"  && <OverviewTab agent={agent} manifest={manifest} config={config} />}
+                  {activeLabel === "Tools"     && <ToolsTab config={config} onSave={handleSave} />}
+                  {activeLabel === "HITL"      && <HitlTab config={config} onSave={handleSave} />}
+                  {activeLabel === "Memory"    && <MemoryTab config={config} onSave={handleSave} />}
+                  {activeLabel === "RAG"       && <RagTab config={config} onSave={handleSave} agent={agent} />}
+                  {activeLabel === "Prompts"   && <PromptsTab config={config} onSave={handleSave} />}
+                  {activeLabel === "Routing"   && <RoutingTab config={config} onSave={handleSave} />}
+                </>
+              )}
+            </Box>
           </>
-        )}
-      </Box>
+        )
+      })()}
     </Box>
   )
 }

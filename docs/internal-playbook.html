@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Intelligent Agent Accelerator for Healthcare — Internal Playbook</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#f8fafc;color:#0f172a;font-size:14px;line-height:1.6;}
+
+.page{max-width:900px;margin:0 auto;padding:48px 48px 80px;}
+
+/* Cover */
+.cover{text-align:center;padding:60px 0 48px;border-bottom:3px solid #FF9900;margin-bottom:48px;}
+.cover .eyebrow{font-size:12px;font-weight:800;letter-spacing:3px;text-transform:uppercase;color:#FF9900;margin-bottom:16px;}
+.cover h1{font-size:38px;font-weight:900;letter-spacing:-.5px;line-height:1.15;margin-bottom:12px;color:#0f172a;}
+.cover .tagline{font-size:18px;color:#475569;font-weight:500;margin-bottom:32px;}
+.cover .meta{display:flex;justify-content:center;gap:32px;flex-wrap:wrap;}
+.cover .meta-item{font-size:12px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:1px;}
+.cover .meta-item span{display:block;font-size:14px;color:#334155;font-weight:700;text-transform:none;letter-spacing:0;margin-top:2px;}
+
+/* Sections */
+.section{margin-bottom:40px;}
+.section-num{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:2px;color:#FF9900;margin-bottom:4px;}
+.section h2{font-size:22px;font-weight:900;color:#0f172a;margin-bottom:14px;padding-bottom:6px;border-bottom:2px solid #e2e8f0;}
+.section h3{font-size:15px;font-weight:800;color:#1e293b;margin:18px 0 8px;}
+.section h4{font-size:13px;font-weight:800;color:#334155;margin:14px 0 6px;}
+
+p{margin-bottom:10px;color:#334155;}
+ul{margin:6px 0 10px 0;list-style:none;}
+ul li{padding:3px 0 3px 16px;position:relative;color:#334155;}
+ul li::before{content:"→";position:absolute;left:0;color:#FF9900;font-weight:700;}
+
+/* Highlight */
+.highlight{background:#fff8e6;border-left:4px solid #FF9900;padding:12px 16px;border-radius:0 8px 8px 0;margin:14px 0;}
+.highlight strong{color:#92400e;}
+
+/* Tables */
+table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px;}
+th{background:#232f3e;color:#FF9900;padding:9px 12px;text-align:left;font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:.8px;}
+td{padding:8px 12px;border-bottom:1px solid #f1f5f9;color:#334155;vertical-align:top;}
+tr:nth-child(even) td{background:#fafafa;}
+
+/* Code block */
+code{background:#f1f5f9;padding:1px 5px;border-radius:3px;font-family:'SF Mono',Menlo,monospace;font-size:12px;color:#0f172a;}
+.code-block{background:#0f172a;color:#cbd5e1;padding:14px 18px;border-radius:8px;font-family:'SF Mono',Menlo,monospace;font-size:12px;line-height:1.7;margin:12px 0;overflow-x:auto;}
+
+/* Two-col */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:12px 0;}
+.col-box{background:white;border:1.5px solid #e2e8f0;border-radius:10px;padding:14px 16px;}
+.col-box h4{font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin-bottom:8px;}
+.col-box ul li{font-size:12px;padding:2px 0 2px 12px;}
+.col-box ul li::before{font-size:10px;}
+
+/* Pointer */
+.pointer{background:#f1f5f9;border-left:3px solid #94a3b8;padding:10px 14px;border-radius:0 6px 6px 0;margin:14px 0;font-size:12.5px;color:#475569;font-style:italic;}
+.pointer strong{color:#334155;font-style:normal;}
+
+/* Footer */
+.footer{margin-top:48px;padding-top:20px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;}
+.footer .conf{font-size:11px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:1px;}
+
+.break{border:none;border-top:1px dashed #e2e8f0;margin:36px 0;}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- COVER -->
+  <div class="cover">
+    <div class="eyebrow">Internal Playbook — Companion Document</div>
+    <h1>Intelligent Agent Accelerator<br/>for Healthcare</h1>
+    <p class="tagline">How the practice manages the accelerator,<br/>and how internal developers work with it.</p>
+    <div class="meta">
+      <div class="meta-item">Companion To<span>Offering Proposal Summary</span></div>
+      <div class="meta-item">Audience<span>Platform Team · Internal Developers · Architects</span></div>
+      <div class="meta-item">Status<span>Internal Playbook · v1.0</span></div>
+    </div>
+  </div>
+
+
+  <!-- INTRO -->
+  <div class="section">
+    <h2>About This Document</h2>
+    <p>This is the Internal Playbook for the <strong>Intelligent Agent Accelerator for Healthcare</strong>. It describes how the practice's Platform Team manages the master accelerator repo and how internal developers work with the accelerator — locally for development and on the practice's playground AgentCore for real-runtime testing.</p>
+    <p>This document is separate from the <em>Customer Delivery Playbook</em>, which describes how delivery teams use the accelerator in customer engagements. Read both together when necessary; they share the same underlying accelerator but address different audiences.</p>
+
+    <div class="highlight">
+      <strong>Who this is for:</strong> the practice's Platform Team (3–5 people owning the master accelerator), internal developers (anyone in the practice who builds, tests, or demos agents using the accelerator), and solution architects who need to understand how the practice operates the platform internally.
+    </div>
+  </div>
+
+  <hr class="break"/>
+
+
+  <!-- 1. MASTER REPO & PLATFORM TEAM -->
+  <div class="section">
+    <div class="section-num">Section 1</div>
+    <h2>Master Repo &amp; Platform Team</h2>
+
+    <p>The master accelerator repo is the practice's source of truth. Everything — platform code, templates, reference agents, IaC, CI/CD, documentation — lives in one repo. The Platform Team owns it, and every release originates here.</p>
+
+    <h3>Master Repo Location &amp; Access</h3>
+    <ul>
+      <li><strong>Repo location:</strong> practice's Git organization — e.g. <code>practice/accelerator</code></li>
+      <li><strong>Platform Team (3–5 people)</strong> — the only team with write access to platform directories</li>
+      <li><strong>Practice read-only</strong> — every developer in the practice has read access by default; they can clone for sandbox exploration</li>
+      <li><strong>Template repository flag</strong> — master repo marked as a template on the Git platform so engagement and sandbox repos can be created from it via "Use this template"</li>
+    </ul>
+
+    <h3>Platform Team Responsibilities</h3>
+    <ul>
+      <li>Own architecture, design decisions, and runtime-split conventions</li>
+      <li>Approve all changes to <code>platform-core/</code>, <code>platform-services/</code>, <code>shared-infra/</code>, <code>platform-tools/</code>, <code>templates/</code>, and <code>iac/</code></li>
+      <li>Publish versioned releases (<code>v1.0</code>, <code>v1.1</code>, …) and release notes</li>
+      <li>Coordinate security scans, SBOM generation, and penetration tests per release</li>
+      <li>Maintain the compliance evidence package (HIPAA controls, architecture security review, BAA service list)</li>
+      <li>Review and merge pull requests from engagement teams that suggest platform improvements</li>
+    </ul>
+
+    <h3>Branch Protection &amp; CODEOWNERS</h3>
+    <p>The master repo uses branch protection and <code>CODEOWNERS</code> to enforce separation between platform-team-owned directories and developer-owned directories.</p>
+
+    <div class="code-block">
+# Example CODEOWNERS file (simplified)
+
+platform-core/       @practice/platform-team
+platform-services/   @practice/platform-team
+shared-infra/        @practice/platform-team
+platform-tools/      @practice/platform-team
+templates/           @practice/platform-team
+iac/                 @practice/platform-team @practice/sre
+
+agents/              @practice/agent-developers
+capabilities/        @practice/capability-owners
+docs/                @practice/platform-team @practice/docs-team
+    </div>
+
+    <p>Main branch protection rules on the master repo:</p>
+    <ul>
+      <li>No direct pushes to <code>main</code></li>
+      <li>All changes via PR with at least one required review</li>
+      <li>CI (tests, security scans, eval suite) must pass before merge</li>
+      <li>Platform-directory PRs require Platform Team approval</li>
+      <li><code>iac/</code> PRs require additional SRE review</li>
+    </ul>
+
+    <h3>Release Cadence</h3>
+    <ul>
+      <li><strong>Major versions (v1.0, v2.0, …)</strong> — significant architecture or API changes; planned release cadence, typically every 6 months</li>
+      <li><strong>Minor versions (v1.1, v1.2, …)</strong> — new backend adapters, new agent types, new reasoning strategies, new compliance patterns; typically monthly</li>
+      <li><strong>Patch versions (v1.1.1, …)</strong> — bug fixes and security patches; as needed</li>
+      <li>Each release tagged in Git, release notes published to <code>docs/releases/</code></li>
+      <li>SBOM and security scan reports versioned with each release</li>
+    </ul>
+  </div>
+
+  <hr class="break"/>
+
+
+  <!-- 2. INTERNAL DEVELOPER WORKFLOWS -->
+  <div class="section">
+    <div class="section-num">Section 2</div>
+    <h2>Internal Developer Workflows</h2>
+
+    <p>Internal developers — practice engineers, architects, or capability owners — use the accelerator for exploration, proof-of-concepts, demos, learning, and sales enablement. They do not wait for a customer engagement to get hands-on.</p>
+
+    <h3>Getting Started — Sandbox Repo</h3>
+    <p>Any developer in the practice can create their own sandbox repo from the master template in seconds:</p>
+    <ol style="margin:6px 0 10px 22px;font-size:13px;color:#334155;line-height:1.75;">
+      <li>Go to the master accelerator repo URL in the practice's Git</li>
+      <li>Click <strong>"Use this template"</strong></li>
+      <li>Name the new repo (e.g. <code>sandbox/jane-doe-chat-agent-poc</code>)</li>
+      <li>Choose visibility — typically "Internal" (visible to the practice)</li>
+      <li>Clone the new repo locally</li>
+    </ol>
+
+    <p>Sandbox repos are disposable. Developers can create as many as they need, discard them when done, and start fresh from the latest master at any time.</p>
+
+    <h3>Running Locally</h3>
+    <p>The accelerator runs end-to-end on a developer laptop. All four containers come up with a single command:</p>
+
+    <div class="code-block">
+git clone git@practice:sandbox/jane-doe-chat-agent-poc.git
+cd jane-doe-chat-agent-poc
+docker-compose up
+    </div>
+
+    <p>After <code>docker-compose up</code>:</p>
+    <ul>
+      <li><strong>Agent Factory UI</strong> available at <code>http://localhost:3000</code></li>
+      <li><strong>Reference agents</strong> already running at their respective ports (pre-call assessment chat at <code>localhost:5173</code>, etc.)</li>
+      <li><strong>C2, C3, C4</strong> running as docker services with their APIs exposed internally</li>
+      <li><strong>Mock claims / care-management fixtures</strong> loaded so agents can call "real" tools against fake payer data</li>
+      <li><strong>Local LLM access</strong> — configured to use Bedrock (via practice-issued IAM role) or OpenAI proxy (practice-issued scoped token) for non-PHI exploration</li>
+    </ul>
+
+    <h3>Scaffolding a New Agent</h3>
+    <p>The typical internal development loop: scaffold a new agent, configure it, test it, tear it down.</p>
+    <ol style="margin:6px 0 10px 22px;font-size:13px;color:#334155;line-height:1.75;">
+      <li>Open Agent Factory UI at <code>localhost:3000</code></li>
+      <li>Click <strong>New Agent</strong></li>
+      <li>Pick an agent type (chat, summarization, extraction, triage, monitoring, workflow, multi-agent)</li>
+      <li>Pick a reasoning strategy (simple, ReAct, plan-execute, multi-hop, reflection)</li>
+      <li>Configure memory types, RAG dimensions, tool allow-list, HITL placement, LLM model</li>
+      <li>Click <strong>Generate</strong> — Agent Factory reads from <code>templates/</code> and scaffolds the agent into <code>agents/&lt;domain&gt;/&lt;agent-name&gt;/</code></li>
+      <li>Hot reload picks up the new agent; it becomes callable immediately</li>
+      <li>Developer iterates — edit YAML, adjust prompts, add tools, rerun</li>
+    </ol>
+
+    <h3>What Developers Can and Cannot Modify Locally</h3>
+    <div class="two-col">
+      <div class="col-box">
+        <h4>Modify Freely</h4>
+        <ul>
+          <li><code>agents/&lt;domain&gt;/&lt;agent&gt;/</code> — their own agents</li>
+          <li><code>agents/&lt;domain&gt;/&lt;agent&gt;/overlays/&lt;variant&gt;/config/</code> — YAML configs</li>
+          <li><code>capabilities/&lt;domain&gt;/</code> — capability-level config and UI</li>
+          <li>Prompts via Agent Factory UI</li>
+        </ul>
+      </div>
+      <div class="col-box">
+        <h4>Locally Modifiable, but PR Back to Master</h4>
+        <ul>
+          <li><code>platform-core/</code>, <code>platform-services/</code>, <code>shared-infra/</code>, <code>platform-tools/</code> — if a developer discovers a platform improvement during exploration, they submit it as a PR to the master repo for Platform Team review, not merged directly into their sandbox</li>
+          <li><code>templates/</code> — same pattern; template improvements go through Platform Team</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3>Pulling Master Updates Into a Sandbox</h3>
+    <p>When the Platform Team ships a new release, sandbox developers can pull it if they want the latest:</p>
+
+    <div class="code-block">
+git remote add upstream git@practice:practice/accelerator.git
+git fetch upstream
+git merge upstream/v1.1
+    </div>
+
+    <p>Sandbox repos are disposable, so developers also have the option to discard their sandbox and create a fresh one from the latest master template.</p>
+  </div>
+
+  <hr class="break"/>
+
+
+  <!-- 3. DEPLOYING TO PRACTICE PLAYGROUND AGENTCORE -->
+  <div class="section">
+    <div class="section-num">Section 3</div>
+    <h2>Deploying to Practice Playground AgentCore</h2>
+
+    <p>Local <code>docker-compose</code> covers most internal development. When a developer needs to test against real AWS AgentCore — verify managed runtime behavior, long-running session durability, real Bedrock latency, real memory service behavior — they deploy to the practice's <strong>playground AgentCore</strong> environment.</p>
+
+    <h3>What the Playground Is</h3>
+    <ul>
+      <li><strong>One shared AWS sandbox account</strong> owned by the practice</li>
+      <li><strong>One shared AgentCore instance</strong> in that account — developers deploy their agents as namespaced resources alongside each other</li>
+      <li><strong>Shared backing services</strong> — one RDS, one ElastiCache, one OpenSearch — with namespace isolation per developer</li>
+      <li><strong>Per-developer budget cap</strong> — AWS Budgets alert at $50/month per developer, auto-disable at $100</li>
+      <li><strong>No PHI, no real customer data</strong> — mock fixtures only</li>
+    </ul>
+
+    <h3>Deploying to the Playground</h3>
+    <p>Deployment from a sandbox repo uses the accelerator's standard IaC plus a playground profile:</p>
+
+    <div class="code-block">
+# From the sandbox repo
+make deploy-playground AGENT_NAME=jane-doe-chat-agent
+
+# What this does:
+# - Builds the agent's C1 container image
+# - Pushes to the practice's sandbox ECR
+# - Registers the agent with the shared playground AgentCore
+# - Namespaces the resource with the developer's username
+# - Deploys IaC additions (specific to this agent) into the sandbox account
+# - Returns the agent endpoint URL for testing
+    </div>
+
+    <h3>What the Playground Is For</h3>
+    <ul>
+      <li>Verify the agent runs on AgentCore as expected (not just docker-compose)</li>
+      <li>Test real Bedrock latency and model behavior against production-like infrastructure</li>
+      <li>Exercise memory persistence across sessions using the real managed memory service</li>
+      <li>Validate observability wiring — traces, metrics, logs in the expected shape</li>
+      <li>Demo to internal stakeholders or sales teams in an environment that isn't a laptop</li>
+      <li>Practice deployment and IaC patterns before handling a real customer engagement</li>
+    </ul>
+
+    <h3>What the Playground Is Not For</h3>
+    <ul>
+      <li>Hosting production customer workloads (those go into customer AWS accounts)</li>
+      <li>PHI or any real patient / member data</li>
+      <li>Long-lived agents that should persist beyond a sandbox lifecycle</li>
+      <li>Large-scale load testing (use a dedicated load-test environment)</li>
+    </ul>
+
+    <h3>Cleaning Up</h3>
+    <p>Playground resources are expected to be short-lived. Developers should clean up after experiments:</p>
+    <div class="code-block">
+make teardown-playground AGENT_NAME=jane-doe-chat-agent
+    </div>
+    <p>The Platform Team also runs a weekly cleanup job that tears down playground resources older than 30 days.</p>
+  </div>
+
+  <hr class="break"/>
+
+
+  <!-- 4. ADDING NEW PLATFORM FEATURES -->
+  <div class="section">
+    <div class="section-num">Section 4</div>
+    <h2>Adding New Platform Features</h2>
+
+    <p>When the practice decides to extend the platform itself — a new reasoning strategy, a new memory backend, a new RAG pattern, a new compliance control, a new tool adapter — the work happens in the master repo under Platform Team ownership.</p>
+
+    <h3>Typical Paths</h3>
+    <table>
+      <tr>
+        <th>Addition</th>
+        <th>Where the work happens</th>
+      </tr>
+      <tr>
+        <td><strong>New reasoning strategy</strong></td>
+        <td>Add implementation in <code>platform-core/</code> and <code>shared-infra/platform-services/src/services/reasoning/strategies/</code>; create overlay variants under <code>templates/agent-runtime-template/overlays/</code> for each agent-type × strategy combination; update Agent Factory UI to offer the new option</td>
+      </tr>
+      <tr>
+        <td><strong>New memory backend</strong></td>
+        <td>Implement adapter in <code>platform-core/src/platform_core/memory/</code>; add backend option to <code>memory.yaml</code> schema; update Agent Factory UI</td>
+      </tr>
+      <tr>
+        <td><strong>New RAG pattern</strong></td>
+        <td>Implement in <code>platform-core/src/platform_core/rag/patterns/</code>; add to Agent Factory UI pattern selector</td>
+      </tr>
+      <tr>
+        <td><strong>New agent-type template</strong></td>
+        <td>Add under <code>templates/agent-runtime-template/overlays/&lt;new-type&gt;_&lt;strategy&gt;/</code>; update Agent Factory UI</td>
+      </tr>
+      <tr>
+        <td><strong>New tool adapter</strong></td>
+        <td>Shared adapter → <code>shared-infra/industry-tool-gateway-healthcare/services/tool-gateway/</code>; document in OpenAPI schema</td>
+      </tr>
+      <tr>
+        <td><strong>New compliance control</strong></td>
+        <td>Add module to <code>platform-core/</code> or relevant service; update HIPAA controls matrix; update security evidence package</td>
+      </tr>
+    </table>
+
+    <h3>Feature-Addition Workflow</h3>
+    <ol style="margin:6px 0 10px 22px;font-size:13px;color:#334155;line-height:1.75;">
+      <li>Design proposal — short RFC or design note reviewed by Platform Team</li>
+      <li>Implementation on a feature branch of the master repo</li>
+      <li>CI runs — unit tests, integration tests, security scans, eval regressions</li>
+      <li>Platform Team review + approval</li>
+      <li>Merge to <code>main</code> behind the branch protection rules</li>
+      <li>Ride along in the next versioned release (<code>v1.x</code>) with release notes</li>
+    </ol>
+
+    <h3>Promoting Engagement Improvements Back to Master</h3>
+    <p>Engagement teams often discover platform improvements during real customer delivery — a new backend pattern, a better HITL adapter, a more efficient memory scope strategy. These flow back to the practice:</p>
+    <ul>
+      <li>Engagement team submits a PR from their engagement repo to the master repo</li>
+      <li>Platform Team reviews, adapts if necessary to be generic (not customer-specific)</li>
+      <li>Merges into master, ships in the next release</li>
+      <li>Every subsequent engagement benefits</li>
+    </ul>
+  </div>
+
+  <hr class="break"/>
+
+
+  <!-- 5. LLM KEYS & MODEL ACCESS FOR INTERNAL USE -->
+  <div class="section">
+    <div class="section-num">Section 5</div>
+    <h2>LLM Keys &amp; Model Access for Internal Use</h2>
+
+    <p>Internal developers need LLM access for exploration and testing. The practice manages this centrally so developers never handle raw API keys.</p>
+
+    <h3>Access Pattern</h3>
+    <ul>
+      <li><strong>Bedrock (primary)</strong> — each developer receives a practice-issued IAM role with scoped Bedrock access. No static API keys. Role assumes from the developer's laptop via SSO.</li>
+      <li><strong>OpenAI proxy (optional, non-PHI only)</strong> — practice-run LiteLLM or equivalent proxy; developers receive a scoped, short-lived proxy token. Daily spend cap enforced at the proxy.</li>
+      <li><strong>No raw OpenAI / Anthropic keys on developer laptops</strong></li>
+    </ul>
+
+    <h3>Model Availability</h3>
+    <table>
+      <tr>
+        <th>Model</th>
+        <th>Internal Use</th>
+        <th>Access Path</th>
+      </tr>
+      <tr>
+        <td><strong>Claude Opus 4.7</strong></td>
+        <td>Complex reasoning, research-grade work; reserved because expensive</td>
+        <td>Bedrock</td>
+      </tr>
+      <tr>
+        <td><strong>Claude Sonnet 4.6</strong></td>
+        <td>Default workhorse for internal development</td>
+        <td>Bedrock</td>
+      </tr>
+      <tr>
+        <td><strong>Claude Haiku 4.5</strong></td>
+        <td>Fast and cheap — classification, extraction, high-volume testing</td>
+        <td>Bedrock</td>
+      </tr>
+      <tr>
+        <td><strong>GPT-4o / 4o-mini</strong></td>
+        <td>Exploration only, never against PHI</td>
+        <td>OpenAI proxy</td>
+      </tr>
+    </table>
+
+    <h3>Cost Controls</h3>
+    <ul>
+      <li>Per-developer daily spend caps at the OpenAI proxy</li>
+      <li>AWS Budgets alerts on the playground AWS account (50% / 80% / 100% of monthly cap)</li>
+      <li>Per-agent cost metrics visible in the Agent Factory UI (even in local dev)</li>
+      <li>Platform Team reviews monthly spend and adjusts caps as needed</li>
+    </ul>
+  </div>
+
+  <hr class="break"/>
+
+
+  <!-- 6. QUICK REFERENCE -->
+  <div class="section">
+    <div class="section-num">Section 6</div>
+    <h2>Quick Reference</h2>
+
+    <h3>Common Tasks</h3>
+    <table>
+      <tr>
+        <th>Task</th>
+        <th>How</th>
+      </tr>
+      <tr>
+        <td>Create a sandbox repo</td>
+        <td>Click "Use this template" on the master repo URL</td>
+      </tr>
+      <tr>
+        <td>Run everything locally</td>
+        <td><code>docker-compose up</code></td>
+      </tr>
+      <tr>
+        <td>Scaffold a new agent</td>
+        <td>Agent Factory UI → New Agent → pick type × strategy → Generate</td>
+      </tr>
+      <tr>
+        <td>Pull latest platform release into sandbox</td>
+        <td><code>git fetch upstream &amp;&amp; git merge upstream/v1.1</code></td>
+      </tr>
+      <tr>
+        <td>Deploy agent to playground AgentCore</td>
+        <td><code>make deploy-playground AGENT_NAME=&lt;name&gt;</code></td>
+      </tr>
+      <tr>
+        <td>Tear down playground resources</td>
+        <td><code>make teardown-playground AGENT_NAME=&lt;name&gt;</code></td>
+      </tr>
+      <tr>
+        <td>Propose a platform improvement</td>
+        <td>Submit PR from sandbox or engagement repo to master; Platform Team reviews</td>
+      </tr>
+    </table>
+
+    <div class="pointer"><strong>Related documents:</strong> <em>Offering Proposal Summary</em> (the business case), <em>Customer Delivery Playbook</em> (how customer engagements run), <em>Accelerator Technical Design</em> (platform architecture and constraints), <em>design.md</em> (core container + repo design decisions).</div>
+  </div>
+
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <div class="conf">Internal — Practice Team Use Only · AWS Practice</div>
+    <div class="conf">Intelligent Agent Accelerator for Healthcare · Internal Playbook · v1.0</div>
+  </div>
+
+</div>
+</body>
+</html>

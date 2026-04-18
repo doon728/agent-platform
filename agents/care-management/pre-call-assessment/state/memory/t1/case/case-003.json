@@ -1,15 +1,15 @@
 [
   {
-    "memory_id": "mem_771d6f432320",
+    "memory_id": "mem_4a66549e7183",
     "memory_type": "summary_cache",
     "scope_type": "case",
     "scope_id": "case-003",
-    "content": "{\"summary\": \"Mia Martinez, a 68-year-old female with chronic heart failure (I50.9), is currently enrolled in active care plans for asthma and maternity. Recent assessments indicate a scheduled reassessment for Q2 2026. Claims show consistent healthcare utilization with recent medications and professional services paid. Overall, her clinical trajectory appears stable with no significant deterioration noted.\", \"key_concerns\": [\"Chronic heart failure management\", \"Asthma exacerbation prevention\", \"Maternity care adherence\"], \"last_action\": \"Scheduled reassessment for Q2 2026.\", \"next_steps\": [\"Complete scheduled reassessment.\", \"Monitor asthma care plan adherence.\", \"Ensure follow-up on maternity care plan.\"]}",
+    "content": "{\"summary\": \"Mia Martinez is currently enrolled in Medicaid and has active care plans for asthma and maternity. A scheduled reassessment is planned for Q2 2026, while a recent DME authorization request was denied.\", \"key_concerns\": [\"Active chronic condition (I50.9) requiring management\", \"Denial of recent DME authorization\", \"Need for follow-up on scheduled reassessment\"], \"last_action\": \"Scheduled reassessment for Q2 2026.\", \"next_steps\": [\"Follow up with Mia regarding the denial of the DME authorization\", \"Ensure adherence to asthma and maternity care plans\", \"Prepare for the upcoming reassessment in Q2 2026\"]}",
     "metadata": {
       "scope_type": "case",
       "scope_id": "case-003",
-      "generated_at": "2026-04-01T20:48:15.552430+00:00"
+      "generated_at": "2026-04-12T01:58:22.633298+00:00"
     },
-    "created_at": "2026-04-01T20:48:15.552515+00:00"
+    "created_at": "2026-04-12T01:58:22.633433+00:00"
   }
 ]

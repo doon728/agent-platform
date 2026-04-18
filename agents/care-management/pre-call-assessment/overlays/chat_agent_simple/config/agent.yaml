@@ -24,7 +24,7 @@ retrieval:
   # Recommended for: chat_agent, workflow_agent, quality_checker
   # NOT recommended for: react_agent (ReAct loop handles retrieval itself)
   pre_graph:
-    enabled: false
+    enabled: true
     tool: search_kb           # which KB tool to call
     strategy: hybrid          # Dim 1: semantic | keyword | hybrid (independent of planner_tool)
     pattern: naive            # Dim 3: naive | self_corrective | multi_hop | hyde | agentic

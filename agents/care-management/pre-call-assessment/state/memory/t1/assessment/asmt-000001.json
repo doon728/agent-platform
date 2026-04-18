@@ -1,0 +1,18 @@
+[
+  {
+    "memory_id": "mem_3c095ed8f803",
+    "memory_type": "episodic",
+    "scope_type": "assessment",
+    "scope_id": "asmt-000001",
+    "content": "HITL approval requested for tool 'write_case_note' (risk: high). Approval ID: appr-9a084e42f1e4",
+    "metadata": {
+      "type": "hitl_requested",
+      "approval_id": "appr-9a084e42f1e4",
+      "tool": "write_case_note",
+      "risk_level": "high",
+      "requested_by": "u1",
+      "timestamp": "2026-04-05T03:50:11.761278+00:00"
+    },
+    "created_at": "2026-04-05T03:50:11.761305+00:00"
+  }
+]

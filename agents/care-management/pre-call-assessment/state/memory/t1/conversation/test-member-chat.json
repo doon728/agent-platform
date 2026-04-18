@@ -1,0 +1,36 @@
+[
+  {
+    "memory_id": "mem_d129f7599313",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "test-member-chat",
+    "role": "user",
+    "content": "how many cases?",
+    "metadata": {
+      "member_id": "m-001715",
+      "agent_type": "chat_agent_simple",
+      "reasoning_strategy": "simple",
+      "turn_id": "run_fb1932fb",
+      "thread_id": "test-member-chat",
+      "tenant_id": "t1"
+    },
+    "created_at": "2026-04-12T03:28:45.810233+00:00"
+  },
+  {
+    "memory_id": "mem_fdf57ee90603",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "test-member-chat",
+    "role": "assistant",
+    "content": "**Member Summary for Mia Martinez (ID: m-001715)**\n\n- **Date of Birth:** October 21, 1954\n- **Gender:** X\n- **State:** MD\n- **Plan ID:** Medicaid MD\n- **PCP:** \n  - **Provider Name:** Miller Clinic\n  - **Specialty:** Cardiology\n  - **Provider ID:** p-000317\n  - **NPI:** 9337145038\n  - **Network Status:** IN\n  - **Phone:** 876-589-2404\n- **Risk Score:** 1.26\n- **Chronic Conditions:** I50.9\n- **Address Zip:** 22856\n\n**Care Plans:**\n1. **Asthma** (Active)\n   - Start Date: April 3, 2024\n   - Goals: Reduce exacerbations; inhaler technique; trigger avoidance.\n   \n2. **Maternity** (Active)\n   - Start Date: March 25, 2024\n   - Goals: Prenatal visit adherence; postpartum follow-up.\n   \n3. **PostDischarge** (Closed)\n   - Start Date: November 20, 2025\n   - Goals: Stabilize post-discharge; ensure medication adherence; schedule PCP follow-up.\n\n**Latest Assessment:**\n- **Type:** Reassessment\n- **Status:** Scheduled\n- **Priority:** Low\n- **Created At:** April 1, 2026\n- **Summary:** Scheduled reassessment for Q2.\n\n**Recent Claims:**\n- Multiple claims paid, with the latest being:\n  - **Claim ID:** clm-0029783\n  - **Service Dates:** November 1-3, 2025\n  - **Claim Type:** RX\n  - **Total Amount:** $797.90\n  - **Paid Amount:** $685.09\n  - **Diagnosis Codes:** I10, G47.33\n\n**Recent Authorizations:**\n- **Auth ID:** a-003220\n- **Service Type:** DME\n- **Status:** Denied\n- **Request Date:** September 21, 2025\n- **Decision Date:** October 4, 2025\n- **Diagnosis Codes:** F32.9, E78.5\n- **Notes Summary:** Decision: DENIED. Rationale recorded.",
+    "metadata": {
+      "member_id": "m-001715",
+      "agent_type": "chat_agent_simple",
+      "reasoning_strategy": "simple",
+      "turn_id": "run_fb1932fb",
+      "thread_id": "test-member-chat",
+      "tenant_id": "t1"
+    },
+    "created_at": "2026-04-12T03:28:45.811337+00:00"
+  }
+]

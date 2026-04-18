@@ -1,0 +1,74 @@
+[
+  {
+    "memory_id": "mem_fa4e49eef274",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "case-case-003-19d77a26ae0",
+    "role": "user",
+    "content": "suammry",
+    "metadata": {
+      "member_id": "m-001715",
+      "case_id": "case-003",
+      "agent_type": "chat_agent_simple",
+      "reasoning_strategy": "simple",
+      "turn_id": "5dd0ebf1-3d6a-477c-8920-09d9712b12d0",
+      "thread_id": "case-case-003-19d77a26ae0",
+      "tenant_id": "t1"
+    },
+    "created_at": "2026-04-10T13:43:59.983400+00:00"
+  },
+  {
+    "memory_id": "mem_d708596fdb4a",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "case-case-003-19d77a26ae0",
+    "role": "assistant",
+    "content": "The case summary for Mia Martinez (Member ID: m-001715) is as follows:\n\n- **Case ID**: case-003\n- **Title**: Behavioral Health Support\n- **Status**: OPEN (opened on 2026-02-20)\n- **Assigned Nurse**: nurse-002\n- **Program**: Behavioral Health\n\n**Member Information**:\n- **Date of Birth**: October 21, 1954\n- **Gender**: X\n- **State**: MD\n- **Plan ID**: plan-medicaid-md\n- **PCP Provider ID**: p-000317\n- **Risk Score**: 1.26\n- **Chronic Conditions**: I50.9\n\n**Assessment**:\n- **Assessment ID**: asmt-d006\n- **Type**: Initial\n- **Status**: ACTIVE\n- **Priority**: HIGH\n- **Created At**: February 22, 2026\n- **Overall Risk Level**: HIGH\n- **Summary**: Initial behavioral health assessment. Member expressing depressive symptoms.\n\nThere are no recent notes available.",
+    "metadata": {
+      "member_id": "m-001715",
+      "case_id": "case-003",
+      "agent_type": "chat_agent_simple",
+      "reasoning_strategy": "simple",
+      "turn_id": "5dd0ebf1-3d6a-477c-8920-09d9712b12d0",
+      "thread_id": "case-case-003-19d77a26ae0",
+      "tenant_id": "t1"
+    },
+    "created_at": "2026-04-10T13:43:59.985146+00:00"
+  },
+  {
+    "memory_id": "mem_ddaef6144a8a",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "case-case-003-19d77a26ae0",
+    "role": "user",
+    "content": "what are no of assessment",
+    "metadata": {
+      "member_id": "m-001715",
+      "case_id": "case-003",
+      "agent_type": "chat_agent_simple",
+      "reasoning_strategy": "simple",
+      "turn_id": "c0848a35-df49-4520-aa96-0a7f5adeb1f5",
+      "thread_id": "case-case-003-19d77a26ae0",
+      "tenant_id": "t1"
+    },
+    "created_at": "2026-04-10T13:57:01.119055+00:00"
+  },
+  {
+    "memory_id": "mem_fc2bf95cd185",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "case-case-003-19d77a26ae0",
+    "role": "assistant",
+    "content": "There is one assessment recorded, which is an \"Initial\" behavioral health assessment for the member Mia Martinez.",
+    "metadata": {
+      "member_id": "m-001715",
+      "case_id": "case-003",
+      "agent_type": "chat_agent_simple",
+      "reasoning_strategy": "simple",
+      "turn_id": "c0848a35-df49-4520-aa96-0a7f5adeb1f5",
+      "thread_id": "case-case-003-19d77a26ae0",
+      "tenant_id": "t1"
+    },
+    "created_at": "2026-04-10T13:57:01.122305+00:00"
+  }
+]

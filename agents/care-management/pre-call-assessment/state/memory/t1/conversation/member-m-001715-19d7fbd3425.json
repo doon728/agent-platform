@@ -1,0 +1,36 @@
+[
+  {
+    "memory_id": "mem_067b5443a572",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "member-m-001715-19d7fbd3425",
+    "role": "user",
+    "content": "how many cases",
+    "metadata": {
+      "member_id": "m-001715",
+      "agent_type": "chat_agent_simple",
+      "reasoning_strategy": "simple",
+      "turn_id": "run_7d2acd01",
+      "thread_id": "member-m-001715-19d7fbd3425",
+      "tenant_id": "t1"
+    },
+    "created_at": "2026-04-12T03:30:05.796108+00:00"
+  },
+  {
+    "memory_id": "mem_b7342debaf22",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "member-m-001715-19d7fbd3425",
+    "role": "assistant",
+    "content": "There are a total of 3 active care plans for the member Mia Martinez.",
+    "metadata": {
+      "member_id": "m-001715",
+      "agent_type": "chat_agent_simple",
+      "reasoning_strategy": "simple",
+      "turn_id": "run_7d2acd01",
+      "thread_id": "member-m-001715-19d7fbd3425",
+      "tenant_id": "t1"
+    },
+    "created_at": "2026-04-12T03:30:05.797723+00:00"
+  }
+]

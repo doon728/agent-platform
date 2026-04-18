@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { postJson } from "../lib/api";
 import TraceGraph from "./TraceGraph";
+import SummaryPanel from "./SummaryPanel";
 
 type ChatMsg = { id: string; role: "user" | "assistant" | "system"; text: string; ts: number };
 type TraceStep = { type: string; data: any; timestamp: number };
@@ -58,11 +59,12 @@ function ContextIcon({ type }: { type: string }) {
 }
 
 // ── Memory Panel ──────────────────────────────────────────────────────────────
-function MemoryPanel({ data, toggles, onToggle, liveEpisodic }: {
+function MemoryPanel({ data, toggles, onToggle, liveEpisodic, memoryContext }: {
   data: any;
   toggles: Record<string, boolean>;
   onToggle: (k: string) => void;
   liveEpisodic: EpisodicEntry[];
+  memoryContext: any;
 }) {
   const trace = data?.memory_trace || {};
   const planner = trace.planner || {};
@@ -91,7 +93,7 @@ function MemoryPanel({ data, toggles, onToggle, liveEpisodic }: {
     return <div style={{ fontSize: 10, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 1, marginTop: 10, marginBottom: 3 }}>{title}</div>;
   }
 
-  if (!data) return <div style={{ color: "#475569", fontSize: 12, padding: 8 }}>No memory data yet. Send a message.</div>;
+  if (!data && !memoryContext) return <div style={{ color: "#475569", fontSize: 12, padding: 8 }}>No memory data yet. Send a message or click Refresh.</div>;
 
   return (
     <div style={{ fontSize: 12, padding: "4px 0" }}>
@@ -111,6 +113,56 @@ function MemoryPanel({ data, toggles, onToggle, liveEpisodic }: {
           </div>
         );
       })}
+
+      {memoryContext?.scopes && memoryContext.scopes.length > 0 && (
+        <>
+          <Sec title="Active Scopes" />
+          {memoryContext.scopes.map((s: any, i: number) => (
+            <Row key={i} label={s.scope_type} value={<span style={{ fontFamily: "monospace" }}>{s.scope_id}</span>} />
+          ))}
+        </>
+      )}
+
+      {memoryContext?.recent_turns && memoryContext.recent_turns.length > 0 && (
+        <>
+          <Sec title={`Recent Turns (${memoryContext.recent_turns.length})`} />
+          {memoryContext.recent_turns.slice(0, 3).map((t: any, i: number) => (
+            <div key={i} style={{ marginBottom: 5, padding: "5px 8px", borderRadius: 5, background: "rgba(99,102,241,0.05)", border: "1px solid rgba(99,102,241,0.12)" }}>
+              <div style={{ fontSize: 10, fontWeight: 600, color: "#6366f1", marginBottom: 2 }}>{t.role || "turn"}</div>
+              <div style={{ fontSize: 10, color: "#475569", fontFamily: "monospace", lineHeight: 1.4 }}>
+                {String(t.content || t.text || "").slice(0, 120)}{String(t.content || t.text || "").length > 120 ? "…" : ""}
+              </div>
+            </div>
+          ))}
+        </>
+      )}
+
+      {memoryContext?.episodic_memories && memoryContext.episodic_memories.length > 0 && (
+        <>
+          <Sec title={`Episodic (${memoryContext.episodic_memories.length})`} />
+          {memoryContext.episodic_memories.slice(0, 3).map((entry: any, i: number) => (
+            <div key={i} style={{ marginBottom: 5, padding: "5px 8px", borderRadius: 5, background: "rgba(99,102,241,0.05)", border: "1px solid rgba(99,102,241,0.12)" }}>
+              <div style={{ fontSize: 10, color: "#475569", fontFamily: "monospace", lineHeight: 1.4 }}>
+                {String(entry.content || "").slice(0, 160)}{String(entry.content || "").length > 160 ? "…" : ""}
+              </div>
+              {entry.metadata?.tool && <div style={{ fontSize: 10, color: "#6366f1", marginTop: 2 }}>tool: {entry.metadata.tool}</div>}
+            </div>
+          ))}
+        </>
+      )}
+
+      {memoryContext?.semantic_memories && memoryContext.semantic_memories.length > 0 && (
+        <>
+          <Sec title={`Semantic (${memoryContext.semantic_memories.length})`} />
+          {memoryContext.semantic_memories.slice(0, 2).map((entry: any, i: number) => (
+            <div key={i} style={{ marginBottom: 5, padding: "5px 8px", borderRadius: 5, background: "rgba(99,102,241,0.05)", border: "1px solid rgba(99,102,241,0.12)" }}>
+              <div style={{ fontSize: 10, color: "#475569", fontFamily: "monospace", lineHeight: 1.4 }}>
+                {String(entry.content || entry.text || "").slice(0, 120)}…
+              </div>
+            </div>
+          ))}
+        </>
+      )}
 
       {planner.route_type && (
         <>
@@ -189,9 +241,10 @@ export default function InlineChatPanel({ context, onClose }: Props) {
   } | null>(null);
   const [memoryDebug, setMemoryDebug] = useState<any | null>(null);
   const [liveEpisodic, setLiveEpisodic] = useState<EpisodicEntry[]>([]);
+  const [memoryContext, setMemoryContext] = useState<any | null>(null);
   const [traces, setTraces] = useState<TraceRun[]>([]);
   const [memoryToggles, setMemoryToggles] = useState({ short_term: true, episodic: true, summary: true, semantic: false });
-  const [activeTab, setActiveTab] = useState<"chat" | "memory" | "trace">("chat");
+  const [activeTab, setActiveTab] = useState<"chat" | "memory" | "trace" | "summary">("chat");
 
   const threadRef = useRef(getOrCreateThread(context.type, context.id));
   const bottomRef = useRef<HTMLDivElement | null>(null);
@@ -203,6 +256,7 @@ export default function InlineChatPanel({ context, onClose }: Props) {
       prevContextId.current = context.id;
       threadRef.current = getOrCreateThread(context.type, context.id);
       setMemoryDebug(null);
+      setMemoryContext(null);
       setLiveEpisodic([]);
       setTraces([]);
       setActiveTab("chat");
@@ -296,6 +350,28 @@ export default function InlineChatPanel({ context, onClose }: Props) {
       setTraces(data.traces || []);
     } catch {}
   }
+
+  async function refreshMemory() {
+    try {
+      const res = await fetch("/api/debug/memory", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildContextBody()),
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      setMemoryContext(data.memory_context || null);
+      // Do NOT touch memoryDebug — it holds the planner/router/executor trace from the last message
+      const episodic: EpisodicEntry[] = data.memory_context?.episodic_memories || [];
+      if (episodic.length > 0) setLiveEpisodic(episodic);
+    } catch {}
+  }
+
+  // Refresh data when switching to memory or trace tab
+  useEffect(() => {
+    if (activeTab === "memory") refreshMemory();
+    if (activeTab === "trace") loadTraces();
+  }, [activeTab]);
 
   async function send() {
     const prompt = (input || "").trim();
@@ -416,7 +492,7 @@ export default function InlineChatPanel({ context, onClose }: Props) {
 
       {/* Tabs */}
       <div style={{ display: "flex", borderBottom: "1px solid #e2e8f0", padding: "0 12px", background: "#f8fafc" }}>
-        {(["chat", "memory", "trace"] as const).map((tab) => (
+        {(["chat", "summary", "memory", "trace"] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -496,11 +572,31 @@ export default function InlineChatPanel({ context, onClose }: Props) {
       {/* Memory tab */}
       {activeTab === "memory" && (
         <div style={{ height: 380, overflowY: "auto", padding: "12px 16px" }}>
+          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 6 }}>
+            <button
+              onClick={refreshMemory}
+              style={{ fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 4, background: "#eef2ff", border: "1px solid #c7d2fe", color: "#4f46e5", cursor: "pointer" }}
+            >
+              Refresh
+            </button>
+          </div>
           <MemoryPanel
             data={memoryDebug}
             toggles={memoryToggles}
             onToggle={(k) => setMemoryToggles((prev) => ({ ...prev, [k]: !prev[k as keyof typeof prev] }))}
             liveEpisodic={liveEpisodic}
+            memoryContext={memoryContext}
+          />
+        </div>
+      )}
+
+      {/* Summary tab */}
+      {activeTab === "summary" && (
+        <div style={{ height: 380, overflowY: "auto", padding: "12px 16px" }}>
+          <SummaryPanel
+            scopeType={context.type}
+            scopeId={context.id}
+            memberId={context.memberId}
           />
         </div>
       )}
@@ -508,6 +604,14 @@ export default function InlineChatPanel({ context, onClose }: Props) {
       {/* Trace tab */}
       {activeTab === "trace" && (
         <div style={{ height: 380, overflowY: "auto", padding: "12px 16px" }}>
+          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 6 }}>
+            <button
+              onClick={loadTraces}
+              style={{ fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 4, background: "#eef2ff", border: "1px solid #c7d2fe", color: "#4f46e5", cursor: "pointer" }}
+            >
+              Refresh
+            </button>
+          </div>
           {latestTrace ? (
             <TraceGraph run={latestTrace} />
           ) : (

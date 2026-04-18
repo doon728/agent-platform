@@ -4,6 +4,118 @@ Status key: ✅ Done | ⚠ Partial / Limitation | 🔲 Not Started
 
 ---
 
+## Next 10 Items to Build — Prioritized
+
+| # | Item | Type | Why Now |
+|---|---|---|---|
+| 1 | **Exception Handling & Recovery** | Separate pluggable service/library | Agents silently fail on tool timeout, LLM API error, network failure today. Production blocker. |
+| 2 | **Event-Driven Agents** | Separate pluggable service (Event Bus) | Most real production agents are event-triggered. Unlocks workflow automation without changing any agent. |
+| 3 | **multi_hop + reflection strategies** | Overlay only — new strategy files | Completes the reasoning strategy set. No platform changes, low risk. |
+| 4 | **Observability UI** — Lineage + Metrics pages | UI addition — reads existing `/api/traces` | Demo-critical. Shows platform working end to end. High value, no backend changes needed. |
+| 5 | **Routing tab** (3f) | UI + agent.yaml only | Completes Agent Registry. Config-driven hard routes. Small change. |
+| 6 | **Guardrails** (10m) | Separate pluggable service or platform-core layer | Healthcare/enterprise safety requirement. Input/output policy enforcement. |
+| 7 | **Context Engineering** (7) | platform-core addition (context_builder.py) | Token budgeting + priority truncation before real member data scale hits context limits. |
+| 8 | **Goal Definition & Tracking** (14) | platform-core + new memory type | Persistent multi-step objectives across turns. Needed for long-running workflows. |
+| 9 | **Resource-Aware Optimization** | platform-core addition (query classifier + model router) | Dynamic model routing (Haiku → Sonnet → Opus by complexity). Direct cost impact for customers. |
+| 10 | **summarization_agent_rag overlay** | Overlay only — new files | KB-enriched summaries. New capability, zero platform risk. |
+| 11 | **HITL Durable State & Session Rehydration** | platform-core — hitl/approval_store.py + C1 resume logic | If a nurse takes 2+ hours to approve, auth tokens and short-term memory may have expired. Agent wakes up in broken state. Need durable HITL state that rehydrates session context and re-validates auth on resume. |
+| 12 | **Session Rules** | platform-core — C1 session policy engine | No concept of session rules today. Need per-agent, per-LOB session policy: max turn limits, inactivity timeout, re-auth triggers, session scope boundaries. Required before production deployment — without it, sessions have no policy-enforced lifecycle. |
+| 12b | **PII Masking — Day 1 (not roadmap)** | platform-core interceptor — pre-response filter in C1 | C2 LLM can be tricked via adversarial prompt into echoing sensitive C3 data into C1 chat response, bypassing data layer isolation. For healthcare this is not a roadmap item — it must be active before any real member data is processed. Output filter that detects and masks PHI before C1 sends response to UI. |
+| 13 | **Enterprise Deployment Artifact + C1 Self-Registration** | Agent Factory + C1 startup | Enterprise customers (healthcare, finance, air-gapped) cannot let an external wizard deploy into their environment — compliance, change control, security policy, air-gap. Fix: scaffold wizard outputs a deployment artifact (Helm chart / Terraform / docker-compose) instead of deploying directly. Customer runs it through their own CI/CD pipeline. C1 phones home on first startup to self-register with the Support API. Decouples scaffold (generate) from deploy (customer-controlled) from registration (automatic on first boot). Required before any regulated enterprise customer onboards. |
+| 14 | **Fully Customer-Hosted Accelerator Deployment Model** | Agent Factory + infrastructure packaging | Some regulated customers (air-gapped, strict data residency) cannot have any dependency on provider infrastructure. Need a second deployment model where C1+C2+C3+Control Plane all run inside the customer's environment — packaged as a CloudFormation/CDK stack, Helm chart, or AWS Marketplace listing. Registry is local to customer in this model. Observability is opt-in call-home only. Updates are customer-controlled (version pinning). Key design question: how to maintain feature parity between hosted (default) and accelerator (customer-hosted) without maintaining two codebases. |
+| 15 | **Infrastructure-as-Code (IaC) — Terraform + Helm + AgentCore/Bedrock Packaging** | Infrastructure — new workstream, foundational | Platform currently has no IaC. To deploy on AgentCore, Bedrock, or any customer environment in a repeatable, compliant way, every service must be packaged and provisioned as code. This is a full workstream — see checklist below. |
+
+**Architectural pattern across all 10:**
+
+- **Items 1, 2, 6 — Separate pluggable services.** Exception handling, Event Bus, Guardrails each deploy independently. Agents don't change at all — plug in at infrastructure level.
+  - **Exception Handling:** resilience library (Python `tenacity`) in platform-core wrapping every external call (tools, LLM API, memory, RAG) — OR sidecar proxy (Envoy/Istio) at network level. Not tool-only — covers all C1→C2→C3 calls.
+  - **Event Bus / Trigger Service:** listens to event sources (webhooks, SQS/Kafka, CDC, cron), normalizes to `AgentEvent` schema, routes to the right agent's `/invocations`. Agents are oblivious.
+  - **Guardrails:** pre-LLM input check + post-LLM output check. Config-driven policy rules. Interceptor pattern — extra validation node in the call path.
+
+- **Items 3, 5, 9, 10 — Overlay / config changes only.** No platform rewrite. New files, new YAML options.
+
+- **Items 4, 7, 8 — platform-core + UI additions.** No new services. Extend context_builder.py, memory store, Agent Factory UI.
+
+---
+
+## Backlog #15 — IaC Deep Dive: What It Means and What Needs to Be Built
+
+### What is IaC and why does the platform need it?
+
+Right now the platform runs locally (Docker containers started manually, config files edited by hand). To deploy it into a real customer environment — on AWS AgentCore, Bedrock, or a customer's own cloud — every piece of infrastructure needs to be defined as code so it can be provisioned repeatably, reviewed, versioned, and audited. This is what Terraform and Helm do:
+
+- **Terraform** — provisions the cloud infrastructure itself: VPCs, subnets, IAM roles, databases, caches, S3 buckets, networking, security groups. Think "build the house."
+- **Helm** — packages the running services (C1, C2, C3, Control Plane) as Kubernetes charts so they can be installed/upgraded/rolled back in a cluster. Think "move the furniture in."
+- **AWS CDK / CloudFormation** — AWS-native alternative to Terraform. Preferred if targeting AgentCore/Bedrock natively since AgentCore has first-class CDK constructs.
+- **docker-compose** — simpler option for single-machine or dev/test deployments. Not for production.
+
+For **AWS AgentCore** specifically: AgentCore is a managed runtime — you don't manage the underlying compute. You package C2 as an AgentCore agent definition and AgentCore runs it. Still need Terraform/CDK for surrounding infrastructure (networking, IAM, memory backends, observability).
+
+For **HIPAA/healthcare compliance**: every resource must be encrypted at rest + in transit, audit-logged via CloudTrail, access-controlled via IAM, and deployed inside a private VPC. IaC is what makes this auditable — compliance teams need to see the config as code, not "we set it up manually."
+
+---
+
+### IaC Build Checklist — What Needs to Be Done
+
+#### Phase 1 — Containerize everything (prerequisite)
+- [ ] C1 Agent Runtime — Dockerfile exists, needs prod hardening (non-root user, health check, no dev deps)
+- [ ] C2 Orchestrator services — Dockerfile per service (reasoning, memory, RAG, policy, HITL, tool governance)
+- [ ] C3 Tool Gateway — Dockerfile exists, needs prod hardening
+- [ ] Control Plane (Agent Factory UI + Support API) — Dockerfiles
+- [ ] Push all images to a container registry (ECR for AWS)
+- [ ] Tag strategy: semantic versioning per service
+
+#### Phase 2 — Terraform / CDK for infrastructure
+- [ ] VPC + subnets (public/private) + security groups
+- [ ] IAM roles and policies (least-privilege per service: C1 role, C2 role, C3 role, Control Plane role)
+- [ ] RDS / Aurora (episodic + semantic memory backends)
+- [ ] ElastiCache (short-term memory backend)
+- [ ] S3 buckets (prompt storage, trace storage, config artifacts)
+- [ ] API Gateway or ALB (entry point for C1 `/chat` endpoint)
+- [ ] Secrets Manager (LLM API keys, C1→C2 auth tokens, DB credentials)
+- [ ] CloudTrail + CloudWatch (audit logging, metrics — HIPAA requirement)
+- [ ] KMS keys (encryption at rest for all data stores)
+- [ ] VPC endpoints for Bedrock / AgentCore (keep traffic off public internet)
+
+#### Phase 3 — AgentCore / Bedrock specific
+- [ ] Understand AgentCore agent definition schema — how to register C2 as an AgentCore agent
+- [ ] Bedrock model access — request access to Claude/Titan models in customer account
+- [ ] AgentCore memory integration — does AgentCore memory replace our memory service or complement it?
+- [ ] AgentCore tool integration — how does C3 Tool Gateway register tools with AgentCore
+- [ ] IAM permissions for AgentCore to call C3 tools (resource-based policy on Tool Gateway)
+
+#### Phase 4 — Helm charts (if Kubernetes-based)
+- [ ] Helm chart per service (C1, C2, C3, Control Plane)
+- [ ] values.yaml per environment (dev / staging / prod)
+- [ ] ConfigMaps for non-secret config (agent.yaml, domain.yaml)
+- [ ] Secrets managed via External Secrets Operator (pulls from AWS Secrets Manager)
+- [ ] Liveness + readiness probes per service
+- [ ] Resource limits (CPU/memory) per service
+- [ ] Horizontal Pod Autoscaler for C2 (handles burst load)
+
+#### Phase 5 — Compliance controls
+- [ ] Encryption at rest: all RDS, ElastiCache, S3, EBS volumes — KMS-encrypted
+- [ ] Encryption in transit: TLS 1.2+ enforced on all service-to-service calls
+- [ ] VPC-only: no public IPs on any data plane service
+- [ ] CloudTrail: all API calls logged, log files integrity-validated
+- [ ] AWS Config rules: enforce encryption, VPC placement, IMDSv2
+- [ ] Secrets rotation: Secrets Manager auto-rotation for DB credentials and API keys
+- [ ] HIPAA BAA: ensure AWS services used are HIPAA-eligible (RDS, ElastiCache, Bedrock, AgentCore — all eligible)
+
+#### Phase 6 — CI/CD pipeline
+- [ ] GitHub Actions / CodePipeline: build → test → push image → deploy to staging → promote to prod
+- [ ] Terraform state in S3 + DynamoDB lock (shared, versioned)
+- [ ] Helm release management (track what version of each chart is deployed where)
+- [ ] Rollback procedure documented and tested
+
+#### Open questions to resolve before starting
+- AgentCore vs self-managed Kubernetes — which compute model for C2/C3?
+- Single Terraform root module vs per-service modules?
+- How does C1 get deployed in customer account — separate Terraform run in customer account, or shared module?
+- Versioning strategy: do all services version together (monorepo release) or independently?
+
+---
+
 ## Where every item lives
 
 | Item | Home |
@@ -263,6 +375,8 @@ Status key: ✅ Done | ⚠ Partial / Limitation | 🔲 Not Started
    **When to build:** low priority until there are 2+ agents across different regions/LOBs. With one agent today, tag filtering is manual and sufficient.
 
 5. **Prompt Management & Evaluation module** 🔲 — manage prompt templates (prompt-defaults.yaml), A/B test prompt variants, evaluate outputs against test cases, track prompt version history. Add to Agent Factory UI.
+
+5b. **Config Lab — multi-agent selector** 🔲 — Config Lab currently hardcoded to `care-management / pre-call-assessment / chat_agent_simple`. Add an agent dropdown at the top that loads from the registry so any registered agent can be selected. Scenarios stored per-agent in localStorage. Needed once a second agent is added.
 
 6. **Memory Pruning** 🔲 — automatic cleanup of stale/irrelevant memory entries. Strategies: TTL-based expiry, relevance scoring, max-size eviction per scope. Prevent memory bloat over long sessions.
 
@@ -567,6 +681,31 @@ Status key: ✅ Done | ⚠ Partial / Limitation | 🔲 Not Started
    - **Parallel approvals** — LangGraph fan-out: submit multiple independent approval requests simultaneously, each resolves independently, fan-in when all complete. Today only sequential is supported.
    - **Approval routing by role** — different tools route to different approvers (care manager, medical director, comms team) based on tool type and context.
    - **External system execution** — after approval, execution moves outside the agent. Agent proposes, approval triggers Pega/ServiceNow/Epic to do the actual write. Agent never touches system of record directly.
+
+10a. **C4 — Vector DB Container (customer VPC)** 🔲 — today the vector DB (KB / RAG data store) lives inside C3 on the provider side. For enterprise customers with PII or proprietary clinical data that cannot leave their environment, the vector DB must be deployable inside the customer's VPC as a separate container (C4).
+
+   **Design:**
+   - C4 is a standalone container: vector DB (pgvector or Chroma) + embedding service + ingest API
+   - Deployable independently in customer VPC — no provider-side infrastructure required
+   - C2 (RAG engine) calls C4 directly for retrieval — **C2 → C4, not C2 → C3 → C4**. C3 is not in the RAG retrieval path.
+   - C3 remains provider-side for tool execution only
+   - Customer controls their own KB: what gets indexed, data residency, access policy
+
+   **RAG flow with C4:**
+   Pre-graph: `C1 → C2 (RAG engine) → C4 (vector DB in customer VPC)` → chunks injected into context
+   Planner tool: `C2 (executor) → C4` directly — same path
+
+   **What needs to be built:**
+   - C4 container definition: FastAPI ingest + query endpoints wrapping pgvector/Chroma
+   - `agent.yaml` config: `retrieval.vector_db.endpoint` points to C4 URL instead of C3-internal KB
+   - C2 RAG runner reads endpoint from config — no code change needed if config-driven
+   - Docker compose profile for customer VPC deployment
+   - Tool Admin UI (ingest/chunk management) exposed as part of C4 or via a lightweight admin page
+
+   **Deployment options per customer:**
+   - Option A: Provider manages C4 (no data residency concern) — C4 co-located with C2/C3 on provider AWS
+   - Option B: Customer deploys C4 in their VPC — C2 calls C4 over VPC peering or private endpoint
+   - Option C: Customer uses their own existing vector DB — C4 is just a thin adapter
 
 10b. **Multi-KB routing for RAG** 🔲 — both RAG paths (pre-graph and planner tool) today hit a single KB. Need:
    - Query classification (rule-based or LLM) to select the right KB per query
@@ -1535,6 +1674,8 @@ Status key: ✅ Done | ⚠ Partial / Limitation | 🔲 Not Started
    - `pre_graph.top_k` and `planner_tool.top_k` must be > 0
    - `similarity_threshold` must be between 0 and 1
    - If `retrieval.enabled: false` but pre_graph or planner_tool enabled — warn: "retrieval is disabled globally, these settings have no effect"
+   - If `retrieval.enabled: true` but both `pre_graph.enabled: false` AND `planner_tool.enabled: false` — warn: "RAG gate is on but no stage is active — RAG will not run. Enable at least one stage or turn off the gate."
+   - Dim 1 (search strategy) and Dim 3 (retrieval pattern) should be per-stage config only, not at the gate level. Gate-level Dim 1/Dim 3 fields are confusing because they imply config scoped to the gate — move them inside each stage section and remove from gate. Gate = master on/off only.
 
    **HITL tab:**
    - Tool in `risk_levels` must exist in agent's allowed tools list — warn on unknown tool names
@@ -1591,7 +1732,14 @@ Used at member, case, and assessment level in the care management UI. Three tabs
 
 ## Observability Section — Agent Factory UI 🔲
 
-New left nav section in Agent Factory UI with 2 menu items:
+New left nav section in Agent Factory UI with 2 menu items. **Agent + reasoning strategy selector at the top** (same dropdown pattern as Config Lab `5b`) — Lineage and Metrics views adapt to what that agent type actually ran:
+
+- `chat_agent / simple` → pre-graph RAG → planner → tool → responder → post-graph memory
+- `chat_agent / react` → thought → action → observation (loop) → responder
+- `summarization_agent / simple` → parallel tool calls → LLM synthesis → no memory write
+- `multi_agent / supervisor` → supervisor → sub-agents → merge → response
+
+Each step shows its own latency, tokens, and cost. Sections show/hide based on what actually ran — not hardcoded per agent type.
 
 ### Lineage
 Per-message full chain — one unified Lineage Panel per message, clickable from chat history. Content adapts by agent type, reasoning strategy, and RAG pattern:
@@ -1669,3 +1817,493 @@ Industry and enterprise aligned. Used to drive overlay structure refactor.
 - multi_agent strategies = coordination patterns (how agents are orchestrated)
 
 **Currently built:** chat_agent/simple ✅, summarization_agent/simple ✅
+
+---
+
+## Reference: Overlay Type × Agent Type × Reasoning Strategy Matrix
+
+Each overlay = one deployable agent = one agent_type + one reasoning strategy combination. New overlays add capability without changing platform code.
+
+| Overlay Name | Agent Type | Reasoning Strategy | RAG | Memory | HITL | Status | Notes |
+|---|---|---|---|---|---|---|---|
+| `chat_agent_simple` | chat_agent | simple | optional | full | yes | ✅ built | Deliberate cost optimization — 2 LLM calls |
+| `chat_agent_react` | chat_agent | react | optional | full | yes | ✅ built | Default production chat agent |
+| `chat_agent_plan_execute` | chat_agent | plan_execute | optional | full | yes | ✅ built | Multi-tool queries, fixed LLM cost |
+| `chat_agent_multi_hop` | chat_agent | multi_hop | optional | full | yes | 🔲 roadmap | Multi-step research queries — needs 10n |
+| `chat_agent_reflection` | chat_agent | reflection | optional | full | yes | 🔲 roadmap | High-stakes decisions, self-critique loop |
+| `chat_agent_tree_of_thought` | chat_agent | tree_of_thought | optional | full | yes | 🔲 roadmap | Research-grade, most expensive |
+| `summarization_agent_simple` | summarization_agent | simple | ❌ locked | limited | ❌ locked | ✅ built | Structured data via tools, single LLM pass |
+| `summarization_agent_rag` | summarization_agent | simple + pre-graph RAG | ✅ required | limited | ❌ locked | 🔲 roadmap | KB-enriched summaries — see item below |
+| `summarization_agent_map_reduce` | summarization_agent | map_reduce | optional | limited | ❌ locked | 🔲 roadmap | Long-document batch summarization |
+| `workflow_agent_simple` | workflow_agent | simple | optional | limited | yes | 🔲 future | Fixed step sequence, no reasoning loop |
+| `workflow_agent_react` | workflow_agent | react | optional | limited | yes | 🔲 future | Adaptive workflow with tool reasoning |
+| `workflow_agent_plan_execute` | workflow_agent | plan_execute | optional | limited | yes | 🔲 future | Pre-planned multi-step workflow |
+| `multi_agent_supervisor` | multi_agent | supervisor | optional | shared | yes | 🔲 future | One supervisor + N specialist sub-agents |
+| `multi_agent_supervisor_hitl` | multi_agent | supervisor+HITL | optional | shared | ✅ required | 🔲 future | Supervisor with human approval gates |
+| `multi_agent_hierarchical` | multi_agent | hierarchical | optional | shared | yes | 🔲 future | Multi-level agent tree |
+
+**How to read:**
+- **RAG = locked off** → agent uses tool calls to fetch structured data. No vector search needed.
+- **RAG = optional** → agent can enable pre-graph KB retrieval and/or planner_tool RAG in agent.yaml.
+- **RAG = required** → agent type depends on pre-graph RAG to function (e.g. `summarization_agent_rag` enriches with KB docs before summarization pass).
+- **Memory = full** → all 4 types (short-term, episodic, semantic, summary) configurable.
+- **Memory = limited** → short-term only for batch agents; episodic/semantic locked off (no conversation loop to write from).
+- **Memory = shared** → multi-agent workflows share a memory namespace; supervisor and sub-agents read/write same store.
+
+---
+
+10o. **`summarization_agent_rag` overlay — KB-enriched summary agent** 🔲
+
+Two types of summaries exist:
+
+**Type 1 — Structured data summary (today, `summarization_agent_simple`):**
+- Source: tool calls fetching structured records (assessments, care plans, clinical notes)
+- Process: tool outputs → single LLM synthesis pass
+- RAG: not needed. Data is already structured, fetched by ID, no vector search required.
+- Overlay: `overlays/summarization_agent_simple/` ✅ built
+
+**Type 2 — Knowledge-enriched summary (`summarization_agent_rag`):**
+- Source: tool calls + pre-graph RAG retrieval from KB (clinical guidelines, evidence, protocols)
+- Process: RAG retrieves relevant KB context → injected into LLM context → synthesis pass uses both structured data AND retrieved knowledge
+- RAG: required — `retrieval.pre_graph.enabled: true`, embedding over KB documents
+- Overlay: `overlays/summarization_agent_rag/` 🔲 not yet built
+- Use case: "summarize member's condition and flag relevant clinical guidelines from KB"
+
+**Why a new overlay (not a flag on the existing agent):**
+- Pre-graph RAG changes the graph shape — a new retrieval node runs before the planner
+- Different prompt templates — the LLM must be told to use both structured data AND KB context
+- Different agent.yaml — `retrieval.pre_graph.enabled: true`, `rag.pre_graph.top_k`, `rag.pre_graph.embedding_model`
+- Separate overlay = zero risk to the existing simple agent, independent deployable unit
+
+**Files to create (new overlay):**
+```
+overlays/summarization_agent_rag/
+  config/
+    agent.yaml         ← retrieval.pre_graph.enabled: true, rag settings
+    memory.yaml        ← same as simple (limited memory)
+    prompt-defaults.yaml ← updated prompts — instruct LLM to use KB context
+  agents/
+    summarizer.py      ← modified to inject RAG context before synthesis
+  orchestration/
+    build_graph.py     ← new pre-graph RAG node wired before summarizer
+```
+
+**Dependency:** RAG wiring must be fully validated in chat_agent before porting to summarization_agent_rag. Shared platform-core retriever.py handles both — no duplication.
+
+---
+
+## Reference: Invalid Overlay Permutations
+
+Not every agent_type × reasoning_strategy combination is valid. The rule: **reasoning loops only make sense for agents that don't know upfront what they need.** Batch and single-pass agents are always one-shot by design.
+
+| Agent Type | ❌ Invalid Strategies | Reason |
+|---|---|---|
+| `summarization_agent` | react, multi_hop, reflection, tree_of_thought | You know upfront what data to fetch. No discovery loop needed. |
+| `extraction_agent` | react, plan_execute, multi_hop, reflection, tree_of_thought | Single pass: text in → structured fields out. Nothing to iterate over. |
+| `triage_agent` | react, plan_execute, multi_hop, reflection, tree_of_thought | Classify and route — always one step. |
+| `monitoring_agent` | multi_hop, reflection, tree_of_thought | Check threshold → alert. react valid if investigation needed, nothing else. |
+| `workflow_agent` | multi_hop, tree_of_thought | Workflow = executing steps, not researching questions or exploring branches. |
+| `retrieval_agent` | reflection, tree_of_thought | Search doesn't need self-critique loops or branch exploration. |
+
+**`plan_execute` is the universal exception** — it's not a loop, it's "plan all fetches upfront, execute in parallel." Any agent that calls multiple tools can benefit from it regardless of type.
+
+**Enforcement:** Agent Factory dropdown must filter valid strategies per agent_type selected. Invalid combinations are not shown, not just disabled. Selecting `summarization_agent` collapses the strategy dropdown to: `simple`, `map_reduce`, `hierarchical`. Selecting `triage_agent` shows only `simple`.
+
+---
+
+## Reference: Prompt Strategy Alignment
+
+**Prompts must align to overlay (agent_type + reasoning_strategy).** `prompt-defaults.yaml` is per overlay — not per agent_type alone, not per capability.
+
+Wrong prompt on wrong strategy = broken agent at runtime (LLM outputs wrong format, graph state fails to parse).
+
+| Strategy | Prompts Required | Prompt Structure |
+|---|---|---|
+| `simple` | `planner_system_prompt` | Pick one tool, return tool + argument. No thought field. CoT instructions are wasted here — graph has no thought field. |
+| `react` | `react_planner_system_prompt` | Must include `Thought: <reasoning> / Action: <tool>(<arg>)` format. Loop continues until LLM outputs DONE in Thought. |
+| `plan_execute` | `plan_execute_planner_system_prompt` | Output full ordered plan as JSON list before executing anything. Format: `[{tool, argument}, ...]` |
+| `multi_hop` | `decomposer_system_prompt` + `sub_planner_system_prompt` + `synthesizer_system_prompt` | Three distinct prompts, each for a different LLM role in the graph. |
+| `reflection` | `planner_system_prompt` + `responder_system_prompt` + `reflector_system_prompt` | Reflector must output `{issues_found: bool, critique: str, suggested_correction: str}` |
+| `tree_of_thought` | `branching_planner_system_prompt` + `branch_evaluator_system_prompt` + `synthesizer_system_prompt` | Evaluator scores branches before pruning; synthesizer selects best path. |
+
+**Agent type also constrains prompt content** (independent of strategy):
+
+| Agent Type | Prompt Content Requirements |
+|---|---|
+| `chat_agent` | Conversational tone, memory-aware (reference prior turns), scope-aware (reference member/case context) |
+| `summarization_agent` | Synthesis-focused, structured output format (key concerns, next steps), no conversational tone |
+| `extraction_agent` | Strict structured output schema (JSON fields), no CoT, no explanation — just extract |
+| `triage_agent` | Fixed classification labels in prompt, route decision output only |
+| `monitoring_agent` | Threshold language, alert vs no-alert decision, no explanation needed |
+| `retrieval_agent` | Query reformulation instructions, source citation format, groundedness requirement |
+| `workflow_agent` | Step execution instructions, handoff format between steps |
+
+**Full alignment rule:** `prompt-defaults.yaml` per overlay = agent_type content requirements × strategy format requirements. Neither alone is sufficient.
+
+**UI enforcement (Agent Registry → Prompts tab):**
+- Detect strategy from `agent.yaml` → show required prompt fields for that strategy
+- Warn if a required prompt field is empty (e.g. `reflector_system_prompt` missing on `reflection` strategy)
+- Warn if `strategy: simple` but prompt contains CoT instructions (Thought/Action format wasted)
+- Block save if any required prompt for the active strategy is missing
+
+---
+
+## Reference: Pre/In/Post Graph — Universal for All Agent Types
+
+The 3-phase boundary applies to every valid overlay combination. What changes is what runs inside each phase, not the phases themselves.
+
+| Phase | What always runs | What varies by agent type |
+|---|---|---|
+| **Pre-graph** | Memory read, RAG retrieval (if enabled), context build | Batch agents (extraction, triage, monitoring) load less context — no episodic memory read. summarization_agent_rag runs pre-graph KB retrieval here. |
+| **In-graph** | Reasoning loop (planner → executor → responder) | Graph shape changes per strategy: simple = 2 LLM calls, react = loop, plan_execute = plan then parallel execute, multi_hop = decompose → sub-plans → synthesize |
+| **Post-graph** | Memory write, HITL evaluation, response formatting | Batch agents skip episodic/semantic write — no conversation to record. HITL evaluation only runs for agent types with HITL enabled. |
+
+**Same boundary. Different contents per overlay.**
+
+---
+
+## Reference: Agent Registry Config Dimensions — All Agent Types
+
+Every agent type has the same config dimensions in Agent Registry. The Agent Capability Matrix determines which options are visible, locked, or required per agent type.
+
+| Config Dimension | chat_agent | summarization_agent | extraction_agent | triage_agent | monitoring_agent | workflow_agent | multi_agent |
+|---|---|---|---|---|---|---|---|
+| **RAG** | optional | simple=off / rag=required | locked off | locked off | locked off | optional | optional |
+| **HITL** | optional | locked off | locked off | locked off | locked off | optional | supervisor+HITL=required |
+| **Memory** | full (all 4 types) | limited (short-term only) | locked off | locked off | locked off | limited | shared namespace |
+| **Tools** | configurable | configurable | configurable | configurable | configurable | configurable | per sub-agent |
+| **Prompts** | required (strategy-driven) | required | required | required | required | required | per sub-agent |
+| **Routing** | yes | no | no | yes (it IS routing) | no | no | at supervisor level |
+
+**Rule:** platform structure is uniform. The Agent Capability Matrix (backlog 3d) drives which tabs are shown, which fields are locked, and which fields are required per agent type. Same Agent Registry UI for all — different valid config space per type.
+
+**triage_agent special case:** Routing tab IS the config for this agent type — classify input → route to agent/workflow. It has no planner loop, the routing logic is the entire agent behavior.
+
+**multi_agent special case:** Config at the supervisor level controls orchestration. Each sub-agent has its own full overlay config independently — the supervisor's Agent Registry shows which sub-agents are wired, not their internal config.
+
+---
+
+## Reference: Observability — Per Overlay
+
+Every overlay emits the same trace event structure (pre-graph, in-graph steps, post-graph). What differs is the payload inside each event. The observability engine is shared — the trace content is overlay-specific.
+
+| Overlay / Strategy | What the trace captures |
+|---|---|
+| `simple` | 2 LLM calls (planner + responder), 1 tool call, tool output |
+| `react` | N loop iterations — each with thought + action + observation. Loop count, which tools called, in what order. |
+| `plan_execute` | The full plan (ordered tool list), each tool result, final synthesis call |
+| `multi_hop` | Sub-questions generated, tool call per sub-question, sub-answers, final synthesis |
+| `reflection` | Initial answer, reflector critique, whether retry triggered, final answer delta |
+| `tree_of_thought` | Branches explored, evaluator score per branch, pruned branches, winning path |
+| `summarization_agent` | Tool outputs fetched, synthesis LLM call, structured output fields |
+| `extraction_agent` | Input text (truncated), extracted fields, confidence score per field |
+| `triage_agent` | Input, classification label, confidence, route decision |
+| `monitoring_agent` | Metric values checked, threshold comparison, alert triggered or not |
+| `workflow_agent` | Each step: tool called, input/output, handoff to next step |
+| `multi_agent` | Supervisor decision, which sub-agent invoked, sub-agent trace (nested), aggregation |
+
+**Pre/in/post graph trace events are always emitted regardless of overlay:**
+- `pre_graph_complete` — memory loaded, RAG retrieved (if enabled), context built. Duration + token count.
+- `in_graph_step` — one event per step inside the graph. Step type (LLM/tool/internal), duration, input/output.
+- `post_graph_complete` — memory written, HITL evaluated (if enabled), final response. Duration.
+
+**Same trace schema. Different fields populated per overlay.**
+
+---
+
+## Reference: Evaluation — Per Overlay
+
+Same eval framework and runner. Metric set is overlay-specific — what "good" means differs per agent type and strategy.
+
+| Agent Type / Strategy | What to evaluate | Metrics |
+|---|---|---|
+| `chat_agent` (any strategy) | Answer quality, groundedness vs tool output, tool selection correctness, memory recall accuracy | LLM-as-judge score, groundedness %, tool selection accuracy, memory hit rate |
+| `summarization_agent` | Completeness vs source data, factual accuracy, hallucination rate | ROUGE/BLEU vs source, LLM-as-judge completeness score, hallucination flag rate |
+| `extraction_agent` | Field accuracy vs ground truth, recall and precision per field | Exact match %, F1 per field, missed field rate |
+| `triage_agent` | Classification accuracy, routing correctness | Accuracy, precision/recall per class, confusion matrix, misroute rate |
+| `monitoring_agent` | Alert correctness — false positive rate, missed threshold rate | Alert precision, alert recall, false positive %, threshold replay accuracy |
+| `workflow_agent` | Step completion rate, correct handoff between steps, output correctness per step | Step success rate, handoff accuracy, final output quality |
+| `multi_agent` | Sub-agent selection correctness, aggregation quality, end-to-end answer quality | Sub-agent routing accuracy, aggregation LLM-as-judge, end-to-end golden set score |
+| **`react` strategy (any type)** | Loop efficiency — right tools, right order, no unnecessary iterations | Loop count, tool selection accuracy, unnecessary iteration rate |
+| **`reflection` strategy** | Did reflection catch real errors? Did retry improve score? | Grade delta before/after retry, false critique rate, retry trigger rate |
+| **`plan_execute` strategy** | Was the plan correct upfront? Were all planned tools necessary? | Plan accuracy vs optimal, unnecessary tool rate, plan revision rate |
+| **`multi_hop` strategy** | Sub-question quality, sub-answer accuracy, synthesis coherence | Sub-question coverage score, sub-answer accuracy, synthesis coherence score |
+
+**Eval framework components (shared across all overlays):**
+- **Golden set** — ground truth input/output pairs per overlay. Stored per agent type.
+- **Eval runner** — replays golden set against live agent, collects trace + response.
+- **Metric calculator** — applies overlay-specific metric set to trace + response.
+- **Eval report** — per-run score breakdown by metric, regression detection vs prior run.
+- **LLM-as-judge** — shared grader LLM call used by chat, summarization, workflow, multi_agent overlays.
+
+**Observability and eval are linked:** eval runner reads from the trace to compute strategy-level metrics (loop count, plan accuracy, reflection delta). You cannot compute strategy metrics without the trace.
+
+---
+
+## Gap Analysis: Agentic Design Patterns Book — Missing from Platform
+
+Source: "Agentic Design Patterns: A Hands-On Guide to Building Intelligent Systems" (Antonio Gulli, 424 pages). Cross-referenced against all platform capabilities. 10 patterns identified as missing.
+
+---
+
+15. **Learning & Adaptation** — ⛔ OUT OF SCOPE
+
+   RLHF, DPO, and model fine-tuning are not platform responsibilities. Updating foundation model weights requires GPU clusters, training pipelines, and ML ops infrastructure — this is what Anthropic/OpenAI do when releasing a new model version. Enterprises do not fine-tune foundation models for agent Q&A workflows.
+
+   **What we have that covers the practical enterprise version:**
+   - Semantic memory write — agent learns facts about members/cases across conversations. Context improves over time without touching model weights.
+   - Eval framework — quality scores per run feed back into prompt improvements and config tuning.
+
+   This is the correct level of adaptation for an enterprise agent platform. Model fine-tuning is out of scope.
+
+---
+
+16. **MCP — Model Context Protocol** ✅ COVERED BY TOOL GATEWAY
+
+   Our Tool Gateway (C3) IS the MCP concept — a server that exposes tools, agents call it, tools execute and return results. Same architecture, our own protocol format.
+
+   **Future integration detail (not missing design):** if external agents from other companies need to call our tools, we add an MCP-compatible interface on top of the Tool Gateway. That's a thin adapter layer, not a missing platform concept. Config shape for when needed:
+
+   ```yaml
+   tools:
+     gateway: internal           # our Tool Gateway (primary)
+     mcp_servers:                # future: external MCP-compatible tool servers
+       - url: https://salesforce.example.com/mcp
+         auth: apikey
+   ```
+
+---
+
+17. **Exception Handling & Recovery patterns** 🔲 — systematic infra-level failure handling at the platform level. `self_corrective` covers quality retry (bad answer → retry with feedback). Missing: infra failures (tool timeout, model API error, network failure).
+
+   **Patterns needed:**
+   - **Retry with backoff** — tool call fails → retry N times with exponential backoff before escalating
+   - **Fallback model** — primary model (e.g. Opus) unavailable → fall back to secondary (e.g. Sonnet) automatically
+   - **Circuit breaker** — tool repeatedly failing → stop calling it for T seconds, return cached/default response
+   - **Graceful degradation** — RAG retrieval fails → proceed without context, flag in response that KB was unavailable
+   - **Timeout handling** — tool call exceeds timeout → cancel, log, return partial result
+
+   **Config shape:**
+   ```yaml
+   resilience:
+     retry:
+       max_attempts: 3
+       backoff: exponential
+     fallback_model: claude-sonnet-4-6
+     circuit_breaker:
+       threshold: 5          # failures before opening
+       reset_after: 60       # seconds
+     timeout_ms: 5000
+   ```
+
+   **Where it lives:** platform-core, not per-agent. Every agent benefits automatically. Configured in agent.yaml but enforced by platform-core executor.
+
+---
+
+18. **A2A — Agent-to-Agent Protocol** 🔲 — Google's open standard for cross-framework agent communication. Allows agents built on different frameworks (LangGraph, CrewAI, Google ADK) to call each other over HTTP as peer services.
+
+   **Core concepts:**
+   - **Agent Card** — JSON identity file describing the agent's capabilities, endpoint URL, supported input/output modes, auth requirements
+   - **Agent Discovery** — well-known URI (`/.well-known/agent.json`), curated registry, or direct config
+   - **Tasks** — async units of work with state (submitted → working → completed). Long-running support.
+   - **JSON-RPC 2.0** over HTTP(S) — all communication
+
+   **What we have:** multi_agent type with internal supervisor → sub-agent calls. Not interoperable with external agents.
+
+   **What's missing:**
+   - Each agent runtime exposes an A2A-compatible endpoint
+   - Agent Card generated from agent.yaml at startup
+   - Agent Factory registers agents in a central A2A discovery registry
+   - Supervisor agent can call external A2A agents (not just internal sub-agents)
+
+   **Why it matters:** A2A is backed by Atlassian, Box, LangChain, MongoDB, Salesforce, SAP, ServiceNow, Microsoft (Azure AI Foundry). This is becoming the interoperability standard for enterprise multi-agent systems.
+
+---
+
+19. **Resource-Aware Optimization** 🔲 — dynamic model routing and cost optimization. Route each query to the cheapest model that can handle it correctly. Simple queries → fast/cheap model. Complex queries → powerful/expensive model.
+
+   **Pattern:**
+   1. Classify query complexity (simple / reasoning / search / complex) — lightweight classifier LLM call or heuristic
+   2. Route to appropriate model based on classification
+   3. Monitor quality score per model tier — if Flash consistently underperforms on a query type, adjust routing threshold
+
+   **Model tiers (example):**
+   - `simple` — factual lookup, single-turn → Haiku 4.5
+   - `reasoning` — multi-step logic → Sonnet 4.6
+   - `complex` — research, synthesis, high-stakes → Opus 4.6
+
+   **Config shape:**
+   ```yaml
+   model_routing:
+     enabled: false           # opt-in
+     classifier: heuristic    # heuristic | llm
+     tiers:
+       simple:
+         model: claude-haiku-4-5-20251001
+         max_tokens: 500
+       reasoning:
+         model: claude-sonnet-4-6
+         max_tokens: 2000
+       complex:
+         model: claude-opus-4-6
+         max_tokens: 8000
+   ```
+
+   **Relationship to existing platform:** reasoning strategy already does basic cost optimization (`simple` = 2 LLM calls). Model routing adds a second dimension: not just fewer calls but cheaper model per call.
+
+---
+
+20. **Graph RAG** ✅ ALREADY IN DESIGN — Graph is a Dim 1 retrieval method option, same axis as `semantic | keyword | hybrid`. The Dim 1 router decides which store to query (vector DB, keyword index, or knowledge graph). Graph RAG = set `retrieval.method: graph` in agent.yaml → retriever queries the knowledge graph store instead of vector DB.
+
+   **Entities = nodes, relationships = edges. Retrieval navigates graph relationships, not vector similarity.**
+
+   Use cases: interconnected entity queries ("How does gene X relate to disease Y through pathway Z?"), complex financial analysis (company → events → market impact chain), clinical knowledge networks.
+
+   **Store implementation (backlog for Tool Gateway / C3):** Neo4j or equivalent alongside vector store. Graph traversal retriever: entity extraction from query → graph walk → context assembly. Higher setup cost but better for relational queries than vector similarity.
+
+   **Applies to both Dim 2 stages:** pre-graph retrieval and planner_tool retrieval both benefit from graph method — same Dim 1 option, same router, different store backend.
+
+---
+
+21. **Agentic RAG** ✅ ALREADY IN DESIGN — `agentic` is a Dim 3 retrieval pattern option (`retrieval.pattern: agentic`). Dim 3 pattern is orthogonal to Dim 2 stage — setting `pattern: agentic` applies to ALL active Dim 2 stages (pre-graph AND planner_tool).
+
+   **What Agentic RAG does as Dim 3 pattern (applies after any Dim 1 retrieval, at any Dim 2 stage):**
+   - **Source validation** — check document recency/authority, discard outdated or low-authority sources before injecting
+   - **Conflict reconciliation** — two retrieved docs contradict → agent decides which is authoritative
+   - **Knowledge gap detection** — retrieved docs don't cover the query → trigger gap_fallback_tool (web search, live API) instead of hallucinating
+   - **Multi-step decomposition** — complex query decomposed into sub-queries, each retrieved separately, synthesized
+
+   **Config shape:**
+   ```yaml
+   retrieval:
+     pattern: agentic        # Dim 3 — applies to all active Dim 2 stages
+     agentic:
+       source_validation: true
+       conflict_resolution: true
+       gap_detection: true
+       gap_fallback_tool: web_search
+   ```
+
+   **This was already named in our RAG design as a Dim 3 pattern. This entry clarifies what it means in implementation detail.**
+
+---
+
+22. **CoD — Chain of Debates** 🔲 — multiple distinct models collaborate and argue to reach a better answer. Each model presents an answer, critiques others' answers, exchanges counterarguments, and a final synthesis is produced. Reduces individual model bias, improves accuracy.
+
+   **How it differs from `reflection` strategy:** reflection = single model critiques itself. CoD = multiple different models critique each other. Peer review vs self-review.
+
+   **Graph shape:**
+   - Model A generates answer → Model B critiques → Model A responds to critique → Model C arbitrates → Synthesis
+
+   **Overlay:** `chat_agent_chain_of_debates` — new overlay, not just a reasoning strategy. Requires multiple model instances configured per overlay.
+
+   **Config shape:**
+   ```yaml
+   reasoning:
+     strategy: chain_of_debates
+     participants:
+       - model: claude-opus-4-6
+         role: proposer
+       - model: claude-sonnet-4-6
+         role: critic
+       - model: claude-opus-4-6
+         role: arbitrator
+     rounds: 2
+   ```
+
+   **Use cases:** high-stakes clinical decisions, legal analysis, financial risk assessment — anywhere where single-model bias is unacceptable.
+
+---
+
+23. **GoD — Graph of Debates** 🔲 — non-linear debate network. Arguments are graph nodes, edges = `supports` or `refutes` relationships. New lines of inquiry branch dynamically. Conclusion = most well-supported cluster of arguments in the graph, not the end of a sequence.
+
+   **How it differs from CoD:** CoD is a linear chain of critique rounds. GoD is a graph — arguments can branch, merge, refute multiple prior nodes. More robust for complex multi-faceted problems.
+
+   **Overlay:** `chat_agent_graph_of_debates` — research-grade, expensive, similar priority to `tree_of_thought`.
+
+   **Use cases:** strategic planning, policy analysis, complex research synthesis. Not for everyday queries.
+
+---
+
+24. **Contractor / Formal Specification pattern** 🔲 — agent executes against a formal contract rather than a free-form prompt. Contract defines: deliverables, validation criteria, quality thresholds, deadline. Agent self-validates output before submission. Can decompose into subcontracts.
+
+   **Four pillars (from book):**
+   1. **Formal specification** — contract defines exact deliverables and validation criteria upfront
+   2. **Negotiation** — agent can clarify ambiguities before accepting the contract
+   3. **Quality-focused execution** — agent generates multiple approaches, validates each against contract criteria, submits only the version that passes
+   4. **Hierarchical decomposition** — primary contractor breaks contract into subcontracts, delegates to sub-agents
+
+   **Relationship to existing platform:** this is an evolution of multi_agent + HITL + plan_execute. The "contract" is a structured form of the goal + validation criteria. Closest to `workflow_agent_plan_execute` with formal output validation.
+
+   **Config shape:**
+   ```yaml
+   execution_mode: contractor   # default: conversational
+   contract:
+     deliverable: "Python function that sorts a list"
+     validation:
+       - type: unit_test
+         test_suite: tests/sort_test.py
+       - type: quality_check
+         metrics: [performance, security, readability]
+         threshold: 0.8
+     max_attempts: 3
+   ```
+
+   **New agent type implied:** `contractor_agent` — distinct from workflow_agent. Workflow executes steps; contractor self-validates output quality against formal criteria.
+
+---
+
+25. **Event-Driven Agents** 🔲 — agents triggered by external events, not user requests. Today all agents are request-response (`/chat`, `/invocations`, `/summarize`). In production most enterprise agents are event-driven — they wake up when something happens, process it, take action, go back to sleep.
+
+   **Event sources:**
+
+   | Source | Example | Agent Triggered |
+   |---|---|---|
+   | Webhook | New lab result uploaded to EHR | pre-call assessment agent |
+   | Message queue (Kafka/SQS/Pub/Sub) | Order placed | fulfillment workflow agent |
+   | Database CDC (change data capture) | Patient record updated | extraction/summarization agent |
+   | File upload | New document added to KB | ingestion/indexing agent |
+   | Scheduled timer (cron) | Every night at 2am | monitoring/reporting agent |
+   | API callback | Payment confirmed | notification agent |
+   | Threshold breach | Metric crosses limit | monitoring agent |
+
+   **What needs to be built:**
+   - **Event source connectors** — webhook receiver, queue consumer (SQS/Kafka), CDC listener, cron scheduler. Each connector normalizes its event into a standard `AgentEvent` schema.
+   - **Event router** — maps event type + payload fields → which agent to invoke with what context. Config-driven: `event_routing.yaml` per capability.
+   - **Async execution model** — fire-and-forget (trigger agent, don't wait) vs fire-and-track (trigger agent, poll for result via task ID). Long-running agents need fire-and-track.
+   - **Event acknowledgment** — at-least-once delivery guarantee. Event is not acked until agent completes successfully. On failure: retry with backoff, then dead-letter queue.
+
+   **Standard AgentEvent schema:**
+   ```json
+   {
+     "event_id": "uuid",
+     "event_type": "lab_result_uploaded",
+     "source": "ehr_webhook",
+     "timestamp": "2026-04-13T10:00:00Z",
+     "payload": {
+       "member_id": "M123",
+       "case_id": "C456",
+       "result_type": "HbA1c"
+     }
+   }
+   ```
+
+   **Event routing config (event_routing.yaml per capability):**
+   ```yaml
+   routes:
+     - event_type: lab_result_uploaded
+       agent: pre_call_assessment
+       context_mapping:
+         member_id: payload.member_id
+         case_id: payload.case_id
+     - event_type: document_uploaded
+       agent: summarization_agent_simple
+       context_mapping:
+         document_id: payload.document_id
+   ```
+
+   **Relationship to existing platform:** event-driven is a trigger mechanism, not a new agent type. Any existing agent type (chat_agent, summarization_agent, workflow_agent, monitoring_agent) can be event-triggered. The agent runtime already has `/invocations` — event-driven adds a layer that calls `/invocations` automatically when an event fires.
+
+   **monitoring_agent is the most natural fit** — already designed to run on a schedule or threshold. Event-driven gives it the trigger infrastructure it needs.
+
+   **All agent types benefit:** pre-call assessment triggered by patient admission event, summarization triggered by document upload, extraction triggered by EHR record change, workflow triggered by order placement.

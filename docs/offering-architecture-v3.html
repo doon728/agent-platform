@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Reference Architecture — Intelligent Agent Accelerator for Healthcare</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#eceff1;padding:28px;}
+.page{max-width:1060px;margin:0 auto;}
+.title-bar{background:#232f3e;color:white;padding:14px 24px;border-radius:8px 8px 0 0;display:flex;justify-content:space-between;align-items:center;}
+.title-bar h1{font-size:15px;font-weight:800;}
+.badge{background:#FF9900;color:#232f3e;font-size:10px;font-weight:900;padding:3px 12px;border-radius:4px;text-transform:uppercase;letter-spacing:1px;}
+.diagram-wrap{background:white;border:1px solid #cfd8dc;padding:20px 16px;}
+.diagram-label{font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:1px;color:#546e7a;padding:12px 0 6px;}
+.divider{border:none;border-top:2px dashed #e0e0e0;margin:24px 0 8px;}
+.explain{background:white;border:1px solid #cfd8dc;border-top:3px solid #FF9900;padding:32px 40px;}
+.explain h2{font-size:16px;font-weight:900;color:#0f172a;margin-bottom:20px;padding-bottom:10px;border-bottom:2px solid #e2e8f0;}
+.eg{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px;}
+.ec{background:#f8fafc;border-left:4px solid #FF9900;border-radius:0 8px 8px 0;padding:14px 18px;}
+.ec.b{border-left-color:#0277bd;}.ec.g{border-left-color:#2e7d32;}.ec.r{border-left-color:#b71c1c;}
+.ec .lbl{display:inline-block;font-size:10px;font-weight:900;background:#FF9900;color:white;padding:2px 8px;border-radius:3px;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;}
+.ec .lbl.b{background:#0277bd;}.ec .lbl.g{background:#2e7d32;}.ec .lbl.r{background:#b71c1c;}
+.ec h3{font-size:12px;font-weight:800;color:#1e293b;margin-bottom:6px;}
+.ec p{font-size:12px;color:#334155;line-height:1.6;}
+.why{background:#232f3e;border-radius:8px;padding:20px 24px;}
+.why h3{font-size:11px;font-weight:900;color:#FF9900;text-transform:uppercase;letter-spacing:1px;margin-bottom:14px;}
+.wg{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;}
+.wi h4{font-size:11px;font-weight:800;color:#FF9900;margin-bottom:4px;}
+.wi p{font-size:11px;color:#94a3b8;line-height:1.5;}
+.footer-bar{background:#232f3e;padding:9px 24px;border-radius:0 0 8px 8px;display:flex;justify-content:space-between;}
+.footer-bar span{color:#90a4ae;font-size:10px;}
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="title-bar">
+  <h1>Reference Architecture — Intelligent Agent Accelerator for Healthcare</h1>
+  <div class="badge">AWS Native</div>
+</div>
+
+<div class="diagram-wrap">
+
+<!-- ════════════════════════════════════════════════════
+     DIAGRAM 1 — OVERVIEW
+════════════════════════════════════════════════════ -->
+<div class="diagram-label">Diagram 1 — Overview</div>
+
+<svg xmlns="http://www.w3.org/2000/svg" width="1008" height="510"
+     viewBox="0 0 1008 510" style="display:block;font-family:'Segoe UI',system-ui,sans-serif;">
+<defs>
+  <marker id="ao" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#FF9900"/></marker>
+  <marker id="ab" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0277bd"/></marker>
+  <marker id="ag" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2e7d32"/></marker>
+  <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c62828"/></marker>
+  <marker id="ap" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6a1b9a"/></marker>
+</defs>
+
+<!-- ── CONTAINER 4 — CONTROL PLANE (reordered: HITL next to Prompt Mgmt) ── -->
+<rect x="8" y="8" width="992" height="96" rx="6" fill="#fff5f5" stroke="#b71c1c" stroke-width="2"/>
+<rect x="8" y="8" width="992" height="22" rx="6" fill="#b71c1c"/>
+<rect x="8" y="20" width="992" height="10" fill="#b71c1c"/>
+<text x="504" y="23" text-anchor="middle" fill="white" font-size="9.5" font-weight="800" letter-spacing=".5">CONTAINER 4 — CONTROL PLANE  ·  ECS / Fargate  ·  Per Tenant  ·  All LOBs  ·  S3 (YAMLs) + RDS (registry)</text>
+
+<!-- 1. Agent Factory UI -->
+<rect x="18" y="36" width="183" height="58" rx="3" fill="white" stroke="#ef9a9a" stroke-width="1"/>
+<text x="109" y="52" text-anchor="middle" fill="#b71c1c" font-size="8.5" font-weight="800">Agent Factory UI</text>
+<text x="109" y="65" text-anchor="middle" fill="#37474f" font-size="7.5">Configure · scaffold · govern</text>
+<text x="109" y="78" text-anchor="middle" fill="#37474f" font-size="7.5">LOB-namespaced · no code needed</text>
+<text x="109" y="90" text-anchor="middle" fill="#b71c1c" font-size="7">Writes agent YAMLs → S3</text>
+
+<!-- 2. Prompt Management -->
+<rect x="209" y="36" width="183" height="58" rx="3" fill="white" stroke="#ef9a9a" stroke-width="1"/>
+<text x="300" y="52" text-anchor="middle" fill="#b71c1c" font-size="8.5" font-weight="800">Prompt Management</text>
+<text x="300" y="65" text-anchor="middle" fill="#37474f" font-size="7.5">Per-agent · versioned · lifecycle</text>
+<text x="300" y="78" text-anchor="middle" fill="#37474f" font-size="7.5">draft → active → retired</text>
+<text x="300" y="90" text-anchor="middle" fill="#b71c1c" font-size="7">No redeploy to update prompts</text>
+
+<!-- 3. HITL & Policy Service (moved next to Prompt Mgmt) -->
+<rect x="400" y="36" width="183" height="58" rx="3" fill="white" stroke="#ef9a9a" stroke-width="1"/>
+<text x="491" y="52" text-anchor="middle" fill="#b71c1c" font-size="8.5" font-weight="800">HITL &amp; Policy Service</text>
+<text x="491" y="65" text-anchor="middle" fill="#37474f" font-size="7.5">Approval gates · defined in YAML</text>
+<text x="491" y="78" text-anchor="middle" fill="#37474f" font-size="7.5">Rules · durable state · audit trail</text>
+<text x="491" y="90" text-anchor="middle" fill="#b71c1c" font-size="7">Clinical HITL ≠ Claims HITL</text>
+
+<!-- 4. Agent Registry -->
+<rect x="591" y="36" width="183" height="58" rx="3" fill="white" stroke="#ef9a9a" stroke-width="1"/>
+<text x="682" y="52" text-anchor="middle" fill="#b71c1c" font-size="8.5" font-weight="800">Agent Registry</text>
+<text x="682" y="65" text-anchor="middle" fill="#37474f" font-size="7.5">Agent ID · LOB · domain namespace</text>
+<text x="682" y="78" text-anchor="middle" fill="#37474f" font-size="7.5">Prompts · RAG · tools · domain.yaml</text>
+<text x="682" y="90" text-anchor="middle" fill="#b71c1c" font-size="7">Isolated per agent + LOB · one system</text>
+
+<!-- 5. Observability & Eval -->
+<rect x="782" y="36" width="210" height="58" rx="3" fill="white" stroke="#ef9a9a" stroke-width="1"/>
+<text x="887" y="52" text-anchor="middle" fill="#b71c1c" font-size="8.5" font-weight="800">Observability &amp; Eval</text>
+<text x="887" y="65" text-anchor="middle" fill="#37474f" font-size="7.5">Traces · eval metrics · lineage</text>
+<text x="887" y="78" text-anchor="middle" fill="#37474f" font-size="7.5">CloudWatch · X-Ray · cross-LOB</text>
+<text x="887" y="90" text-anchor="middle" fill="#b71c1c" font-size="7">One dashboard · all agents · all LOBs</text>
+
+<!-- Config arrows — C1 (x=198) and C2 (x=422) only -->
+<line x1="198" y1="104" x2="198" y2="144" stroke="#c62828" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#ar)"/>
+<line x1="422" y1="104" x2="422" y2="144" stroke="#c62828" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#ar)"/>
+
+<!-- ── UI / ENTRY POINT (left of Container 1) ── -->
+<rect x="8" y="174" width="76" height="110" rx="5" fill="#f8fafc" stroke="#546e7a" stroke-width="1.5"/>
+<rect x="8" y="174" width="76" height="20" rx="5" fill="#546e7a"/>
+<rect x="8" y="184" width="76" height="10" fill="#546e7a"/>
+<text x="46" y="188" text-anchor="middle" fill="white" font-size="8" font-weight="800">ENTRY POINT</text>
+<text x="46" y="206" text-anchor="middle" fill="#37474f" font-size="7.5">Nurse Workstation</text>
+<text x="46" y="219" text-anchor="middle" fill="#37474f" font-size="7.5">Care Manager UI</text>
+<text x="46" y="232" text-anchor="middle" fill="#37474f" font-size="7.5">API / Webhook</text>
+<text x="46" y="248" text-anchor="middle" fill="#546e7a" font-size="7" font-style="italic">per LOB · per domain</text>
+<text x="46" y="261" text-anchor="middle" fill="#546e7a" font-size="7" font-style="italic">min. UI provided</text>
+<text x="46" y="274" text-anchor="middle" fill="#546e7a" font-size="7" font-style="italic">or customer app</text>
+
+<!-- Entry Point → C1 arrow -->
+<line x1="84" y1="229" x2="94" y2="229" stroke="#FF9900" stroke-width="3" marker-end="url(#ao)"/>
+
+<!-- ── CONTAINER 1 — Agent Runtime ── -->
+<!-- x=94, w=198, center=193, right=292 -->
+<rect x="108" y="156" width="198" height="184" rx="5" fill="#ffe0b2" stroke="#ef6c00" stroke-width="1" opacity="0.35"/>
+<rect x="101" y="150" width="198" height="184" rx="5" fill="#ffe0b2" stroke="#ef6c00" stroke-width="1" opacity="0.55"/>
+<rect x="94" y="144" width="198" height="184" rx="5" fill="#fff8f0" stroke="#e65100" stroke-width="2"/>
+<rect x="94" y="144" width="198" height="24" rx="5" fill="#e65100"/>
+<rect x="94" y="158" width="198" height="10" fill="#e65100"/>
+<text x="193" y="161" text-anchor="middle" fill="white" font-size="9.5" font-weight="800">CONTAINER 1 — AGENT RUNTIME</text>
+<text x="193" y="174" text-anchor="middle" fill="white" font-size="7.5">AWS AgentCore Runtime · thin shell · per agent</text>
+<text x="193" y="193" text-anchor="middle" fill="#e65100" font-size="9" font-weight="800">pre-graph → in-graph → post-graph</text>
+<text x="193" y="208" text-anchor="middle" fill="#37474f" font-size="8.5">Entry point · delegates to Container 2</text>
+<text x="193" y="223" text-anchor="middle" fill="#37474f" font-size="8.5">auth / authz · domain scope loaded</text>
+<text x="193" y="238" text-anchor="middle" fill="#37474f" font-size="8.5">HITL gate enforcement · session mgmt</text>
+<rect x="112" y="254" width="162" height="64" rx="8" fill="#e65100"/>
+<text x="193" y="273" text-anchor="middle" fill="white" font-size="10" font-weight="900">× N DEPLOYMENTS</text>
+<text x="193" y="288" text-anchor="middle" fill="#ffe0b2" font-size="8">one per LOB · one per AWS account</text>
+<text x="193" y="302" text-anchor="middle" fill="#ffe0b2" font-size="8">dev · qa · prod · per business unit</text>
+<text x="193" y="316" text-anchor="middle" fill="#ffe0b2" font-size="7.5">self-registers with Control Plane on boot</text>
+
+<!-- ── ARROW C1 → C2 (thick, clean) ── -->
+<line x1="292" y1="236" x2="312" y2="236" stroke="#FF9900" stroke-width="3.5" marker-end="url(#ao)"/>
+
+<!-- ── CONTAINER 2 — Platform Services ── -->
+<!-- x=312, w=240, center=432, right=552 -->
+<rect x="312" y="144" width="240" height="184" rx="5" fill="#e8edf8" stroke="#0277bd" stroke-width="2"/>
+<rect x="312" y="144" width="240" height="24" rx="5" fill="#0277bd"/>
+<rect x="312" y="158" width="240" height="10" fill="#0277bd"/>
+<text x="432" y="161" text-anchor="middle" fill="white" font-size="9.5" font-weight="800">CONTAINER 2 — PLATFORM SERVICES</text>
+<text x="432" y="174" text-anchor="middle" fill="white" font-size="7.5">ECS / Fargate · LangGraph · Shared per tenant</text>
+<text x="432" y="193" text-anchor="middle" fill="#0277bd" font-size="9" font-weight="800">All reasoning happens here</text>
+<text x="432" y="208" text-anchor="middle" fill="#37474f" font-size="8.5">Agent types · reasoning strategies</text>
+<text x="432" y="222" text-anchor="middle" fill="#37474f" font-size="8.5">pre-graph RAG · 4-scope memory</text>
+<text x="432" y="236" text-anchor="middle" fill="#37474f" font-size="8.5">Config by Agent ID + LOB namespace</text>
+<text x="432" y="251" text-anchor="middle" fill="#546e7a" font-size="7.5">ElastiCache · RDS Aurora · OpenSearch · pgvector</text>
+
+<!-- ── ARROW C2 → MCP ── -->
+<line x1="552" y1="236" x2="572" y2="236" stroke="#0277bd" stroke-width="2.2" marker-end="url(#ab)"/>
+
+<!-- ── MCP SERVER ── -->
+<!-- x=572, w=120, center=632, right=692 -->
+<rect x="572" y="195" width="120" height="82" rx="5" fill="white" stroke="#0277bd" stroke-width="1.5" stroke-dasharray="5,3"/>
+<rect x="572" y="195" width="120" height="22" rx="5" fill="#0277bd"/>
+<rect x="572" y="207" width="120" height="10" fill="#0277bd"/>
+<text x="632" y="210" text-anchor="middle" fill="white" font-size="9" font-weight="800">MCP SERVER</text>
+<text x="632" y="228" text-anchor="middle" fill="#37474f" font-size="8">AgentCore Gateway (default)</text>
+<text x="632" y="241" text-anchor="middle" fill="#37474f" font-size="8">Managed AWS MCP server</text>
+<text x="632" y="254" text-anchor="middle" fill="#37474f" font-size="8">or C3 facade (fallback)</text>
+<text x="632" y="266" text-anchor="middle" fill="#0277bd" font-size="7.5" font-weight="600">MCP-native tool serving</text>
+
+<!-- ── ARROW MCP → C3 ── -->
+<line x1="692" y1="236" x2="712" y2="236" stroke="#0277bd" stroke-width="2.2" marker-end="url(#ab)"/>
+
+<!-- ── CONTAINER 3 — Tool Gateway ── -->
+<!-- x=712, w=240, center=832, right=952 -->
+<rect x="712" y="144" width="240" height="184" rx="5" fill="#e8f5e9" stroke="#2e7d32" stroke-width="2"/>
+<rect x="712" y="144" width="240" height="24" rx="5" fill="#2e7d32"/>
+<rect x="712" y="158" width="240" height="10" fill="#2e7d32"/>
+<text x="832" y="161" text-anchor="middle" fill="white" font-size="9.5" font-weight="800">CONTAINER 3 — TOOL GATEWAY</text>
+<text x="832" y="174" text-anchor="middle" fill="white" font-size="7.5">AgentCore Gateway (default) · ECS/Fargate (fallback)</text>
+<text x="832" y="193" text-anchor="middle" fill="#2e7d32" font-size="9" font-weight="800">LOB-namespaced tool catalogs</text>
+<text x="832" y="208" text-anchor="middle" fill="#37474f" font-size="8.5">Schema-validated tool serving</text>
+<text x="832" y="222" text-anchor="middle" fill="#37474f" font-size="8.5">Per-agent tool selection + allow/deny</text>
+<text x="832" y="236" text-anchor="middle" fill="#37474f" font-size="8.5">Tool policies enforced per LOB</text>
+<text x="832" y="251" text-anchor="middle" fill="#546e7a" font-size="7.5">Secrets Manager · per-LOB API keys + tokens</text>
+
+<!-- ── BOTTOM ROW — moved down to y=390 for clear arrow spacing ── -->
+
+<!-- Amazon Bedrock (below C2) -->
+<rect x="312" y="390" width="228" height="62" rx="5" fill="white" stroke="#FF9900" stroke-width="2"/>
+<rect x="312" y="390" width="228" height="20" rx="5" fill="#FF9900"/>
+<rect x="312" y="400" width="228" height="10" fill="#FF9900"/>
+<text x="426" y="404" text-anchor="middle" fill="white" font-size="9" font-weight="800">AMAZON BEDROCK</text>
+<text x="426" y="421" text-anchor="middle" fill="#37474f" font-size="8">Claude Haiku · Sonnet · Opus — HIPAA-eligible</text>
+<text x="426" y="434" text-anchor="middle" fill="#37474f" font-size="8">VPC Endpoint · Guardrails · Titan Embeddings</text>
+<text x="426" y="446" text-anchor="middle" fill="#e65100" font-size="7.5" font-weight="700">LLM inference · dynamic model routing</text>
+
+<!-- RAG Knowledge Bases (below MCP) -->
+<rect x="550" y="390" width="152" height="62" rx="5" fill="white" stroke="#6a1b9a" stroke-width="1.8"/>
+<rect x="550" y="390" width="152" height="20" rx="5" fill="#6a1b9a"/>
+<rect x="550" y="400" width="152" height="10" fill="#6a1b9a"/>
+<text x="626" y="404" text-anchor="middle" fill="white" font-size="9" font-weight="800">RAG KB</text>
+<text x="626" y="421" text-anchor="middle" fill="#37474f" font-size="8">OpenSearch · pgvector · Neptune</text>
+<text x="626" y="434" text-anchor="middle" fill="#37474f" font-size="8">Per LOB · per clinical domain</text>
+<text x="626" y="446" text-anchor="middle" fill="#6a1b9a" font-size="7.5" font-weight="700">Clinical guidelines · policy docs</text>
+
+<!-- LOB Source Systems (below C3) -->
+<rect x="712" y="390" width="240" height="62" rx="5" fill="white" stroke="#546e7a" stroke-width="1.8" stroke-dasharray="5,3"/>
+<rect x="712" y="390" width="240" height="20" rx="5" fill="#546e7a"/>
+<rect x="712" y="400" width="240" height="10" fill="#546e7a"/>
+<text x="832" y="404" text-anchor="middle" fill="white" font-size="9" font-weight="800">LOB SOURCE SYSTEMS</text>
+<text x="832" y="421" text-anchor="middle" fill="#37474f" font-size="8">Claims DB · member DB · care management platform</text>
+<text x="832" y="434" text-anchor="middle" fill="#37474f" font-size="8">Prior-auth system · data lake · on-prem</text>
+<text x="832" y="446" text-anchor="middle" fill="#546e7a" font-size="7.5" font-weight="700">AWS PrivateLink · Direct Connect / VPN</text>
+
+<!-- ── ARROWS TO BOTTOM ROW (62px gap: y=328 to y=390) ── -->
+
+<!-- C2 → Bedrock -->
+<line x1="406" y1="328" x2="406" y2="390" stroke="#FF9900" stroke-width="2" stroke-dasharray="5,3" marker-end="url(#ao)"/>
+<rect x="346" y="352" width="120" height="13" rx="2" fill="#fff8e6"/>
+<text x="406" y="362" text-anchor="middle" fill="#e65100" font-size="7.5" font-weight="700">LLM inference · VPC Endpoint</text>
+
+<!-- C2 → RAG KB (elbow) -->
+<path d="M500,328 L500,365 L626,365 L626,390" fill="none" stroke="#6a1b9a" stroke-width="1.8" stroke-dasharray="5,3" marker-end="url(#ap)"/>
+<rect x="536" y="352" width="82" height="13" rx="2" fill="#f3e5f5"/>
+<text x="577" y="362" text-anchor="middle" fill="#6a1b9a" font-size="7.5" font-weight="700">RAG retrieval</text>
+
+<!-- C3 → Source Systems -->
+<line x1="832" y1="328" x2="832" y2="390" stroke="#2e7d32" stroke-width="2" stroke-dasharray="5,3" marker-end="url(#ag)"/>
+<rect x="748" y="352" width="168" height="13" rx="2" fill="#f1f8e9"/>
+<text x="832" y="362" text-anchor="middle" fill="#1b5e20" font-size="7.5" font-weight="700">PrivateLink / Direct Connect</text>
+
+<!-- ── LEGEND ── -->
+<line x1="8" y1="488" x2="38" y2="488" stroke="#FF9900" stroke-width="2.5" marker-end="url(#ao)"/>
+<text x="44" y="492" fill="#37474f" font-size="8">Agent request (HTTPS)</text>
+<line x1="168" y1="488" x2="198" y2="488" stroke="#0277bd" stroke-width="1.5" marker-end="url(#ab)"/>
+<text x="204" y="492" fill="#37474f" font-size="8">Orchestration / MCP</text>
+<line x1="336" y1="488" x2="366" y2="488" stroke="#FF9900" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#ao)"/>
+<text x="372" y="492" fill="#37474f" font-size="8">LLM inference</text>
+<line x1="466" y1="488" x2="496" y2="488" stroke="#6a1b9a" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#ap)"/>
+<text x="502" y="492" fill="#37474f" font-size="8">RAG retrieval</text>
+<line x1="594" y1="488" x2="624" y2="488" stroke="#2e7d32" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#ag)"/>
+<text x="630" y="492" fill="#37474f" font-size="8">PrivateLink / Direct Connect</text>
+<line x1="790" y1="488" x2="820" y2="488" stroke="#c62828" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#ar)"/>
+<text x="826" y="492" fill="#37474f" font-size="8">Config / governance</text>
+
+</svg>
+
+
+<!-- Diagram 2 removed — detail moved to explanation section below -->
+
+</div>
+
+
+<!-- ════════════════════════════════════════════════════
+     EXPLANATION SECTION
+════════════════════════════════════════════════════ -->
+<div class="explain">
+  <h2>How This Architecture Works</h2>
+  <div class="eg">
+    <div class="ec">
+      <div class="lbl">Container 1 — Agent Runtime</div>
+      <h3>Thin shell on AWS AgentCore Runtime. One per agent.</h3>
+      <p>Container 1 runs on <strong>AWS AgentCore Runtime</strong> — each agent is hosted as its own per-agent container with session isolation, managed scaling, and a unique ARN. It handles three stages: <strong>pre-graph</strong> (load domain scope from Container 4, validate auth/authz, hydrate session), <strong>in-graph</strong> (delegate all reasoning to Container 2 — no LLM logic here), and <strong>post-graph</strong> (evaluate HITL gates, deliver response). <strong>Access policy</strong> (auth/authz) is enforced in pre-graph — authenticating the caller and checking permission for the requested agent and scope. This is distinct from <strong>content guardrails</strong>, which are content-level safety filters applied inside Container 2 on the LLM call path via Amazon Bedrock Guardrails. Being thin means one agent deployment per LOB per account costs almost nothing in engineering effort. On first boot, Container 1 automatically registers with Container 4 using its LOB namespace and AWS account ID discovered from instance metadata.</p>
+    </div>
+    <div class="ec b">
+      <div class="lbl b">Container 2 — Platform Services</div>
+      <h3>All reasoning here. Shared per tenant.</h3>
+      <p>Container 2 runs on <strong>ECS/Fargate</strong> as a shared tenant service, with LangGraph providing the graph execution and Bedrock providing LLM inference. It is <strong>shared across all LOBs within a tenant</strong> — one deployment serves every agent for that customer. Reasoning strategies (ReAct, plan-execute, multi-hop, reflection), memory (4 scopes), RAG, and LLM inference all execute here. Isolation is <strong>logical, not physical</strong>: every request carries an Agent ID and LOB namespace, and Container 2 loads exactly that agent's config — prompts, tools, strategy — from Container 4. A Claims agent and a Care Management agent share the same service but run completely isolated configurations.</p>
+    </div>
+    <div class="ec g">
+      <div class="lbl g">MCP Server + Container 3 — Tool Gateway</div>
+      <h3>One gateway per tenant, LOB-namespaced tool catalogs.</h3>
+      <p>Container 3 runs on <strong>ECS/Fargate</strong> as a shared tenant service — one deployment holds <strong>LOB-namespaced tool catalogs</strong>: Care Management gets care plan and FHIR tools, Claims gets adjudication tools, Member Services gets enrollment tools. Within each catalog, each agent has an allow/deny list enforced by policy — Claims agents cannot call Care Management tools. The MCP Server is an <strong>optional facade</strong> over Container 3 for third-party interoperability; it can wrap the managed AWS AgentCore Gateway when present. All calls reach <strong>LOB source systems</strong> (claims DB, care management platform, member DB) via AWS PrivateLink — no public internet.</p>
+    </div>
+    <div class="ec r">
+      <div class="lbl r">Container 4 — Control Plane</div>
+      <h3>ECS/Fargate. One per tenant. Logically isolated per agent and LOB.</h3>
+      <p>Container 4 runs on <strong>ECS/Fargate</strong> as one deployment per tenant and governs every agent across all LOBs within that tenant. Agent configs are stored as YAMLs keyed by Agent ID + LOB namespace, with metadata in RDS. Care Management prompts are completely separate from Claims prompts — different config, different version history, different HITL rules. Observability aggregates CloudWatch metrics and X-Ray traces from all accounts into one cross-LOB dashboard. One Agent Factory UI, one place to govern everything.</p>
+    </div>
+  </div>
+
+  <div class="eg" style="margin-top:0;">
+    <div class="ec" style="border-left-color:#6a1b9a;">
+      <div class="lbl" style="background:#6a1b9a;">Multi-Account Deployment Model</div>
+      <h3>One control plane. Many thin runtimes.</h3>
+      <p>Container 1 and Container 3 deploy <strong>per AWS account</strong> — each LOB gets its own account. A LOB with multiple sub-domains (e.g. Care Management covering UM, CM, DM) may have one account per domain — each running its own Container 1 + Container 3 pair. Container 2 and Container 4 are shared and central. IaC (CDK + Terraform) parameterized by LOB namespace and account ID handles deployment. The deployment unit is always: one account ID + one LOB namespace + one Container 1 + one Container 3.</p>
+    </div>
+    <div class="ec" style="border-left-color:#0277bd;">
+      <div class="lbl" style="background:#0277bd;">Data Sources &amp; RAG Knowledge Bases</div>
+      <h3>Source systems are external. RAG KBs are per LOB/domain.</h3>
+      <p><strong>Source systems</strong> (claims DB, member DB, care management platform, prior-auth system) are the customer's existing operational infrastructure — they live in their own accounts and are deployed outside this platform. Container 3 reaches them via PrivateLink APIs. <strong>RAG knowledge bases</strong> (clinical guidelines, coding policy docs, benefit summaries) are built per LOB or per clinical domain and stored in the customer's environment — OpenSearch or pgvector. The platform's RAG config is flexible: KB endpoints, retrieval strategy, and chunking are all configurable per agent in the Control Plane. The exact KB topology varies by customer environment.</p>
+    </div>
+  </div>
+
+  <div class="eg" style="margin-top:0;">
+    <div class="ec" style="border-left-color:#e65100;">
+      <div class="lbl" style="background:#e65100;">HITL Flow — Human-in-the-Loop</div>
+      <h3>YAML-driven approval gates. Pause, approve, resume.</h3>
+      <p>HITL gates are defined per agent in YAML — not hardcoded. When a gate condition is met, the flow is: <strong>(1)</strong> User request arrives at Container 1. <strong>(2)</strong> C1 delegates to Container 2. <strong>(3)</strong> C2 signals HITL required. <strong>(4)</strong> C1 checks the HITL &amp; Policy Service in Container 4 — which gate, which approver role, what SLA. <strong>(5)</strong> Execution pauses; state is written to durable storage (RDS or DynamoDB). <strong>(6)</strong> Approver is notified (email/Slack/UI). <strong>(7)</strong> Approver reviews in the Care Manager UI or approver portal. <strong>(8)</strong> Approval (or rejection) recorded with audit trail. <strong>(9)</strong> C1 resumes from durable state; C2 continues execution; response delivered. Each LOB defines its own gates — clinical HITL (nurse approves care plan) is separate from claims HITL (supervisor approves prior auth). Gate definitions live in agent YAML and are versioned in Control Plane.</p>
+    </div>
+    <div class="ec" style="border-left-color:#37474f;">
+      <div class="lbl" style="background:#37474f;">LOB vs Domain — Deployment Granularity</div>
+      <h3>LOB is the account boundary. Domain is the sub-scope within it.</h3>
+      <p>A <strong>Line of Business (LOB)</strong> maps to an organizational unit and typically an AWS account boundary — examples: Medicare, Medicaid, Commercial Insurance. A <strong>Domain</strong> is a functional subdomain within a LOB — examples within Medicare: Care Management (CM), Utilization Management (UM), Disease Management (DM). In practice the deployment unit can be either: a single LOB with all domains sharing one Container 1 + Container 3, or one account per domain when compliance or team boundaries require it. The platform supports both. Agent IDs and LOB namespaces in Container 4 are structured as <code>LOB:domain:agent</code> — so isolation is always enforced at the right granularity regardless of deployment topology. The domain scope is captured in <code>domain.yaml</code>, stored in the Agent Registry, and loaded into Container 1 at startup.</p>
+    </div>
+  </div>
+
+  <div class="eg" style="margin-top:0;">
+    <div class="ec" style="border-left-color:#0277bd;">
+      <div class="lbl" style="background:#0277bd;">Runtime Split — What Runs Where</div>
+      <h3>Why C1 is on AgentCore and C2 / C3 / C4 are on ECS/Fargate.</h3>
+      <p>AWS AgentCore is a set of managed services — <strong>AgentCore Runtime</strong> (hosts agents), <strong>AgentCore Memory</strong> (short-term + long-term memory), <strong>AgentCore Identity</strong> (auth + credentials), <strong>AgentCore Gateway</strong> (MCP-native tool server), <strong>AgentCore Observability</strong> (OpenTelemetry-compatible traces and metrics). The accelerator <strong>consumes these managed services</strong>, it does not replace them. <strong>Container 1</strong> is a thin per-agent shell that fits AgentCore Runtime's model exactly — one agent, one session-isolated microVM, one ARN. <strong>Containers 2, 3, and 4</strong> are shared tenant-level services that serve many agents; they need warm state, connection pools, and long-lived server processes, which fit regular ECS/Fargate rather than per-session runtimes. This is the same split AWS itself makes: AgentCore Runtime hosts agents; Memory, Identity, Gateway, Observability are separate managed services, not workloads on AgentCore Runtime.</p>
+    </div>
+    <div class="ec" style="border-left-color:#6a1b9a;">
+      <div class="lbl" style="background:#6a1b9a;">Container 2 Is a Hybrid</div>
+      <h3>Our code on ECS/Fargate + managed AgentCore services consumed.</h3>
+      <p>Container 2 runs on ECS/Fargate and contains our own code — the LangGraph runner, reasoning strategies (simple, ReAct, plan-execute, multi-hop, reflection), HITL engine, RAG orchestration, and domain-level trace enrichment. Alongside our code, Container 2 consumes <strong>AgentCore Memory</strong> (managed short-term + long-term stores), <strong>AgentCore Identity</strong> (managed auth + outbound credentials), <strong>AgentCore Observability</strong> (managed trace ingestion), <strong>Amazon Bedrock</strong> (LLM inference), <strong>Bedrock Knowledge Bases</strong> (RAG retrieval backend), and <strong>Bedrock Prompt Management</strong> (prompt storage). We build only what AgentCore does not ship — reasoning patterns, HITL, RAG orchestration, and domain observability — and wire the managed services underneath.</p>
+    </div>
+  </div>
+
+  <div class="eg" style="margin-top:0;">
+    <div class="ec" style="border-left-color:#2e7d32;">
+      <div class="lbl" style="background:#2e7d32;">MCP Tool Serving — Where It Lives</div>
+      <h3>AgentCore Gateway is the MCP server when used. Our C3 is the fallback.</h3>
+      <p><strong>AgentCore Gateway is a managed AWS service that is itself an MCP server.</strong> It converts APIs, AWS Lambda functions, OpenAPI specs, Smithy definitions, and pre-built connectors (Salesforce, Slack, Jira) into MCP-compatible tools that agents consume through MCP endpoints. When a customer uses AgentCore Gateway (the default path), the "MCP Server" in the architecture <em>is</em> AgentCore Gateway — managed by AWS, running on AgentCore, no separate component to build or deploy. The Container 3 Tool Gateway in our design is a <strong>fallback</strong> for customers who need on-premises tool execution, custom schema enforcement beyond AgentCore Gateway, or non-AWS tool backends. In that case C3 runs on ECS/Fargate with our own implementation and the optional MCP facade on top for third-party interoperability.</p>
+    </div>
+    <div class="ec" style="border-left-color:#FF9900;">
+      <div class="lbl" style="background:#FF9900;">Observability — Two Layers</div>
+      <h3>AgentCore Observability is the infrastructure layer. We add domain.</h3>
+      <p>AgentCore Observability (managed, OpenTelemetry-compatible, CloudWatch-backed) provides per-agent traces, spans, metrics, and logs at the infrastructure and agent-execution layer. It sees every session, every invocation, every tool call at the platform level. What it does not see is <strong>domain context</strong> — which member a conversation is about, which clinical workflow the agent is executing, which HITL gate outcome drove a decision, how a response ties back to the capability UI the nurse is looking at. Container 2 emits that domain-level trace enrichment on top of AgentCore Observability, and Container 4 aggregates it into per-capability dashboards the infrastructure layer on its own cannot produce.</p>
+    </div>
+  </div>
+
+  <div class="why">
+    <h3>Why this architecture is the right call</h3>
+    <div class="wg">
+      <div class="wi">
+        <h4>Source systems never leave their boundary</h4>
+        <p>Patient, claims, and member data stays in the LOB's AWS account. Container 3 calls source systems via PrivateLink — no data traverses the public internet. Each LOB's audit trail, IAM boundary, and encryption keys are fully independent. Satisfies HIPAA and per-LOB compliance isolation simultaneously.</p>
+      </div>
+      <div class="wi">
+        <h4>Logical isolation without physical duplication</h4>
+        <p>Container 2 is shared but every agent runs isolated config. Agent ID + LOB namespace is the isolation key — same as how a multi-tenant SaaS platform isolates customers. No rebuilding the reasoning service per LOB. A new LOB deploys one thin runtime and registers config; the platform applies to it immediately.</p>
+      </div>
+      <div class="wi">
+        <h4>One place to govern everything</h4>
+        <p>Prompt updates, tool policy changes, reasoning strategy updates — done once in Container 4 and reflected immediately across every agent and every LOB. CloudWatch + X-Ray feeds one cross-LOB observability dashboard. One audit trail. Central governance is designed into the architecture.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="footer-bar">
+  <span>Internal — Sales &amp; Solutions Enablement · AWS Practice</span>
+  <span>Intelligent Agent Accelerator for Healthcare · Reference Architecture v3</span>
+</div>
+
+</div>
+</body>
+</html>

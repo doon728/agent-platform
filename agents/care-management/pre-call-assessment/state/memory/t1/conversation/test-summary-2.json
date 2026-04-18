@@ -1,0 +1,36 @@
+[
+  {
+    "memory_id": "mem_a5fc2d5606ad",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "test-summary-2",
+    "role": "user",
+    "content": "summary",
+    "metadata": {
+      "member_id": "m-001715",
+      "agent_type": "chat_agent_simple",
+      "reasoning_strategy": "simple",
+      "turn_id": "run_c48cca90",
+      "thread_id": "test-summary-2",
+      "tenant_id": "t1"
+    },
+    "created_at": "2026-04-12T02:57:32.383398+00:00"
+  },
+  {
+    "memory_id": "mem_c18b28f865fb",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "test-summary-2",
+    "role": "assistant",
+    "content": "**Member Summary for Mia Martinez (ID: m-001715)**\n\n- **Date of Birth:** October 21, 1954\n- **Gender:** X\n- **State:** MD\n- **Plan ID:** Medicaid MD\n- **PCP:** Miller Clinic (Provider ID: p-000317, Specialty: Cardiology, Phone: 876-589-2404)\n- **Risk Score:** 1.26\n- **Chronic Conditions:** Heart Failure (I50.9)\n- **Address Zip:** 22856\n\n**Care Plans:**\n1. **Asthma** (Active)\n   - Start Date: April 3, 2024\n   - Goals: Reduce exacerbations; inhaler technique; trigger avoidance.\n   \n2. **Maternity** (Active)\n   - Start Date: March 25, 2024\n   - Goals: Prenatal visit adherence; postpartum follow-up.\n   \n3. **PostDischarge** (Closed)\n   - Start Date: November 20, 2025\n   - Goals: Stabilize post-discharge; ensure medication adherence; schedule PCP follow-up.\n\n**Latest Assessment:**\n- **Type:** Reassessment\n- **Status:** Scheduled (Q2 2026)\n- **Priority:** Low\n\n**Recent Claims:**\n- Multiple claims paid, including:\n  - RX claim (Total: $797.90, Paid: $685.09)\n  - Professional claims (Total amounts ranging from $25.00 to $344.66)\n\n**Recent Authorizations:**\n- **DME Request:** Denied on October 4, 2025 (Diagnosis Codes: F32.9, E78.5) \n\nThis summary provides a comprehensive overview of Mia Martinez's health management and care activities.",
+    "metadata": {
+      "member_id": "m-001715",
+      "agent_type": "chat_agent_simple",
+      "reasoning_strategy": "simple",
+      "turn_id": "run_c48cca90",
+      "thread_id": "test-summary-2",
+      "tenant_id": "t1"
+    },
+    "created_at": "2026-04-12T02:57:32.384972+00:00"
+  }
+]

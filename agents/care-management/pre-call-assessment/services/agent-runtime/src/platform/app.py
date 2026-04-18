@@ -94,7 +94,11 @@ def _hydrate_active_domain_context(ctx: dict) -> dict:
 
     try:
         from platform_core.memory.backend_factory import get_backend
-        store = get_backend({})
+        from src.clients import config_client as _cc
+        import os as _os
+        _agent_cfg = _cc.get_agent_config(_os.getenv("AGENT_TYPE", "chat_agent"))
+        _mem_cfg = _agent_cfg.get("memory") or {}
+        store = get_backend(_mem_cfg)
         recent = store.list_recent_turns(tenant_id=tenant_id, thread_id=thread_id, max_turns=12)
         for scope in scopes:
             id_field = scope.get("id_field") or ""
@@ -181,6 +185,41 @@ async def chat(request: Request) -> JSONResponse:
 
 
 # ── HITL endpoints — approval state lives in Container 1 ─────────────────────
+
+@app.post("/debug/memory")
+async def debug_memory(request: Request) -> JSONResponse:
+    """Return current memory state for a given context — used by the memory debug panel in the UI."""
+    try:
+        payload = await request.json()
+    except Exception:
+        payload = {}
+    from src.clients import memory_client, config_client
+    import os
+    try:
+        agent_type = os.getenv("AGENT_TYPE", "chat_agent")
+        usecase_cfg = config_client.get_agent_config(agent_type)
+        result = memory_client.read(payload, usecase_cfg)
+        return JSONResponse({"ok": True, "memory_context": result.get("memory_context") or {}, "memory_trace": {}})
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e), "memory_context": {}, "memory_trace": {}})
+
+
+@app.post("/summarize")
+async def summarize(request: Request) -> JSONResponse:
+    """Thin proxy — delegates summary generation to C2 platform-services."""
+    try:
+        payload = await request.json()
+    except Exception:
+        payload = {}
+    if not isinstance(payload, dict):
+        payload = {}
+
+    from src.clients.base import post
+    result = post("/summarize", payload)
+    if result.get("ok"):
+        return JSONResponse(result)
+    return JSONResponse(status_code=500, content=result)
+
 
 @app.get("/hitl/pending")
 def hitl_pending(tenant_id: str = None) -> JSONResponse:

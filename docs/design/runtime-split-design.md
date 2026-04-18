@@ -265,6 +265,42 @@ HITL state straddles both containers:
 
 Container 1 calls Container 2 after approval resolves — same pattern as all other post-graph writes.
 
+### HITL Durable State & Session Rehydration (gap — backlog #11)
+
+**Problem:** Current `approval_store.py` in Container 1 tracks graph pause/resume state in SQLite. If a nurse takes 2+ hours to approve, two things break:
+- Short-term memory for the session may have expired or been evicted
+- Auth tokens (C1→C2, C2→C3) may have rotated or expired
+
+**Result:** Agent resumes in a broken state — C2 call fails on expired token, or short-term context is gone and the agent has lost the thread of the workflow.
+
+**Fix required in Container 1:**
+- `approval_store.py` must persist full session snapshot at suspend time (serialized graph state, auth context metadata, memory scope references)
+- On resume, C1 rehydrates short-term memory from the snapshot before re-entering the graph
+- Auth tokens must be re-requested on resume (not replayed from suspend time)
+- Resume must treat the approval as a fresh graph entry with restored context — not a continuation of a live session
+
+**Fix required in Container 2:**
+- Memory write at suspend time must checkpoint short-term state durably (not just in-memory)
+- `hitl/memory_writer.py` must write a "suspended" entry that resume can read back
+
+---
+
+### PII Masking — Day 1 Requirement (gap — backlog #12)
+
+**Problem:** C2 Orchestrator (provider env) must receive data snippets from C3 tool calls to decide next steps. This is unavoidable — orchestration requires seeing tool outputs. However, the C2 LLM can be tricked via adversarial prompt injection to echo sensitive data (member PHI, clinical data) directly into the C1 chat response — bypassing the "data never leaves customer environment" boundary at the response layer.
+
+**This is not a roadmap item for healthcare.** It must be active before any real member data is processed.
+
+**Fix — output interceptor in Container 1:**
+- Pre-response filter in `app.py` before the final response is sent to the UI
+- Detects and masks PHI patterns (name, DOB, MRN, diagnosis codes, medication names) in the outbound response string
+- Pattern-based first pass (regex for structured PHI) + optional LLM-based second pass for unstructured PHI
+- Configurable per capability — care management gets full PHI ruleset, other domains configure their own
+
+**Fix — input guardrail in Container 2:**
+- Pre-LLM check on user input for prompt injection patterns targeting data exfiltration
+- Pairs with Guardrails service (backlog #6) — PII masking is the output half, injection detection is the input half
+
 ---
 
 ## Repo Structure After Split

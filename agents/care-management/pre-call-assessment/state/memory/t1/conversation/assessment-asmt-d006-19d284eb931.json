@@ -1,0 +1,38 @@
+[
+  {
+    "memory_id": "mem_ce64a0ab1baf",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "assessment-asmt-d006-19d284eb931",
+    "role": "user",
+    "content": "what is the last note",
+    "metadata": {
+      "member_id": "m-001715",
+      "assessment_id": "asmt-d006",
+      "agent_type": "chat_agent_simple",
+      "reasoning_strategy": "simple",
+      "turn_id": "514da1fb-7964-45c3-9d15-e3e8dfb31736",
+      "thread_id": "assessment-asmt-d006-19d284eb931",
+      "tenant_id": "t1"
+    },
+    "created_at": "2026-04-10T13:57:29.588334+00:00"
+  },
+  {
+    "memory_id": "mem_35cd7b0f65c0",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "assessment-asmt-d006-19d284eb931",
+    "role": "assistant",
+    "content": "The last note is an initial behavioral health assessment for member Mia Martinez, expressing depressive symptoms. The assessment is currently active, with a high overall risk level. It was created on February 22, 2026.",
+    "metadata": {
+      "member_id": "m-001715",
+      "assessment_id": "asmt-d006",
+      "agent_type": "chat_agent_simple",
+      "reasoning_strategy": "simple",
+      "turn_id": "514da1fb-7964-45c3-9d15-e3e8dfb31736",
+      "thread_id": "assessment-asmt-d006-19d284eb931",
+      "tenant_id": "t1"
+    },
+    "created_at": "2026-04-10T13:57:29.590076+00:00"
+  }
+]

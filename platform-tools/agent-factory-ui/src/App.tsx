@@ -17,11 +17,17 @@ import AccountTreeIcon from "@mui/icons-material/AccountTree"
 import TuneIcon from "@mui/icons-material/Tune"
 import DesktopWindowsIcon from "@mui/icons-material/DesktopWindows"
 import SchemaIcon from "@mui/icons-material/Schema"
+import ScienceIcon from "@mui/icons-material/Science"
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore"
+import ExpandLessIcon from "@mui/icons-material/ExpandLess"
 import ApplicationForm from "./components/ApplicationForm"
 import PromptLifecycle from "./pages/PromptLifecycle"
 import AgentRegistry from "./pages/AgentRegistry"
 import Workspaces from "./pages/Workspaces"
 import PipelineBuilder from "./pages/PipelineBuilder"
+import ConfigLab from "./pages/ConfigLab"
+import TestResults from "./pages/TestResults"
+import { useState } from "react"
 
 const DRAWER_WIDTH = 220
 
@@ -42,9 +48,15 @@ const NAV_ITEMS = [
   { label: "Workspaces", icon: <DesktopWindowsIcon />, path: "/workspaces" },
 ]
 
+const TEST_SUB_ITEMS = [
+  { label: "Config Lab", path: "/test/lab" },
+  { label: "Results", path: "/test/results" },
+]
+
 function Sidebar() {
   const navigate = useNavigate()
   const location = useLocation()
+  const [testOpen, setTestOpen] = useState(location.pathname.startsWith("/test"))
 
   return (
     <Drawer
@@ -98,6 +110,58 @@ function Sidebar() {
             </ListItemButton>
           )
         })}
+
+        <Divider sx={{ borderColor: "rgba(255,255,255,0.12)", my: 0.5 }} />
+
+        {/* Test parent item */}
+        <ListItemButton
+          onClick={() => setTestOpen(v => !v)}
+          sx={{
+            borderRadius: 1.5, mb: 0.5, px: 1.5,
+            bgcolor: location.pathname.startsWith("/test") ? "rgba(255,255,255,0.15)" : "transparent",
+            "&:hover": { bgcolor: "rgba(255,255,255,0.1)" },
+          }}
+        >
+          <ListItemIcon sx={{ color: location.pathname.startsWith("/test") ? "white" : "rgba(255,255,255,0.6)", minWidth: 36 }}>
+            <ScienceIcon />
+          </ListItemIcon>
+          <ListItemText
+            primary="Test"
+            primaryTypographyProps={{
+              fontSize: 13.5,
+              fontWeight: location.pathname.startsWith("/test") ? 600 : 400,
+              color: location.pathname.startsWith("/test") ? "white" : "rgba(255,255,255,0.75)",
+            }}
+          />
+          {testOpen
+            ? <ExpandLessIcon sx={{ fontSize: 16, color: "rgba(255,255,255,0.5)" }} />
+            : <ExpandMoreIcon sx={{ fontSize: 16, color: "rgba(255,255,255,0.5)" }} />}
+        </ListItemButton>
+
+        {/* Test sub-items */}
+        {testOpen && TEST_SUB_ITEMS.map(item => {
+          const active = location.pathname === item.path
+          return (
+            <ListItemButton
+              key={item.path}
+              onClick={() => navigate(item.path)}
+              sx={{
+                borderRadius: 1.5, mb: 0.5, pl: 4, pr: 1.5,
+                bgcolor: active ? "rgba(255,255,255,0.15)" : "transparent",
+                "&:hover": { bgcolor: "rgba(255,255,255,0.08)" },
+              }}
+            >
+              <ListItemText
+                primary={item.label}
+                primaryTypographyProps={{
+                  fontSize: 12.5,
+                  fontWeight: active ? 600 : 400,
+                  color: active ? "white" : "rgba(255,255,255,0.65)",
+                }}
+              />
+            </ListItemButton>
+          )
+        })}
       </List>
     </Drawer>
   )
@@ -114,6 +178,8 @@ function Layout() {
           <Route path="/registry" element={<AgentRegistry />} />
           <Route path="/prompts" element={<PromptLifecycle />} />
           <Route path="/workspaces" element={<Workspaces />} />
+          <Route path="/test/lab" element={<ConfigLab />} />
+          <Route path="/test/results" element={<TestResults />} />
         </Routes>
       </Box>
     </Box>

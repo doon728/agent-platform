@@ -6,15 +6,20 @@
   <title>Pre-Call Assessment Assistant — Summary</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: Inter, system-ui, sans-serif; font-size: 14px; background: #f8fafc; color: #111827; min-height: 100vh; }
+    html, body { height: 100%; overflow: hidden; }
+    body { font-family: Inter, system-ui, sans-serif; font-size: 14px; background: #f8fafc; color: #111827; display: flex; flex-direction: column; }
 
-    .header { background: white; border-bottom: 1px solid #e2e8f0; padding: 12px 20px; display: flex; align-items: center; gap: 12px; }
+    .header { background: white; border-bottom: 1px solid #e2e8f0; padding: 12px 20px; display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
     .header-title { font-size: 16px; font-weight: 700; }
     .header-subtitle { font-size: 12px; color: #64748b; }
     .agent-type-badge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; background: #dcfce7; color: #166534; }
+    .header-actions { margin-left: auto; display: flex; gap: 8px; }
+    .toggle-btn { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 6px; border: 1px solid #e2e8f0; background: #f8fafc; color: #64748b; cursor: pointer; }
+    .toggle-btn:hover { background: #f1f5f9; }
+    .toggle-btn.active { background: #dcfce7; color: #166534; border-color: #bbf7d0; }
 
     /* ── Scope bar ── */
-    .scope-bar { background: #fefce8; border-bottom: 1px solid #fde68a; padding: 10px 20px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .scope-bar { background: #fefce8; border-bottom: 1px solid #fde68a; padding: 10px 20px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; flex-shrink: 0; }
     .scope-bar label { font-size: 11px; font-weight: 700; color: #854d0e; text-transform: uppercase; letter-spacing: 0.5px; }
     .scope-type-select { font-size: 12px; padding: 4px 8px; border: 1px solid #fde68a; border-radius: 5px; background: white; color: #111827; outline: none; font-weight: 600; }
     .scope-input { font-size: 12px; padding: 4px 8px; border: 1px solid #fde68a; border-radius: 5px; background: white; color: #111827; width: 180px; outline: none; }
@@ -25,8 +30,12 @@
     .refresh-btn { font-size: 12px; padding: 5px 12px; border-radius: 5px; border: 1px solid #e2e8f0; background: white; color: #64748b; cursor: pointer; }
     .refresh-btn:hover { background: #f8fafc; }
 
-    /* ── Summary card ── */
-    .content { padding: 20px; max-width: 860px; margin: 0 auto; }
+    /* ── 2-column layout ── */
+    .main { flex: 1; display: grid; grid-template-columns: 1fr 300px; overflow: hidden; }
+    .main.no-panel { grid-template-columns: 1fr; }
+
+    /* ── Left: summary content ── */
+    .content-col { overflow-y: auto; padding: 20px; }
     .summary-card { background: white; border: 1px solid #e2e8f0; border-left: 3px solid #6366f1; border-radius: 10px; overflow: hidden; margin-bottom: 16px; }
     .summary-card.error { border-left-color: #ef4444; }
     .card-header { padding: 10px 16px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; }
@@ -34,9 +43,7 @@
     .card-title { font-size: 13px; font-weight: 700; color: #4f46e5; }
     .card-meta { font-size: 11px; color: #94a3b8; }
     .card-body { padding: 14px 16px; }
-
     .summary-text { font-size: 13px; color: #334155; line-height: 1.6; margin-bottom: 12px; }
-
     .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .col-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
     .col-label.concerns { color: #dc2626; }
@@ -44,16 +51,31 @@
     .col-item { font-size: 12px; color: #475569; line-height: 1.4; padding-left: 8px; margin-bottom: 4px; }
     .col-item.concern { border-left: 2px solid #fca5a5; }
     .col-item.step { border-left: 2px solid #86efac; }
-
     .last-action { font-size: 11px; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 8px; margin-top: 8px; }
-
     .empty-state { padding: 40px 20px; text-align: center; color: #94a3b8; font-size: 13px; }
     .spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid #c7d2fe; border-top-color: #6366f1; border-radius: 50%; animation: spin 0.7s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
-
     .scope-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 10px; background: #fef3c7; border: 1px solid #fcd34d; color: #92400e; }
     .cached-badge { font-size: 10px; padding: 1px 6px; border-radius: 3px; background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; font-weight: 600; }
     .fresh-badge { font-size: 10px; padding: 1px 6px; border-radius: 3px; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; font-weight: 600; }
+
+    /* ── Right panel ── */
+    .right-panel { display: flex; flex-direction: column; overflow-y: auto; background: white; border-left: 1px solid #e2e8f0; }
+    .right-section { border-bottom: 1px solid #f1f5f9; padding: 12px 14px; }
+    .right-section-title { font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+    .p-row { display: flex; justify-content: space-between; align-items: center; padding: 2px 0; }
+    .p-label { color: #94a3b8; font-size: 11px; }
+    .p-value { color: #374151; font-size: 11px; font-family: monospace; }
+    .p-empty { color: #cbd5e1; font-size: 11px; font-style: italic; }
+    .badge-on  { font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 4px; background: #dcfce7; color: #16a34a; border: 1px solid #bbf7d0; }
+    .badge-off { font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 4px; background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; }
+    .trace-node { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px; }
+    .trace-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 3px; }
+    .trace-dot.ok { background: #16a34a; }
+    .trace-dot.pending { background: #d97706; }
+    .trace-dot.err { background: #dc2626; }
+    .trace-node-type { font-size: 11px; font-weight: 700; color: #374151; font-family: monospace; }
+    .trace-node-detail { font-size: 10px; color: #94a3b8; margin-top: 1px; font-family: monospace; }
   </style>
 </head>
 <body>
@@ -64,26 +86,50 @@
     <div class="header-subtitle">care-management · pre-call-assessment</div>
   </div>
   <span class="agent-type-badge">summary_agent</span>
+  <div class="header-actions">
+    <button class="toggle-btn active" id="toggleMemBtn" onclick="togglePanel('mem')">Memory</button>
+    <button class="toggle-btn active" id="toggleTraceBtn" onclick="togglePanel('trace')">Trace</button>
+  </div>
 </div>
 
 <div class="scope-bar">
   <label>Scope</label>
-  <select class="scope-type-select" id="scopeType" onchange="onScopeTypeChange()">
-    <!-- populated by JS from DOMAIN_CONFIG -->
-  </select>
-  <input class="scope-input" id="scopeIdInput" placeholder="Enter ID…" onKeyDown="if(event.key==='Enter') fetchSummary()" />
+  <select class="scope-type-select" id="scopeType" onchange="onScopeTypeChange()"></select>
+  <input class="scope-input" id="scopeIdInput" placeholder="Enter ID…" onkeydown="if(event.key==='Enter') fetchSummary()" />
   <button class="fetch-btn" id="fetchBtn" onclick="fetchSummary()">Get Summary</button>
   <button class="refresh-btn" id="refreshBtn" onclick="fetchSummary(true)" style="display:none">Refresh</button>
 </div>
 
-<div class="content">
-  <div id="summaryContainer">
-    <div class="empty-state">Select a scope type and enter an ID to generate a summary.</div>
+<div class="main" id="mainGrid">
+  <!-- LEFT: summary output -->
+  <div class="content-col">
+    <div id="summaryContainer">
+      <div class="empty-state">Select a scope type and enter an ID to generate a summary.</div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Memory + Trace -->
+  <div class="right-panel" id="rightPanel">
+
+    <div class="right-section" id="memSection">
+      <div class="right-section-title">Memory</div>
+      <div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Retrieved</div>
+      <div id="memRetrieved"><div class="p-empty">run a summary to see memory</div></div>
+      <div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-top:10px;margin-bottom:4px;">Scopes Resolved</div>
+      <div id="memScopes"><div class="p-empty">none</div></div>
+      <div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-top:10px;margin-bottom:4px;">Written</div>
+      <div id="memWritten"><div class="p-empty">—</div></div>
+    </div>
+
+    <div class="right-section" id="traceSection">
+      <div class="right-section-title">Execution Trace</div>
+      <div id="traceContent"><div class="p-empty">No trace yet. Run a summary.</div></div>
+    </div>
+
   </div>
 </div>
 
 <script>
-// ── Config — filled at scaffold time or edit manually ────────────────────
 const CONFIG = {
   agentRuntimeUrl: "http://localhost:8001",
   tenantId: "t1",
@@ -91,12 +137,27 @@ const CONFIG = {
 }
 
 let currentScopeType = null
-let lastScopeId = null
+let showMem = true
+let showTrace = true
 
-// ── Init scope type selector ──────────────────────────────────────────────
+function togglePanel(which) {
+  if (which === "mem") {
+    showMem = !showMem
+    document.getElementById("memSection").style.display = showMem ? "" : "none"
+    document.getElementById("toggleMemBtn").classList.toggle("active", showMem)
+  } else {
+    showTrace = !showTrace
+    document.getElementById("traceSection").style.display = showTrace ? "" : "none"
+    document.getElementById("toggleTraceBtn").classList.toggle("active", showTrace)
+  }
+  const panelVisible = showMem || showTrace
+  document.getElementById("rightPanel").style.display = panelVisible ? "" : "none"
+  document.getElementById("mainGrid").className = panelVisible ? "main" : "main no-panel"
+}
+
 function initScopeSelector() {
   const sel = document.getElementById("scopeType")
-  CONFIG.domainScopes.forEach((scope, i) => {
+  CONFIG.domainScopes.forEach(scope => {
     const opt = document.createElement("option")
     opt.value = scope.name
     opt.textContent = scope.name + " (" + scope.id_field + ")"
@@ -119,65 +180,44 @@ function onScopeTypeChange() {
   document.getElementById("refreshBtn").style.display = "none"
 }
 
-// ── Fetch summary ─────────────────────────────────────────────────────────
 async function fetchSummary(forceRefresh = false) {
   const scopeId = document.getElementById("scopeIdInput").value.trim()
   if (!scopeId) { alert("Enter a scope ID first."); return }
-
   const sel = document.getElementById("scopeType")
   const opt = sel.options[sel.selectedIndex]
   const idField = opt.dataset.idField
 
-  lastScopeId = scopeId
   document.getElementById("fetchBtn").disabled = true
   document.getElementById("summaryContainer").innerHTML = `
     <div class="summary-card">
       <div class="card-header">
-        <div class="card-header-left">
-          <span class="card-title">AI Summary</span>
-          <span class="card-meta">generating…</span>
-        </div>
+        <div class="card-header-left"><span class="card-title">AI Summary</span><span class="card-meta">generating…</span></div>
         <div class="spinner"></div>
       </div>
-      <div class="card-body" style="color:#94a3b8; font-size:12px">Generating summary for ${escHtml(currentScopeType)} ${escHtml(scopeId)}…</div>
+      <div class="card-body" style="color:#94a3b8;font-size:12px">Generating summary for ${escHtml(currentScopeType)} ${escHtml(scopeId)}…</div>
     </div>`
 
-  const payload = {
-    scope_type: currentScopeType,
-    scope_id: scopeId,
-    tenant_id: CONFIG.tenantId,
-    [idField]: scopeId,
-    force_refresh: forceRefresh,
-  }
+  const payload = { scope_type: currentScopeType, scope_id: scopeId, tenant_id: CONFIG.tenantId, [idField]: scopeId, force_refresh: forceRefresh }
 
   try {
     const res = await fetch(`${CONFIG.agentRuntimeUrl}/summarize`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
     })
     const data = await res.json()
     renderSummary(data, scopeId)
+    if (data.memory_trace) renderMemoryPanel(data.memory_trace)
+    await loadAndRenderTrace()
     document.getElementById("refreshBtn").style.display = "inline-block"
   } catch (err) {
     renderError(err.message)
   }
-
   document.getElementById("fetchBtn").disabled = false
 }
 
-// ── Render ────────────────────────────────────────────────────────────────
 function renderSummary(data, scopeId) {
-  const container = document.getElementById("summaryContainer")
-
-  if (!data.ok) {
-    renderError(data.error || "Summary generation failed.")
-    return
-  }
-
+  if (!data.ok) { renderError(data.error || "Summary generation failed."); return }
   const timeAgo = getTimeAgo(data.generated_at)
   const summary = typeof data.summary === "string" ? data.summary : JSON.stringify(data.summary)
-
   let html = `
     <div class="summary-card">
       <div class="card-header">
@@ -188,48 +228,75 @@ function renderSummary(data, scopeId) {
           ${timeAgo ? `<span class="card-meta">${timeAgo}</span>` : ""}
         </div>
       </div>
-      <div class="card-body">
-  `
-
-  if (summary) {
-    html += `<div class="summary-text">${escHtml(summary)}</div>`
-  }
-
-  const hasConcerns = data.key_concerns && data.key_concerns.length > 0
-  const hasSteps = data.next_steps && data.next_steps.length > 0
-
+      <div class="card-body">`
+  if (summary) html += `<div class="summary-text">${escHtml(summary)}</div>`
+  const hasConcerns = data.key_concerns?.length > 0
+  const hasSteps = data.next_steps?.length > 0
   if (hasConcerns || hasSteps) {
     html += `<div class="two-col">`
-    if (hasConcerns) {
-      html += `<div><div class="col-label concerns">Key Concerns</div>`
-      data.key_concerns.forEach(c => { html += `<div class="col-item concern">${escHtml(c)}</div>` })
-      html += `</div>`
-    }
-    if (hasSteps) {
-      html += `<div><div class="col-label steps">Next Steps</div>`
-      data.next_steps.forEach(s => { html += `<div class="col-item step">${escHtml(s)}</div>` })
-      html += `</div>`
-    }
+    if (hasConcerns) { html += `<div><div class="col-label concerns">Key Concerns</div>`; data.key_concerns.forEach(c => { html += `<div class="col-item concern">${escHtml(c)}</div>` }); html += `</div>` }
+    if (hasSteps) { html += `<div><div class="col-label steps">Next Steps</div>`; data.next_steps.forEach(s => { html += `<div class="col-item step">${escHtml(s)}</div>` }); html += `</div>` }
     html += `</div>`
   }
-
-  if (data.last_action) {
-    html += `<div class="last-action"><strong>Last action:</strong> ${escHtml(data.last_action)}</div>`
-  }
-
+  if (data.last_action) html += `<div class="last-action"><strong>Last action:</strong> ${escHtml(data.last_action)}</div>`
   html += `</div></div>`
-  container.innerHTML = html
+  document.getElementById("summaryContainer").innerHTML = html
 }
 
 function renderError(msg) {
   document.getElementById("summaryContainer").innerHTML = `
     <div class="summary-card error">
       <div class="card-header"><span class="card-title" style="color:#ef4444">Error</span></div>
-      <div class="card-body" style="color:#ef4444; font-size:13px">${escHtml(msg)}<br><br><span style="color:#94a3b8; font-size:11px">Is the agent runtime running at ${escHtml(CONFIG.agentRuntimeUrl)}?</span></div>
+      <div class="card-body" style="color:#ef4444;font-size:13px">${escHtml(msg)}<br><br><span style="color:#94a3b8;font-size:11px">Is the agent runtime running at ${escHtml(CONFIG.agentRuntimeUrl)}?</span></div>
     </div>`
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────
+function renderMemoryPanel(memTrace) {
+  const retrieved = memTrace.retrieved || {}
+  const retKeys = ["short_term", "summary", "episodic", "semantic"]
+  const retHtml = retKeys.map(k => {
+    const count = retrieved[`${k}_count`] ?? retrieved[k]?.count ?? 0
+    return `<div class="p-row"><span class="p-label">${k}</span><span class="p-value">${count}</span></div>`
+  }).join("")
+  document.getElementById("memRetrieved").innerHTML = retHtml || '<div class="p-empty">—</div>'
+
+  const scopes = memTrace.scopes || []
+  document.getElementById("memScopes").innerHTML = scopes.length
+    ? scopes.map(s => `<div class="p-row"><span class="p-label">${s.scope_type}</span><span class="p-value">${s.scope_id}</span></div>`).join("")
+    : '<div class="p-empty">none</div>'
+
+  const written = memTrace.written || {}
+  document.getElementById("memWritten").innerHTML = Object.keys(written).length
+    ? Object.entries(written).map(([k, v]) => `<div class="p-row"><span class="p-label">${k}</span><span class="p-value">${v?.status || v || "—"}</span></div>`).join("")
+    : '<div class="p-empty">—</div>'
+}
+
+async function loadAndRenderTrace() {
+  try {
+    const res = await fetch(`${CONFIG.agentRuntimeUrl}/api/traces`)
+    const data = await res.json()
+    const latest = (data.traces || [])[0]
+    if (!latest) return
+    const steps = latest.steps || []
+    if (!steps.length) return
+    const html = steps.map((step, i) => {
+      const dot = step.type === "error" ? "err" : (step.type === "hitl_pending" ? "pending" : "ok")
+      const detail = step.data ? Object.entries(step.data).slice(0, 2).map(([k, v]) => `${k}: ${String(v).slice(0, 40)}`).join(" · ") : ""
+      return `
+        <div class="trace-node">
+          <div class="trace-dot ${dot}"></div>
+          <div>
+            <div class="trace-node-type">${escHtml(step.type || "step")}</div>
+            ${detail ? `<div class="trace-node-detail">${escHtml(detail)}</div>` : ""}
+          </div>
+        </div>
+        ${i < steps.length - 1 ? '<div style="margin-left:3px;border-left:1px dashed #e2e8f0;height:8px;"></div>' : ""}`
+    }).join("")
+    const latency = latest.total_latency_ms ? `<div class="p-row" style="margin-bottom:8px;"><span class="p-label">latency</span><span class="p-value">${latest.total_latency_ms}ms</span></div>` : ""
+    document.getElementById("traceContent").innerHTML = latency + html
+  } catch {}
+}
+
 function getTimeAgo(iso) {
   if (!iso) return ""
   const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000)
@@ -242,7 +309,6 @@ function escHtml(str) {
   return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")
 }
 
-// ── Init ─────────────────────────────────────────────────────────────────
 initScopeSelector()
 </script>
 </body>

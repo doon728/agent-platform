@@ -1,0 +1,70 @@
+[
+  {
+    "memory_id": "mem_2cf4e11960a6",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "member-m-001715-19d7f96823c",
+    "role": "user",
+    "content": "suammry",
+    "metadata": {
+      "member_id": "m-001715",
+      "agent_type": "chat_agent_simple",
+      "reasoning_strategy": "simple",
+      "turn_id": "16cc4371-2237-42bf-8316-13a5d7acfd37",
+      "thread_id": "member-m-001715-19d7f96823c",
+      "tenant_id": "t1"
+    },
+    "created_at": "2026-04-12T02:47:48.278823+00:00"
+  },
+  {
+    "memory_id": "mem_61dfc881eb49",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "member-m-001715-19d7f96823c",
+    "role": "assistant",
+    "content": "Could you please clarify what specific information or topic you would like a summary of?",
+    "metadata": {
+      "member_id": "m-001715",
+      "agent_type": "chat_agent_simple",
+      "reasoning_strategy": "simple",
+      "turn_id": "16cc4371-2237-42bf-8316-13a5d7acfd37",
+      "thread_id": "member-m-001715-19d7f96823c",
+      "tenant_id": "t1"
+    },
+    "created_at": "2026-04-12T02:47:48.281264+00:00"
+  },
+  {
+    "memory_id": "mem_af51fa108311",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "member-m-001715-19d7f96823c",
+    "role": "user",
+    "content": "suammry",
+    "metadata": {
+      "member_id": "m-001715",
+      "agent_type": "chat_agent_simple",
+      "reasoning_strategy": "simple",
+      "turn_id": "7116cc71-a7d0-4ce1-bc97-6e9c30633a00",
+      "thread_id": "member-m-001715-19d7f96823c",
+      "tenant_id": "t1"
+    },
+    "created_at": "2026-04-12T02:52:28.628295+00:00"
+  },
+  {
+    "memory_id": "mem_1b5352c478dd",
+    "memory_type": "short_term",
+    "scope_type": "conversation",
+    "scope_id": "member-m-001715-19d7f96823c",
+    "role": "assistant",
+    "content": "Could you please clarify what specific information or topic you would like a summary of?",
+    "metadata": {
+      "member_id": "m-001715",
+      "agent_type": "chat_agent_simple",
+      "reasoning_strategy": "simple",
+      "turn_id": "7116cc71-a7d0-4ce1-bc97-6e9c30633a00",
+      "thread_id": "member-m-001715-19d7f96823c",
+      "tenant_id": "t1"
+    },
+    "created_at": "2026-04-12T02:52:28.629864+00:00"
+  }
+]
