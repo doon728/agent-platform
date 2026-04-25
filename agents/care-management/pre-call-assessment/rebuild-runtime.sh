@@ -27,7 +27,7 @@ echo "Done. Container status:"
 docker ps --filter name=cm-chat-buddy-assess-agent-runtime-1 --format "table {{.Names}}\t{{.Status}}"
 
 # Keep platform registry in sync with actual container port
-WORKSPACE_STATE="/Users/tgaba/agent-platform/platform-tools/agent-factory-support-api/data/workspace_state.json"
+WORKSPACE_STATE="/Users/tgaba/agent-platform/services/agent-factory-support-api/data/workspace_state.json"
 if [ -f "$WORKSPACE_STATE" ]; then
   python3 -c "
 import json
