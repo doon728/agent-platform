@@ -194,3 +194,191 @@ Developers interact with the platform the way application developers interact wi
 7. **At customer handoff, the customer receives the full repo.** Their AI COE becomes the equivalent of the Platform Team internally — they own platform code and templates going forward, free to evolve them or to pull upstream releases from the practice.
 
 This separation is what lets the accelerator scale: adding an agent is a YAML and scaffold operation, not a platform change. The platform evolves on its own release cadence under Platform Team ownership; individual agents evolve independently via configuration. Upstream releases flow into every fork via standard `git merge upstream/v1.x` operations.
+
+---
+
+## 7. Current State (Prototype) vs Target State (v1.0 on AWS)
+
+The reference architecture (v4) describes the **target state** after v1.0 ships. The **current prototype** runs locally on Docker without AWS managed services integrated. The 24-week build bridges the two.
+
+| Component | Target State (v1.0 on AWS) | Current Prototype (local Docker today) |
+|---|---|---|
+| C1 Agent Runtime | Runs on Amazon Bedrock AgentCore Runtime (session-isolated microVM per agent) | Python container on local Docker |
+| C2 Platform Services | On ECS/Fargate; LangGraph runner | Python container on local Docker |
+| C3 Tool Gateway | On ECS/Fargate; LOB-namespaced catalog | Python container on local Docker |
+| C4 Control Plane | On ECS/Fargate; Agent Factory UI, Registry, Prompts, HITL, Observability | Partially built; Agent Factory UI running locally |
+| C1 → C2 comms | HTTP (same today) | ✓ HTTP (`PLATFORM_SERVICES_URL`) |
+| **C2 → tools comms** | **MCP protocol** via AgentCore Gateway (default) or C3 facade (fallback) | ✗ HTTP direct to C3 — **no MCP implementation yet** |
+| **Tool registration** | Tools registered in C3; C3 syncs to AgentCore Gateway | ✓ Tools registered in C3; served via HTTP |
+| **Memory backend** | AgentCore Memory (primary) + pgvector / OpenSearch (semantic) | ✗ `MEMORY_BACKEND=file` — local file store only |
+| **Observability** | AgentCore Observability → CloudWatch / X-Ray | ✗ Local stdout logs only |
+| **Identity / Auth** | AgentCore Identity for inbound + outbound | ✗ `AUTH_MODE=OPTIONAL` in local dev |
+| **LLM** | Amazon Bedrock (HIPAA-eligible) | ✓ OpenAI direct (prototype dev only) |
+
+**Gap interpretation:** The architecture is complete conceptually; the prototype proves the pattern; the 24-week build wires in AWS managed services (AgentCore Memory, Gateway, Identity, Observability) via adapter interfaces already in place. Every gap above is tracked in `backlog.md` under the IaC + AgentCore/Bedrock Packaging workstream.
+
+---
+
+## 8. AWS Deployment — MCP / Tool Serving Patterns
+
+**AgentCore is an AWS service — it does not run locally.** Local dev is Docker-only; AgentCore integration activates only when deploying to AWS.
+
+### Local Dev Today (no AgentCore anywhere)
+
+```
+┌────────────────┐   HTTP    ┌──────────────────────┐   HTTP    ┌──────────────────┐
+│ C1 Agent       │──────────>│ C2 Platform Services │──────────>│ C3 Tool Gateway  │
+│ Runtime        │           │ (LangGraph)          │           │ (local catalog)  │
+└────────────────┘           └──────────────────────┘           └──────────────────┘
+                                       │                                 │
+                                       ▼                                 ▼
+                                  [file memory]                    [tool impls]
+
+No AgentCore. No MCP. No AWS. Everything on the developer's laptop.
+```
+
+### Target — Three Tool-Serving Patterns on AWS
+
+**Pattern 1 — C3 Tool Gateway as source of truth; AgentCore Gateway as MCP server (DEFAULT)**
+
+Tools are registered in **C3 Tool Gateway** (our managed governance layer). C3 syncs the catalog to **AgentCore Gateway**, which is the AWS-managed MCP server. Agents call AgentCore Gateway via MCP protocol.
+
+```
+┌────────────────────┐     MCP protocol    ┌──────────────────────────┐
+│ C1 Agent Runtime   │────────────────────>│ AgentCore Gateway        │
+│ (on AgentCore RT)  │                     │ (AWS managed MCP server) │
+└────────────────────┘                     └──────────┬───────────────┘
+                                                      │
+                              ┌───────────────────────┘
+                              │ Gateway's catalog synced from C3
+                              ▼
+                    ┌──────────────────────┐
+                    │ C3 Tool Gateway      │   ← Tools registered HERE (source of truth)
+                    │ (on ECS/Fargate)     │      Governance, LOB namespaces, allow/deny
+                    └──────────────────────┘
+```
+
+- Developer registers tool in C3 catalog (YAML)
+- C3 Publisher module syncs definitions to AgentCore Gateway (AWS-managed)
+- Agent calls AgentCore Gateway via MCP — Gateway handles protocol, auth (via AgentCore Identity)
+- **Best for:** multi-LOB payers needing centralized tool governance
+
+**Pattern 2 — AgentCore Gateway direct (no C3 governance layer)**
+
+Tools registered **directly in AgentCore Gateway** via AWS Console / CLI / IaC. No C3. Simpler setup, no custom governance.
+
+```
+┌────────────────────┐     MCP protocol    ┌──────────────────────────┐
+│ C1 Agent Runtime   │────────────────────>│ AgentCore Gateway        │
+│ (on AgentCore RT)  │                     │ Tools registered HERE    │
+└────────────────────┘                     └──────────────────────────┘
+
+No C3 Tool Gateway. Tools go directly into AgentCore Gateway.
+```
+
+- **Best for:** simple customers, few tools, single LOB, no multi-LOB governance needs
+- **Tradeoff:** lose centralized allow/deny, LOB namespacing, custom schema validation, audit trail
+
+**Pattern 3 — C3 hosts MCP server directly (fallback for on-prem / non-AWS)**
+
+No AgentCore Gateway. C3's built-in MCP facade serves tools directly via MCP.
+
+```
+┌────────────────────┐     MCP protocol    ┌──────────────────────────┐
+│ C1 Agent Runtime   │────────────────────>│ C3 Tool Gateway          │
+│                    │                     │ + MCP facade (built-in)  │
+└────────────────────┘                     └──────────────────────────┘
+
+No AgentCore Gateway. C3 IS the MCP server.
+```
+
+- **Best for:** on-prem deployments, air-gapped environments, non-AWS infrastructure, customers who can't use AgentCore Gateway
+
+### Current Implementation Status
+
+- Pattern 1 (C3 + AgentCore Gateway sync): **NOT built yet** — Publisher module is backlog work
+- Pattern 2 (AgentCore Gateway direct): not our accelerator's primary path; supported by AgentCore natively
+- Pattern 3 (C3 hosts MCP facade): **partially built** — C3 has catalog + governance; MCP facade module on backlog
+- **What's running today:** simpler HTTP-based variant — C2 calls C3 via HTTP, C3 executes tools directly. Neither MCP protocol nor AgentCore integration is wired in the prototype.
+
+All three target patterns are **architecturally supported**; implementation ships in v1.0 per the IaC + AgentCore packaging workstream in `backlog.md`.
+
+---
+
+## 9. Dynamic Routing — Classifier in Front of the Agent Fleet
+
+### Problem
+
+Reasoning strategy in AEA is **fixed per-agent overlay** (not switchable mid-run). That means a `chat_agent` configured with `ReAct` cannot dynamically switch to `plan-execute` for a harder query. For a fleet of N chatbots (each tuned for a different query shape), we need a way to pick the right agent per query.
+
+### Anti-pattern: in-agent strategy switching
+
+Tried and rejected: having an agent's planner decide which strategy to run mid-flow. Violates the overlay-as-config principle, complicates observability (hard to tell which strategy actually ran), and makes evaluation non-deterministic (same overlay yields different behaviors).
+
+### Pattern: classifier layer in front of the fleet
+
+A lightweight **router service** sits between the UI and the agent fleet. It classifies the query, picks the best-match pre-deployed agent, forwards the invocation, and streams the response back.
+
+```
+User types in Chat UI
+      │
+      ▼
+┌────────────────────────────────┐
+│ Router (new thin service)      │
+│ • Reads Agent Registry (C4)    │
+│ • Calls classifier LLM (Haiku) │
+│ • Returns: pick agent X        │
+└──────┬─────────────────────────┘
+       │
+       ▼  (forwards to chosen agent)
+┌──────┴────┬──────────┬───────────┐
+▼           ▼          ▼           ▼
+chat_simple chat_react chat_plan  chat_reflection
+(each is a separately-deployed C1, strategy fixed)
+       │
+       ▼
+  Response streams back to UI
+```
+
+### Why this fits AEA architecture
+
+- **Agents unchanged** — pre-graph → reasoning (C2) → post-graph intact per agent.
+- **C2 orchestration unchanged** — each agent still runs its own LangGraph loop with its configured strategy.
+- **C3 Tool Gateway unchanged**.
+- **C4 Control Plane unchanged** — Agent Registry already exists; router just consumes it.
+- **Additive only** — new router service, not a structural change to the 4-container model.
+
+### Agent manifest extension
+
+Each agent declares routing hints so the router can pick the right one:
+
+```yaml
+routing_hints:
+  query_patterns: ["simple lookup", "single fact", "status of X"]
+  strategy_profile: simple
+  confidence_floor: 0.7
+  example_queries:
+    - "Status of ticket JIRA-123?"
+    - "What is the owner of project X?"
+```
+
+The classifier LLM sees incoming query + all agents' routing hints → returns best-match agent ID + confidence.
+
+### Alignment with Anthropic's five patterns
+
+This is Anthropic's **"routing"** pattern — classify input and direct to specialized handlers. Not the "orchestrator-workers" pattern (which requires mid-flow delegation) and not "evaluator-optimizer" (which requires self-critique). Routing is the correct primitive for our constraint.
+
+### Implementation effort
+
+- New router service (Lambda or Fargate): ~1 week.
+- Agent manifest extension + Agent Registry UI field: ~3 days.
+- Capability UI update to POST to `/router/invocations`: ~2 days.
+- **Total: ~1–2 weeks.**
+
+### When the router is needed vs. not
+
+- **Needed:** fleet with multiple agents per use case (e.g., chatbot platform with `simple`, `ReAct`, `plan-execute`, `reflection` variants).
+- **Not needed:** single-agent deployments (skip the router; call agent directly).
+- **Not needed:** when the UI already knows which agent to call (e.g., dedicated status bot, no classification required).
+
+Default architecture: router is **optional** — deploy when fleet size and query variety justify it.

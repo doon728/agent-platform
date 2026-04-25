@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>Intelligent Agent Accelerator for Healthcare — Technical Design</title>
+<title>Agentic Enterprise Accelerator for Healthcare — Technical Design</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'Segoe UI',system-ui,sans-serif;background:#f8fafc;color:#0f172a;font-size:14px;line-height:1.6;}
@@ -145,6 +145,51 @@ tr:nth-child(even) td{background:#fafafa;}
 .cc-sec ul li::before{font-size:10px;}
 .cc-wire{margin-top:12px;padding-top:10px;border-top:1px dashed #e2e8f0;font-size:11px;color:#475569;line-height:1.55;}
 .cc-wire strong{color:#0f172a;}
+
+/* ── Print / PDF pagination rules ─────────────────────── */
+@media print {
+  /* Preserve backgrounds, colors, gradients in printed PDF */
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+
+  /* Page setup — standard Letter with 0.6in margins */
+  @page { size: Letter; margin: 0.6in; }
+
+  /* Body + page wrapper — no screen padding / max-width in print */
+  body { font-size: 10pt; background: white; padding: 0; margin: 0; }
+  .page { max-width: none; padding: 0; margin: 0; background: white; }
+
+  /* Cover ends first page */
+  .cover { page-break-after: always; break-after: page; }
+
+  /* Each major section starts on a new page (but not the first section after cover's forced break) */
+  .section { page-break-before: always; break-before: page; }
+  .section:first-of-type { page-break-before: auto; break-before: auto; }
+
+  /* Keep these compact blocks together on one page */
+  .highlight, .col-box, .lens, .phase-box, .cc, .flow-step, .deploy-col,
+  .ec, .wi, .folder-tree, .repo-tree, .deploy-flow, .flow, .uc-card,
+  .swim, .pointer, .cc-head, .cc-grid, .two-col, .eg {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Table handling — let long tables span pages, but keep individual rows together */
+  table { width: 100% !important; table-layout: auto; page-break-inside: auto; break-inside: auto; }
+  tr { page-break-inside: avoid; break-inside: avoid; page-break-after: auto; }
+  thead { display: table-header-group; }
+  tfoot { display: table-footer-group; }
+  td, th { word-wrap: break-word; overflow-wrap: break-word; }
+
+  /* Keep headings with following content */
+  h1, h2, h3, h4, h5 { page-break-after: avoid; break-after: avoid; page-break-inside: avoid; break-inside: avoid; }
+
+  /* Images / SVG should fit the page width */
+  img, svg { max-width: 100% !important; height: auto !important; }
+
+  /* Hide nothing, but avoid orphan paragraphs */
+  p { orphans: 3; widows: 3; }
+}
+
 </style>
 
 </head>
@@ -155,21 +200,20 @@ tr:nth-child(even) td{background:#fafafa;}
   <div class="cover">
     <div class="aws-badge">⚡ AWS Practice</div>
     <div class="eyebrow">Technical Design — Companion Document</div>
-    <h1>Intelligent Agent Accelerator<br/>for Healthcare</h1>
+    <h1>Agentic Enterprise Accelerator<br/>for Healthcare</h1>
     <p class="tagline">Technical design reference — platform capabilities, architecture,<br/>deployment, governance, and current prototype state.</p>
     <div class="meta">
       <div class="meta-item">Companion To<span>Offering Proposal Summary</span></div>
-      <div class="meta-item">Industry<span>Healthcare Payer</span></div>
-      <div class="meta-item">Runtime<span>AWS AgentCore + Bedrock</span></div>
       <div class="meta-item">Status<span>Technical Design · v1.0</span></div>
     </div>
+    <p style="margin-top:20px;font-size:11px;color:#94a3b8;font-style:italic;">Created by Tarun Gaba</p>
   </div>
 
 
   <!-- INTRO -->
   <div class="section">
     <h2>About This Document</h2>
-    <p>This is the technical companion to the <strong>Intelligent Agent Accelerator for Healthcare — Offering Proposal Summary</strong>. The summary proposal covers the business case: opportunity, offering, ROI, customer engagement, and the ask. This document provides the technical detail behind those claims — platform capabilities, reference architecture, per-container breakdown, deployment model, repo governance, LLM key management, technical limitations and design guardrails, and the current prototype state.</p>
+    <p>This is the technical companion to the <strong>Agentic Enterprise Accelerator for Healthcare — Offering Proposal Summary</strong>. The summary proposal covers the business case: opportunity, offering, ROI, customer engagement, and the ask. This document provides the technical detail behind those claims — platform capabilities, reference architecture, per-container breakdown, deployment model, repo governance, LLM key management, technical limitations and design guardrails, and the current prototype state.</p>
     <p>Read the summary first for the proposal itself. Read this document when you need technical depth on any specific claim.</p>
 
     <div class="highlight">
@@ -187,6 +231,7 @@ tr:nth-child(even) td{background:#fafafa;}
       <li><strong>Section 7</strong> — LLM Keys, Models &amp; Cost Control</li>
       <li><strong>Section 8</strong> — Technical Limitations &amp; Design Guardrails</li>
       <li><strong>Section 9</strong> — Current Prototype: What's Built Today</li>
+      <li><strong>Section 10</strong> — Competitive Validation: PwC Built the Same Pattern</li>
     </ul>
   </div>
 
@@ -462,7 +507,7 @@ tr:nth-child(even) td{background:#fafafa;}
           <h5>AWS Services Consumed</h5>
           <ul>
             <li><strong>ECS / Fargate</strong> — container runtime for C2</li>
-            <li><strong>Amazon Bedrock</strong> — Claude Opus / Sonnet / Haiku for reasoning and summary extraction</li>
+            <li><strong>Amazon Bedrock</strong> — LLM inference (Claude / Titan model families; specific models per approved list)</li>
             <li><strong>AWS AgentCore Memory</strong> — optional managed memory backend (adapter-swappable)</li>
             <li><strong>RDS Aurora Postgres</strong> — memory + pgvector</li>
             <li><strong>ElastiCache Redis</strong> — session memory</li>
@@ -809,85 +854,9 @@ Deployed as Container 1 for that specific agent
       </ul>
     </div>
 
-    <h3>Industry Alignment — Reference Patterns and Citations</h3>
-
-    <p>The architectural choices above are not novel. They match the reference architectures of the major agentic AI platform vendors published in 2024–2026. The accelerator's value is the vertical packaging on top — healthcare payer workflows, pre-built reference agents, compliance evidence, delivery playbook — not the reinvention of the agent-platform architecture.</p>
-
-    <h4>Per-agent runtime + shared tenant services + per-tenant control plane</h4>
-
-    <table>
-      <tr>
-        <th>Platform</th>
-        <th>Evidence</th>
-      </tr>
-      <tr>
-        <td><strong>AWS Bedrock AgentCore</strong></td>
-        <td>Per-agent containerized runtime with its own ARN and version; Memory, Gateway, Identity, Observability are shared tenant-account services. Session-level isolation via dedicated microVMs. HIPAA-eligible as of February 2026. (<a href="https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-how-it-works.html">docs</a>, <a href="https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/compliance-validation.html">compliance</a>)</td>
-      </tr>
-      <tr>
-        <td><strong>Microsoft Foundry Agent Service</strong></td>
-        <td>Top-level Foundry resource is the per-tenant control plane; projects are development boundaries; hosted agents deploy as containers. "Workloads run in logically isolated environments per Foundry resource. Customer code doesn't share runtime containers with other tenants." (<a href="https://learn.microsoft.com/en-us/azure/foundry/concepts/architecture">architecture</a>, <a href="https://techcommunity.microsoft.com/blog/azure-ai-foundry-blog/foundry-control-plane-where-developers-build-operate-and-govern-every-agent/4467885">control plane blog</a>)</td>
-      </tr>
-      <tr>
-        <td><strong>LangGraph Platform / LangSmith Deployment</strong></td>
-        <td>API servers + queue workers + shared Postgres and Redis. Deployment model explicitly marketed as "SaaS control plane with self-hosted data plane" — the control-plane / data-plane split by that exact name. (<a href="https://www.langchain.com/blog/langgraph-platform-ga">GA blog</a>, <a href="https://docs.langchain.com/langsmith/agent-server">docs</a>)</td>
-      </tr>
-      <tr>
-        <td><strong>Google Vertex AI Agent Engine</strong></td>
-        <td>Per-agent container customization including resource limits and concurrency. Cloud API Registry operates as "a private registry for controlling what data and tools agents can access" — tool gateway pattern. (<a href="https://adk.dev/deploy/agent-engine/">ADK deploy</a>, <a href="https://cloud.google.com/blog/products/ai-machine-learning/new-enhanced-tool-governance-in-vertex-ai-agent-builder">tool governance</a>)</td>
-      </tr>
-      <tr>
-        <td><strong>Anthropic Claude Agent SDK</strong></td>
-        <td>Recommends per-task or long-running containers plus proxy pattern for multi-tenant deployments: "Run a proxy outside the agent's environment... This pattern is useful for multi-tenant deployments." (<a href="https://code.claude.com/docs/en/agent-sdk/hosting">hosting</a>, <a href="https://code.claude.com/docs/en/agent-sdk/secure-deployment">secure deployment</a>)</td>
-      </tr>
-    </table>
-
-    <h4>Developer configures; platform internals are read-only</h4>
-
-    <table>
-      <tr>
-        <th>Platform</th>
-        <th>Evidence</th>
-      </tr>
-      <tr>
-        <td><strong>Microsoft Foundry Agent Service</strong></td>
-        <td>Three agent types: <em>Prompt</em> agents "defined entirely through configuration — instructions, model selection, and tools"; <em>Workflow</em> agents "declarative definitions... in YAML"; <em>Hosted</em> agents as containers. (<a href="https://learn.microsoft.com/en-us/azure/foundry/agents/overview">overview</a>)</td>
-      </tr>
-      <tr>
-        <td><strong>Google Vertex — Agent Starter Pack</strong></td>
-        <td>An "accelerated deployment path to set up a fully configured Google Cloud environment with CI/CD, infrastructure-as-code, and deployment pipelines for your ADK agent" — explicit template-based scaffolding. (<a href="https://adk.dev/deploy/agent-engine/">ADK deploy</a>)</td>
-      </tr>
-      <tr>
-        <td><strong>Salesforce Agentforce</strong></td>
-        <td>"Agents are made of metadata." Developers author <code>AiAuthoringBundle</code> bundles (Agent Script plus XML); the Core runtime is shared and not modifiable. (<a href="https://developer.salesforce.com/docs/ai/agentforce/guide/agent-dx-metadata.html">metadata docs</a>)</td>
-      </tr>
-      <tr>
-        <td><strong>LangGraph Platform</strong></td>
-        <td>"Assistants" are configured variants of a graph; platform internals (API servers, queue workers, checkpointing) are not customer-modifiable. (<a href="https://www.langchain.com/blog/langgraph-platform-ga">GA blog</a>)</td>
-      </tr>
-      <tr>
-        <td><strong>AWS Bedrock AgentCore</strong></td>
-        <td>Memory, Gateway, Identity, and Observability are consumed as managed services. Developers "define their agent logic using any AI framework" and AgentCore handles scaling, session management, and security isolation. (<a href="https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/what-is-bedrock-agentcore.html">overview</a>)</td>
-      </tr>
-      <tr>
-        <td><strong>Anthropic Claude Agent SDK</strong></td>
-        <td>"The SDK does not load filesystem settings... This is a deliberate design choice for predictable behavior in... deployed applications, and multi-tenant systems." (<a href="https://code.claude.com/docs/en/agent-sdk/hosting">hosting</a>)</td>
-      </tr>
-    </table>
-
-    <h4>Agent-type × reasoning-strategy overlays</h4>
-
-    <p>Overlays — each one a specific agent-type paired with a specific reasoning-strategy — are our operationalization of two concepts that are themselves industry-recognized:</p>
-
-    <ul>
-      <li><strong>Agent-type taxonomies</strong> are published by Microsoft (Foundry's Prompt / Workflow / Hosted tiers — <a href="https://learn.microsoft.com/en-us/azure/foundry/agents/overview">docs</a>) and reflected across every major platform. Chat, summarization, extraction, triage, monitoring, workflow, and multi-agent are standard agent types in the agentic AI world.</li>
-      <li><strong>Reasoning strategies</strong> are established patterns in both literature and tooling — ReAct, plan-and-execute, multi-hop, self-reflection, tree-of-thought — all implementable as graph patterns in LangGraph and supported across major agent frameworks.</li>
-      <li><strong>Packaging them as overlays</strong> — each overlay encapsulating one specific combination with its own strategy implementation, prompts, and YAML config — is the accelerator's implementation choice. It produces a discoverable matrix the Agent Factory UI can scaffold from.</li>
-    </ul>
-
     <h3>What We Plan to Build vs. What AgentCore Provides</h3>
 
-    <p>The accelerator sits on top of AWS AgentCore. AgentCore ships five managed services — Runtime, Memory, Identity, Gateway, Observability — which the accelerator consumes directly. Container 2 in our design is a thin layer of our own code on ECS/Fargate that orchestrates those managed services and adds the pieces AgentCore does not ship: reasoning strategies, HITL service, RAG orchestration, and domain-level trace enrichment. The table below makes each decision explicit.</p>
+    <p>The accelerator sits on top of <strong>Amazon Bedrock AgentCore</strong>. AgentCore ships five managed services — Runtime, Memory, Identity, Gateway, Observability — which the accelerator consumes directly. Container 2 in our design is a thin layer of our own code on ECS/Fargate that orchestrates those managed services and adds the pieces AgentCore does not ship: reasoning strategies, HITL service, RAG orchestration, and domain-level trace enrichment. The table below makes each decision explicit.</p>
 
     <div class="highlight" style="margin-bottom:14px;">
       <strong>Container 2 is a hybrid.</strong> It runs on ECS/Fargate (our LangGraph runner, reasoning strategies, HITL service, RAG orchestration, domain-level observability emission — all our code) and consumes AWS-managed services (AgentCore Memory, AgentCore Identity, AgentCore Observability, Bedrock for LLM inference, Bedrock Knowledge Bases for RAG backends, Bedrock Prompt Management) over HTTPS. C1 Agent Runtime is the only container that runs <em>on</em> AgentCore Runtime; C2, C3, and C4 are our own ECS/Fargate containers that call AgentCore managed services as AWS services.
@@ -955,7 +924,7 @@ Deployed as Container 1 for that specific agent
       <tr>
         <td><strong>Compliance evidence package</strong></td>
         <td>Published compliance posture for AgentCore itself (HIPAA-eligible)</td>
-        <td>Accelerator-specific evidence package per release — SAST / DAST / SCA scans, SBOM, container scans, internal pen-test, HIPAA controls matrix, architecture security review, BAA-eligibility evidence — ready for customer InfoSec review</td>
+        <td>Accelerator-specific evidence package per release — SAST / DAST / SCA scans, SBOM, container scans, internal pen-test, HIPAA controls matrix, architecture security review, HIPAA compliance evidence — ready for customer InfoSec review</td>
       </tr>
       <tr>
         <td><strong>Delivery Playbook + Demo</strong></td>
@@ -970,13 +939,49 @@ Deployed as Container 1 for that specific agent
 
     <h3>Accelerator Differentiation</h3>
 
-    <p>The architectural patterns are shared with AWS AgentCore. The accelerator's differentiation is what sits on top of them — the vertical packaging, the delivery assets, and the agent matrix:</p>
+    <p>The architectural patterns are shared with Amazon Bedrock AgentCore. The accelerator's differentiation is what sits on top of them — the vertical packaging, the delivery assets, and the agent matrix:</p>
 
     <ol style="margin:10px 0 14px 22px;padding:0;font-size:13px;color:#334155;line-height:1.75;">
       <li><strong>Vertical packaging</strong> — healthcare payer-specific patterns, workflows, and compliance posture. AgentCore is domain-agnostic; this accelerator ships with payer-context baked in.</li>
       <li><strong>Delivery-integrated</strong> — comes with a Delivery Playbook, demo + demo script, security evidence package, and pre-built reference agents. Not code alone; a full engagement-ready asset.</li>
       <li><strong>Pre-built agent matrix</strong> — six working agents across agent-type × reasoning-strategy combinations, each with its own UI. Ready to demo, ready to tailor to customer workflows during engagement.</li>
     </ol>
+
+    <h3>Architectural Classification — Build-time, Config-time, Runtime</h3>
+
+    <p>The accelerator is <strong>policy-driven, not runtime-dynamic</strong> for foundational elements. Reasoning topology, agent type, container split, and scope structure are committed once at scaffold time and cannot change without rescaffolding — this is intentional for auditability and compliance. Most governance-layer decisions are <strong>config-time updatable</strong> (YAML push, no redeploy) — prompts, HITL gates, tool allow/deny, RAG source list, guardrail policies. <strong>Runtime-routable</strong> decisions are limited to per-request data and model dispatch — which source to query, which LLM to invoke, which tool to use, whether a HITL gate trips.</p>
+
+    <table>
+      <tr>
+        <th>Dimension</th>
+        <th>Build-time bound<br><span style="font-weight:400;font-size:10px;text-transform:none;letter-spacing:0;">(rescaffold to change)</span></th>
+        <th>Config-time updatable<br><span style="font-weight:400;font-size:10px;text-transform:none;letter-spacing:0;">(YAML push, no redeploy)</span></th>
+        <th>Runtime-routable<br><span style="font-weight:400;font-size:10px;text-transform:none;letter-spacing:0;">(per-request)</span></th>
+      </tr>
+      <tr><td><strong>Reasoning strategy</strong> (graph topology — ReAct, plan-execute, multi-hop, reflection)</td><td>✓</td><td>—</td><td>—</td></tr>
+      <tr><td><strong>Agent type</strong> (chat, workflow, summarization, multi-agent, triage, monitoring)</td><td>✓</td><td>—</td><td>—</td></tr>
+      <tr><td><strong>Agent ID + LOB namespace</strong></td><td>✓</td><td>—</td><td>—</td></tr>
+      <tr><td><strong>Deployment topology</strong> (4-container split; C1 on AgentCore, C2/C3/C4 on ECS)</td><td>✓</td><td>—</td><td>—</td></tr>
+      <tr><td><strong>Memory scope structure</strong> (4-scope model — conversation / episodic / semantic / summary)</td><td>✓</td><td>—</td><td>—</td></tr>
+      <tr><td><strong>Tenant scope</strong></td><td>✓</td><td>—</td><td>—</td></tr>
+      <tr><td><strong>RAG Stage</strong> (pre / in / post-graph)</td><td>typically ✓</td><td>—</td><td>—</td></tr>
+      <tr><td><strong>RAG Source</strong> (which knowledge base)</td><td>—</td><td>✓ add/remove KBs</td><td>✓ router picks per query</td></tr>
+      <tr><td><strong>RAG Extraction</strong> (chunking, reranker, strategy)</td><td>—</td><td>✓ add strategies</td><td>✓ picked per query</td></tr>
+      <tr><td><strong>LLM model</strong></td><td>—</td><td>✓ change per-agent default</td><td>✓ router per query (complexity / cost)</td></tr>
+      <tr><td><strong>Prompts</strong></td><td>—</td><td>✓ lifecycle (draft → active → retired)</td><td>✓ variant selection per request</td></tr>
+      <tr><td><strong>Tool catalog membership</strong> (per agent)</td><td>—</td><td>✓ allow / deny updates</td><td>—</td></tr>
+      <tr><td><strong>Tool selection</strong> (within allow list)</td><td>—</td><td>—</td><td>✓ agent picks (ReAct-style)</td></tr>
+      <tr><td><strong>HITL gate definitions</strong></td><td>—</td><td>✓ YAML gate rules</td><td>—</td></tr>
+      <tr><td><strong>HITL gate evaluation</strong></td><td>—</td><td>—</td><td>✓ triggered per request</td></tr>
+      <tr><td><strong>Memory scope access</strong></td><td>—</td><td>✓ write policy per scope</td><td>✓ read per request</td></tr>
+      <tr><td><strong>Guardrails</strong></td><td>—</td><td>✓ policy rules in YAML</td><td>✓ applied per request on LLM path</td></tr>
+      <tr><td><strong>Observability / trace enrichment</strong></td><td>—</td><td>✓ schema / custom fields</td><td>✓ emitted per request</td></tr>
+      <tr><td><strong>Multi-agent routing</strong> (supervisor → specialists)</td><td>✓ supervisor + specialist topology fixed</td><td>✓ routing rules in YAML</td><td>✓ supervisor decides per query</td></tr>
+    </table>
+
+    <p><strong>Why reasoning strategy is build-time-bound:</strong> reasoning strategy IS the graph topology (ReAct cycles, plan-execute branches, reflection loops). Dynamic runtime routing of reasoning would require graph recompilation per request — expensive and hard to govern. The <strong>Multi-Agent overlay</strong> is the architectural answer to reasoning diversity per query: supervisor (usually ReAct) dispatches to specialist agents, each with its own committed reasoning topology. Effective reasoning routing at the meta-level, without per-request graph recompilation.</p>
+
+    <p>The build-time / config-time / runtime split is a conscious trade-off between flexibility and governability. Enterprise and regulated domains — healthcare payers included — value governability over maximal runtime flexibility.</p>
 
     <h3>Known Design Constraints</h3>
 
@@ -1096,7 +1101,7 @@ Deployed as Container 1 for that specific agent
     </div>
 
     <div class="highlight">
-      <strong>HIPAA compliance is part of every stage:</strong> KMS encryption at rest, TLS 1.2+ in transit, PHI masking in C1 post-graph, CloudTrail audit logging, IAM least-privilege per service, VPC-only data plane, AWS Config rules for drift detection. All AWS services used are HIPAA-eligible under BAA. The engagement produces a compliance documentation package that ships with the release.
+      <strong>HIPAA compliance is part of every stage:</strong> KMS encryption at rest, TLS 1.2+ in transit, PHI masking in C1 post-graph, CloudTrail audit logging, IAM least-privilege per service, VPC-only data plane, AWS Config rules for drift detection. All AWS services used are HIPAA-eligible. The engagement produces a compliance documentation package that ships with the release.
     </div>
   </div>
 
@@ -1270,41 +1275,15 @@ Deployed as Container 1 for that specific agent
     </table>
 
     <h3>Available Models (chosen per-agent in <code>agent.yaml</code>)</h3>
-    <table>
-      <tr>
-        <th>Model</th>
-        <th>Use</th>
-        <th>Provider / Access</th>
-        <th>Relative Cost</th>
-      </tr>
-      <tr>
-        <td><strong>Claude Opus 4.7</strong></td>
-        <td>Complex reasoning — multi-hop, reflection, strategic planning agents</td>
-        <td>Bedrock</td>
-        <td>$$$$ (reserved for hard tasks)</td>
-      </tr>
-      <tr>
-        <td><strong>Claude Sonnet 4.6</strong></td>
-        <td>Default workhorse — chat, triage, workflow agents</td>
-        <td>Bedrock</td>
-        <td>$$ (standard)</td>
-      </tr>
-      <tr>
-        <td><strong>Claude Haiku 4.5</strong></td>
-        <td>Fast / cheap — classification, extraction, high-volume monitoring</td>
-        <td>Bedrock</td>
-        <td>$ (high-volume safe)</td>
-      </tr>
-      <tr>
-        <td><strong>GPT-4o / 4o-mini</strong></td>
-        <td>Dev exploration only, non-PHI prototyping</td>
-        <td>OpenAI via practice proxy</td>
-        <td>$ – $$ (scoped quotas)</td>
-      </tr>
-    </table>
+    <p>Specific models are drawn from two approved lists:</p>
+    <ul>
+      <li><strong>TEKsystems-approved model list</strong> for internal practice use (sandbox development, playground AgentCore testing, pre-sales demos, POCs).</li>
+      <li><strong>Customer-approved model list</strong> for a given engagement's production deployment — subject to the customer's InfoSec and compliance review.</li>
+    </ul>
+    <p>In both contexts, models are selected per-agent in <code>agent.yaml</code> based on three criteria: <strong>reasoning complexity</strong> (how hard the step is), <strong>latency budget</strong> (how fast the response needs to be), and <strong>cost envelope</strong> (how many times the step runs). A complex multi-hop reasoning step uses a higher-capability model; a routine classification or extraction step uses a faster, lower-cost model. The platform consumes Amazon Bedrock by default (HIPAA-eligible), so the available models are whichever Claude or Titan variants are on both the approved list and the Bedrock catalog for the deployment region.</p>
 
     <div class="highlight">
-      <strong>Model choice is configuration, not code:</strong> Each agent specifies its model in <code>agent.yaml</code>. Swapping from Sonnet to Haiku — or from Bedrock to the OpenAI proxy — is a config change, not a redeploy. This is what allows cost optimization after an agent is live: start on Sonnet, observe traces, move predictable steps to Haiku, keep the hard reasoning step on Opus.
+      <strong>Model choice is configuration, not code:</strong> Each agent specifies its model in <code>agent.yaml</code>. Swapping between models — or between providers — is a config change, not a redeploy. This allows cost and quality optimization after an agent is live: observe traces, move predictable steps to a lighter model, keep the hard reasoning step on a higher-capability model, without touching code.
     </div>
   </div>
 
@@ -1430,11 +1409,201 @@ Deployed as Container 1 for that specific agent
   <hr class="break"/>
 
 
+  <!-- ══ 10. INDUSTRY ALIGNMENT — REFERENCE PATTERNS AND PEER SI VALIDATION ══ -->
+  <div class="section">
+    <div class="section-num">Section 10</div>
+    <h2>Competitive Validation — PwC Built the Same Pattern</h2>
+
+    <p>The architectural choices in this design are not novel. They match the reference architectures of the major agentic AI platform vendors published in 2024–2026, and peer system integrators are productizing similar agent systems on the same platform foundation. The accelerator's value is the vertical packaging on top — healthcare payer workflows, pre-built reference agents, compliance evidence, delivery playbook — not the reinvention of the agent-platform architecture.</p>
+
+    <h3>Per-agent runtime + shared tenant services + per-tenant control plane</h3>
+
+    <table>
+      <tr>
+        <th>Platform</th>
+        <th>Evidence</th>
+      </tr>
+      <tr>
+        <td><strong>Amazon Bedrock AgentCore</strong></td>
+        <td>Per-agent containerized runtime with its own ARN and version; Memory, Gateway, Identity, Observability are shared tenant-account services. Session-level isolation via dedicated microVMs. HIPAA-eligible as of February 2026. (<a href="https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-how-it-works.html">docs</a>, <a href="https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/compliance-validation.html">compliance</a>)</td>
+      </tr>
+      <tr>
+        <td><strong>Microsoft Foundry Agent Service</strong></td>
+        <td>Top-level Foundry resource is the per-tenant control plane; projects are development boundaries; hosted agents deploy as containers. "Workloads run in logically isolated environments per Foundry resource. Customer code doesn't share runtime containers with other tenants." (<a href="https://learn.microsoft.com/en-us/azure/foundry/concepts/architecture">architecture</a>, <a href="https://techcommunity.microsoft.com/blog/azure-ai-foundry-blog/foundry-control-plane-where-developers-build-operate-and-govern-every-agent/4467885">control plane blog</a>)</td>
+      </tr>
+      <tr>
+        <td><strong>LangGraph Platform / LangSmith Deployment</strong></td>
+        <td>API servers + queue workers + shared Postgres and Redis. Deployment model explicitly marketed as "SaaS control plane with self-hosted data plane" — the control-plane / data-plane split by that exact name. (<a href="https://www.langchain.com/blog/langgraph-platform-ga">GA blog</a>, <a href="https://docs.langchain.com/langsmith/agent-server">docs</a>)</td>
+      </tr>
+      <tr>
+        <td><strong>Google Vertex AI Agent Engine</strong></td>
+        <td>Per-agent container customization including resource limits and concurrency. Cloud API Registry operates as "a private registry for controlling what data and tools agents can access" — tool gateway pattern. (<a href="https://adk.dev/deploy/agent-engine/">ADK deploy</a>, <a href="https://cloud.google.com/blog/products/ai-machine-learning/new-enhanced-tool-governance-in-vertex-ai-agent-builder">tool governance</a>)</td>
+      </tr>
+      <tr>
+        <td><strong>Anthropic Claude Agent SDK</strong></td>
+        <td>Recommends per-task or long-running containers plus proxy pattern for multi-tenant deployments: "Run a proxy outside the agent's environment... This pattern is useful for multi-tenant deployments." (<a href="https://code.claude.com/docs/en/agent-sdk/hosting">hosting</a>, <a href="https://code.claude.com/docs/en/agent-sdk/secure-deployment">secure deployment</a>)</td>
+      </tr>
+    </table>
+
+    <h3>Developer configures; platform internals are read-only</h3>
+
+    <table>
+      <tr>
+        <th>Platform</th>
+        <th>Evidence</th>
+      </tr>
+      <tr>
+        <td><strong>Microsoft Foundry Agent Service</strong></td>
+        <td>Three agent types: <em>Prompt</em> agents "defined entirely through configuration — instructions, model selection, and tools"; <em>Workflow</em> agents "declarative definitions... in YAML"; <em>Hosted</em> agents as containers. (<a href="https://learn.microsoft.com/en-us/azure/foundry/agents/overview">overview</a>)</td>
+      </tr>
+      <tr>
+        <td><strong>Google Vertex — Agent Starter Pack</strong></td>
+        <td>An "accelerated deployment path to set up a fully configured Google Cloud environment with CI/CD, infrastructure-as-code, and deployment pipelines for your ADK agent" — explicit template-based scaffolding. (<a href="https://adk.dev/deploy/agent-engine/">ADK deploy</a>)</td>
+      </tr>
+      <tr>
+        <td><strong>Salesforce Agentforce</strong></td>
+        <td>"Agents are made of metadata." Developers author <code>AiAuthoringBundle</code> bundles (Agent Script plus XML); the Core runtime is shared and not modifiable. (<a href="https://developer.salesforce.com/docs/ai/agentforce/guide/agent-dx-metadata.html">metadata docs</a>)</td>
+      </tr>
+      <tr>
+        <td><strong>LangGraph Platform</strong></td>
+        <td>"Assistants" are configured variants of a graph; platform internals (API servers, queue workers, checkpointing) are not customer-modifiable. (<a href="https://www.langchain.com/blog/langgraph-platform-ga">GA blog</a>)</td>
+      </tr>
+      <tr>
+        <td><strong>Amazon Bedrock AgentCore</strong></td>
+        <td>Memory, Gateway, Identity, and Observability are consumed as managed services. Developers "define their agent logic using any AI framework" and AgentCore handles scaling, session management, and security isolation. (<a href="https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/what-is-bedrock-agentcore.html">overview</a>)</td>
+      </tr>
+      <tr>
+        <td><strong>Anthropic Claude Agent SDK</strong></td>
+        <td>"The SDK does not load filesystem settings... This is a deliberate design choice for predictable behavior in... deployed applications, and multi-tenant systems." (<a href="https://code.claude.com/docs/en/agent-sdk/hosting">hosting</a>)</td>
+      </tr>
+    </table>
+
+    <h3>Agent-type × reasoning-strategy overlays</h3>
+
+    <p>Overlays — each one a specific agent-type paired with a specific reasoning-strategy — are our operationalization of two concepts that are themselves industry-recognized:</p>
+
+    <ul>
+      <li><strong>Agent-type taxonomies</strong> are published by Microsoft (Foundry's Prompt / Workflow / Hosted tiers — <a href="https://learn.microsoft.com/en-us/azure/foundry/agents/overview">docs</a>) and reflected across every major platform. Chat, summarization, extraction, triage, monitoring, workflow, and multi-agent are standard agent types in the agentic AI world.</li>
+      <li><strong>Reasoning strategies</strong> are established patterns in both literature and tooling — ReAct, plan-and-execute, multi-hop, self-reflection, tree-of-thought — all implementable as graph patterns in LangGraph and supported across major agent frameworks.</li>
+      <li><strong>Packaging them as overlays</strong> — each overlay encapsulating one specific combination with its own strategy implementation, prompts, and YAML config — is the accelerator's implementation choice. It produces a discoverable matrix the Agent Factory UI can scaffold from.</li>
+    </ul>
+
+    <h3>SI Competitors — Three Tiers of Validation</h3>
+
+    <h4>Tier 1 — PwC (Architectural Convergence)</h4>
+
+    <p>PwC has publicly documented a multi-agent system on Amazon Bedrock AgentCore (2026). The core architecture pattern they describe matches TEKsystems' foundation directly.</p>
+
+    <table>
+      <tr>
+        <th>Architectural dimension</th>
+        <th>PwC (publicly documented)</th>
+        <th>TEKsystems</th>
+        <th>Match</th>
+      </tr>
+      <tr>
+        <td><strong>Platform foundation</strong></td>
+        <td>Amazon Bedrock AgentCore</td>
+        <td>Amazon Bedrock AgentCore</td>
+        <td>Identical</td>
+      </tr>
+      <tr>
+        <td><strong>Orchestration engine</strong></td>
+        <td>LangGraph state graph</td>
+        <td>LangGraph (Container 2)</td>
+        <td>Identical</td>
+      </tr>
+      <tr>
+        <td><strong>Agent hosting</strong></td>
+        <td>Per-agent AgentCore Runtime</td>
+        <td>Per-agent AgentCore Runtime (C1)</td>
+        <td>Identical</td>
+      </tr>
+      <tr>
+        <td><strong>Tool execution</strong></td>
+        <td>Separated (EKS pods)</td>
+        <td>Separated (C3 on ECS/Fargate + MCP)</td>
+        <td>Same pattern</td>
+      </tr>
+      <tr>
+        <td><strong>Memory integration</strong></td>
+        <td>AgentCore Memory per agent</td>
+        <td>AgentCore Memory, four scopes</td>
+        <td>Same pattern</td>
+      </tr>
+      <tr>
+        <td><strong>Multi-agent pattern</strong></td>
+        <td>Supervisor + specialist agents</td>
+        <td>Multi-Agent overlay — supervisor + specialists</td>
+        <td>Identical</td>
+      </tr>
+      <tr>
+        <td><strong>Modular extension</strong></td>
+        <td>Container per capability; failure containment per agent</td>
+        <td>Container per capability; failure containment per agent</td>
+        <td>Same pattern</td>
+      </tr>
+    </table>
+
+    <p>PwC also extended their cross-cloud orchestration platform (<em>agent OS</em>) to run on AWS with Bedrock Agent Framework and MCP Server support (2026). Sources: <a href="https://www.google.com/search?q=%22Deploying+agentic+AI+at+enterprise+scale+with+Amazon+Bedrock+AgentCore%22+PwC">PwC AgentCore case study</a>, <a href="https://www.google.com/search?q=%22PwC+agent+OS%22+AWS+Bedrock+integration">PwC agent OS AWS/Bedrock integration</a>.</p>
+
+    <h4>Tier 2 — Accenture AI Refinery + Distiller (Conceptual Peer, Different Stack)</h4>
+
+    <p>Accenture launched AI Refinery with the Distiller agentic framework (2025, expanded 2026) — a full agentic platform covering Data &amp; Knowledge Management, Model Customization, Multi-Agent Orchestration, governance, and observability, with 12 industry agent solutions. Same conceptual pattern as TEKsystems (productized agentic platform with memory, orchestration, governance, industry solutions), but built on <strong>NVIDIA</strong> (NeMo, NIM, AI Blueprints) rather than AWS AgentCore. Architectural decomposition is capability-grouped (Data / Model / Orchestration / Governance) rather than TEKsystems' deployment-grouped four-container model. Per-agent runtime isolation model is not publicly detailed. Sources: <a href="https://www.accenture.com/us-en/services/data-ai/ai-refinery">AI Refinery</a>, <a href="https://newsroom.accenture.com/news/2025/accenture-launches-distiller-agentic-ai-framework-to-accelerate-scalable-industry-ai-solutions">Distiller launch</a>, <a href="https://newsroom.accenture.com/news/2025/accenture-launches-ai-refinery-for-industry-to-reinvent-processes-and-accelerate-agentic-ai-journeys">Industry solutions</a>.</p>
+
+    <h4>Tier 3 — Deloitte Enterprise AI Navigator (Adjacent Category, Different Layer)</h4>
+
+    <p>Deloitte launched Enterprise AI Navigator (February 2026) on Deloitte Ascend™ — a consulting-delivery toolkit with four modules: <strong>AI Identifier</strong> (opportunity discovery), <strong>Impact Analyzer</strong> (ROI quantification), <strong>Workflow Designer</strong> (future-state process mapping), and <strong>Agent Studio</strong> (agent library generation). Strong on consulting-led discovery and design motion; lighter on deployable customer-owned runtime. Oriented to Deloitte-led engagements and Deloitte Ascend platform base. Source: <a href="https://www.deloitte.com/us/en/about/press-room/deloitte-announces-launch-of-enterprise-ai-navigator.html">Deloitte press release</a>.</p>
+
+    <h3>End-to-End Coverage — What Makes TEKsystems Unique</h3>
+
+    <p>Each competitor specializes in part of the arc. TEKsystems covers the full arc for one specific, high-value niche (AWS-native + healthcare payer + customer-owned + deployment-flexible).</p>
+
+    <table>
+      <tr>
+        <th>Capability</th>
+        <th>TEKsystems</th>
+        <th>PwC</th>
+        <th>Accenture</th>
+        <th>Deloitte</th>
+      </tr>
+      <tr><td><strong>Discovery + design (consulting-led)</strong></td><td>✓ Productized in Four Modes</td><td>✓ Big 4 consulting practice</td><td>✓ Global consulting practice</td><td>✓ AI Navigator modules</td></tr>
+      <tr><td><strong>Agent generation toolkit</strong></td><td>✓ Agent Factory UI + overlay matrix</td><td>✓ (per engagement)</td><td>✓ agent builder + SDKs</td><td>✓ Agent Studio</td></tr>
+      <tr><td><strong>Deployable runtime platform</strong></td><td>✓ four-container on AgentCore</td><td>✓ (AgentCore-based)</td><td>✓ AI Refinery platform</td><td>less emphasized</td></tr>
+      <tr><td><strong>AWS-native end-to-end</strong></td><td>✓ deep AgentCore integration</td><td>partial (also cross-cloud agent OS)</td><td>✗ NVIDIA-based</td><td>✗ Deloitte Ascend</td></tr>
+      <tr><td><strong>Healthcare payer vertical depth</strong></td><td>✓ payer workflows, PHI, HIPAA-compliant, payer source adapters</td><td>✗ horizontal (FinOps case)</td><td>✗ horizontal (12 industries)</td><td>✗ horizontal</td></tr>
+      <tr><td><strong>Customer-owned codebase + IP transfer</strong></td><td>✓ full transfer at engagement end</td><td>varies</td><td>✗ SaaS-leaning</td><td>✗ consulting-embedded</td></tr>
+      <tr><td><strong>Deployment flexibility (customer-deployed or AaaS)</strong></td><td>✓ same architecture supports both</td><td>varies</td><td>SaaS-centric</td><td>SI-led</td></tr>
+      <tr><td><strong>Explicit per-agent session isolation</strong></td><td>✓ AgentCore microVM per agent</td><td>✓ (AgentCore-based)</td><td>not publicly specified</td><td>not publicly specified</td></tr>
+      <tr><td><strong>Policy-as-code governance (YAML)</strong></td><td>✓ documented</td><td>not publicly detailed</td><td>not publicly detailed</td><td>not publicly detailed</td></tr>
+    </table>
+
+    <div class="highlight">
+      <p style="margin:0;font-size:13px;color:#334155;"><em>The Agentic Enterprise Accelerator was designed, architected, and built independently. Seeing PwC land on the same core architecture on AgentCore tells us the pattern is right. The differentiation is the end-to-end coverage for a specific niche — discovery, design, generation, runtime, handoff, and optional AaaS — combined with AWS-native depth and healthcare payer vertical specialization that competitor materials do not match.</em></p>
+    </div>
+
+    <h3>Where the Agentic Enterprise Accelerator Adds Over the Common Pattern</h3>
+
+    <p>The core architecture is the right bet — converged across AWS (AgentCore), LangChain (LangGraph), and PwC's public implementation. The accelerator's value is the layer <strong>above</strong> that common foundation, which PwC's publicly disclosed materials do not describe.</p>
+
+    <ul>
+      <li><strong>Vertical packaging for healthcare payer</strong> — reference agents aligned to payer workflows (UM, CM, claims, prior-auth), HIPAA-eligible compliance evidence, PHI masking, payer-specific source system adapters.</li>
+      <li><strong>Explicit four-container architecture</strong> — named C1 (Agent Runtime), C2 (Platform Services), C3 (Tool Gateway), C4 (Control Plane) with defined boundaries and per-container deployment topology.</li>
+      <li><strong>Agent-type × reasoning-strategy overlay matrix</strong> — productized combinations (chat × ReAct, workflow × plan-execute, multi-agent × supervisor, summarization × reflection, etc.) each with strategy implementation, prompt scaffolding, and YAML config, discoverable in the Agent Factory UI.</li>
+      <li><strong>Agent Factory UI + template/scaffold pattern</strong> — operators scaffold, configure, and govern agents through a UI; platform writes the right templates and YAMLs behind the scenes.</li>
+      <li><strong>Policy-as-code governance from Container 4</strong> — prompts (versioned, lifecycle), HITL gates, memory scopes, RAG configuration (Stage × Source × Extraction), tool allow/deny, and LOB-namespaced tool catalogs — all in YAML, no redeploys.</li>
+      <li><strong>Multi-LOB isolation model</strong> — per-LOB AWS accounts, per-LOB Container 1 and Container 3 pairs, shared Container 2 and Container 4 with Agent ID + LOB namespace enforcement.</li>
+      <li><strong>Delivery-integrated</strong> — engagement playbook, customer handoff model, repo governance, CODEOWNERS-enforced platform/app split, template + scaffolded-instance pattern for reusable delivery.</li>
+    </ul>
+  </div>
+
+  <hr class="break"/>
+
 
   <!-- FOOTER -->
   <div class="footer">
     <div class="conf">Internal — Sales &amp; Solutions Enablement · AWS Practice</div>
-    <div class="conf">Intelligent Agent Accelerator for Healthcare · Technical Design · v1.0</div>
+    <div class="conf">Agentic Enterprise Accelerator for Healthcare · Technical Design · v1.0</div>
   </div>
 
 </div>

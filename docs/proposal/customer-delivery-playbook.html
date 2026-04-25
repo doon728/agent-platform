@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>Intelligent Agent Accelerator for Healthcare — Customer Delivery Playbook</title>
+<title>Agentic Enterprise Accelerator for Healthcare — Customer Delivery Playbook</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'Segoe UI',system-ui,sans-serif;background:#f8fafc;color:#0f172a;font-size:14px;line-height:1.6;}
@@ -145,6 +145,51 @@ tr:nth-child(even) td{background:#fafafa;}
 .cc-sec ul li::before{font-size:10px;}
 .cc-wire{margin-top:12px;padding-top:10px;border-top:1px dashed #e2e8f0;font-size:11px;color:#475569;line-height:1.55;}
 .cc-wire strong{color:#0f172a;}
+
+/* ── Print / PDF pagination rules ─────────────────────── */
+@media print {
+  /* Preserve backgrounds, colors, gradients in printed PDF */
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+
+  /* Page setup — standard Letter with 0.6in margins */
+  @page { size: Letter; margin: 0.6in; }
+
+  /* Body + page wrapper — no screen padding / max-width in print */
+  body { font-size: 10pt; background: white; padding: 0; margin: 0; }
+  .page { max-width: none; padding: 0; margin: 0; background: white; }
+
+  /* Cover ends first page */
+  .cover { page-break-after: always; break-after: page; }
+
+  /* Each major section starts on a new page (but not the first section after cover's forced break) */
+  .section { page-break-before: always; break-before: page; }
+  .section:first-of-type { page-break-before: auto; break-before: auto; }
+
+  /* Keep these compact blocks together on one page */
+  .highlight, .col-box, .lens, .phase-box, .cc, .flow-step, .deploy-col,
+  .ec, .wi, .folder-tree, .repo-tree, .deploy-flow, .flow, .uc-card,
+  .swim, .pointer, .cc-head, .cc-grid, .two-col, .eg {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Table handling — let long tables span pages, but keep individual rows together */
+  table { width: 100% !important; table-layout: auto; page-break-inside: auto; break-inside: auto; }
+  tr { page-break-inside: avoid; break-inside: avoid; page-break-after: auto; }
+  thead { display: table-header-group; }
+  tfoot { display: table-footer-group; }
+  td, th { word-wrap: break-word; overflow-wrap: break-word; }
+
+  /* Keep headings with following content */
+  h1, h2, h3, h4, h5 { page-break-after: avoid; break-after: avoid; page-break-inside: avoid; break-inside: avoid; }
+
+  /* Images / SVG should fit the page width */
+  img, svg { max-width: 100% !important; height: auto !important; }
+
+  /* Hide nothing, but avoid orphan paragraphs */
+  p { orphans: 3; widows: 3; }
+}
+
 </style>
 </head>
 <body>
@@ -154,21 +199,20 @@ tr:nth-child(even) td{background:#fafafa;}
   <div class="cover">
     <div class="aws-badge">⚡ AWS Practice</div>
     <div class="eyebrow">Customer Delivery Playbook — Companion Document</div>
-    <h1>Intelligent Agent Accelerator<br/>for Healthcare</h1>
+    <h1>Agentic Enterprise Accelerator<br/>for Healthcare</h1>
     <p class="tagline">How delivery teams apply the accelerator<br/>to healthcare payer customer engagements.</p>
     <div class="meta">
       <div class="meta-item">Companion To<span>Offering Proposal Summary</span></div>
-      <div class="meta-item">Audience<span>Engagement Leads · Architects · Delivery Teams</span></div>
-      <div class="meta-item">Runtime<span>AWS AgentCore + Bedrock</span></div>
       <div class="meta-item">Status<span>Delivery Playbook · v1.0</span></div>
     </div>
+    <p style="margin-top:20px;font-size:11px;color:#94a3b8;font-style:italic;">Created by Tarun Gaba</p>
   </div>
 
 
   <!-- INTRO -->
   <div class="section">
     <h2>About This Document</h2>
-    <p>This is the Customer Delivery Playbook for the <strong>Intelligent Agent Accelerator for Healthcare</strong>. It describes how delivery teams apply the accelerator to customer engagements — from discovery to handoff. The playbook is itself an artifact this offering produces; every engagement follows it.</p>
+    <p>This is the Customer Delivery Playbook for the <strong>Agentic Enterprise Accelerator for Healthcare</strong>. It describes how delivery teams apply the accelerator to customer engagements — from discovery to handoff. The playbook is itself an artifact this offering produces; every engagement follows it.</p>
     <p>For the business case behind the accelerator (opportunity, offering, ROI, build plan, ask), see the <em>Offering Proposal Summary</em>. For platform architecture, per-container detail, deployment model, repo governance, and technical limitations, see the <em>Accelerator Technical Design</em> companion document.</p>
 
     <div class="highlight">
@@ -246,7 +290,7 @@ tr:nth-child(even) td{background:#fafafa;}
       <li><strong>Define success metrics up front.</strong> Cycle-time reduction, manual-effort reduction, appeal approval rate, cost-per-case, audit-exception rate, care manager throughput — whichever apply to the chosen workflows.</li>
       <li><strong>Map system-of-record boundaries.</strong> Claims core, care management platform, prior-auth system, member database, data warehouse, IAM, logging.</li>
       <li><strong>Identify tool candidates.</strong> Read and write actions the agent needs exposed through the Tool Gateway to automate the workflow end to end.</li>
-      <li><strong>Confirm compliance posture.</strong> HIPAA controls, BAA coverage, data-residency expectations, audit-trail requirements.</li>
+      <li><strong>Confirm compliance posture.</strong> HIPAA controls, compliance coverage, data-residency expectations, audit-trail requirements.</li>
     </ul>
     <p>The output of discovery is a signed-off workflow map, success metrics, and an AWS deployment plan — enough to commit the build phase scope.</p>
 
@@ -359,7 +403,7 @@ tr:nth-child(even) td{background:#fafafa;}
           <li><strong>HIPAA controls matrix</strong> — every control, how the accelerator implements it, where it is enforced in code</li>
           <li><strong>Architecture security review</strong> — threat model, data flow diagrams, encryption, auth, and audit documentation</li>
           <li><strong>Scan reports</strong> — signed, version-tagged, tied to the exact code being deployed</li>
-          <li><strong>BAA-eligibility evidence</strong> — every AWS service used is HIPAA-eligible under BAA</li>
+          <li><strong>HIPAA compliance evidence</strong> — every AWS service used is HIPAA-eligible</li>
           <li><strong>Pen-test report with remediation trail</strong></li>
         </ul>
       </div>
@@ -409,7 +453,7 @@ tr:nth-child(even) td{background:#fafafa;}
   <!-- FOOTER -->
   <div class="footer">
     <div class="conf">Internal — Sales &amp; Solutions Enablement · AWS Practice</div>
-    <div class="conf">Intelligent Agent Accelerator for Healthcare · Customer Delivery Playbook · v1.0</div>
+    <div class="conf">Agentic Enterprise Accelerator for Healthcare · Customer Delivery Playbook · v1.0</div>
   </div>
 
 </div>

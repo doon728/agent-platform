@@ -4,6 +4,88 @@ Status key: ✅ Done | ⚠ Partial / Limitation | 🔲 Not Started
 
 ---
 
+## Architectural Decisions & Additions (Apr 2026)
+
+These items came out of the Apr 2026 design reviews (prototype-current-state.html §12 + agent-taxonomy-matrix.html) and must fold into the main backlog prioritization.
+
+### A1. C3 Tool Gateway — Refined Pattern A′ (hybrid)
+🔲 **Decision + implementation.** The C3 vs. AgentCore Tool Gateway integration pattern needs to be locked in as **Pattern A′ (refined hybrid)**:
+- **Tools register natively inside AgentCore Tool Gateway** (MCP server) for stateful MCP support and AWS-native serving.
+- **C3 becomes the policy + domain + RAG + governance layer *above* AgentCore Tool Gateway** — not a competing tool server.
+- C3 owns: per-agent allow/deny, PHI masking rules, HIPAA audit policy, RAG orchestration (multi-dim), healthcare domain pack curation, multi-runtime fallback adapter.
+- AgentCore Tool Gateway owns: tool serving, MCP protocol, stateful sessions, native AWS integration.
+- Document the 4 patterns (A, B, C, A′) with pros/cons in `docs/design/prototype-current-state.html` §12.3. Recommendation: A′ for v1.0.
+
+### A2. LOB (Line of Business) tool namespacing
+🔲 **Multi-LOB tool separation.** Each customer has multiple LOBs (UM, CM, PA, Appeals, Member Services, Claims, Fraud). Tools must be scoped by LOB.
+- **Namespace prefix** in tool ID: `um/get_member`, `cm/get_case`, `pa/submit_form`, `appeals/fetch_history`.
+- **Metadata tag** on tool manifest: `lob: ["um","pa"]` (tool can serve multiple LOBs).
+- **Per-agent allow-list** in overlay: `allowed_lobs: ["um"]` → agent only sees UM-tagged tools.
+- **Separate MCP servers per LOB (optional hard boundary)** for strict data isolation.
+
+### A3. Stateful MCP support in C3 (if Pattern A retained)
+🔲 **Conditional — only needed if C3 federates its own tools to AgentCore Gateway (Pattern A, not A′).** ~1–2 weeks of work. If Pattern A′ is chosen, this is unneeded (AgentCore TG handles stateful natively).
+
+### A4. workflow_agent type + durable agent session state
+🔲 **New agent type.** Covers C3 long-running category (PA review, appeals adjudication, outreach campaigns). Requires:
+- `workflow_agent` template with phased plan-execute graph.
+- **Durable agent session state** — checkpoint/resume for the agent's own reasoning loop (not a business WF engine). Options: AgentCore Runtime Filesystem Persistence (just shipped), Temporal-as-session-store, Step Functions-as-session-store.
+- HITL hardening for day-long pauses (token refresh, session rehydration).
+- Continue-as-new pattern for long-running event-history bloat.
+- **Not** a replacement for customer workflow engines (Camunda, Pega, IBM BPM, ServiceNow). AEA agents embed *inside* customer workflow steps.
+- Effort: 4–6 weeks.
+
+### A5. classifier_agent / triage_agent type
+🔲 **New agent type.** Covers C1 request-response (synchronous triage) and can extend to C4 event-driven triage and C5 batch classification. Single template, multiple invocation patterns.
+- Structured output (classification + fields + confidence).
+- `simple` reasoning strategy default; `ReAct` when enrichment tools needed.
+- Integration with document intake (document lands → triage → route to workflow).
+- Effort: ~1 week overlay work once the type template is in platform-core.
+
+### A6. Event adapter pre-graph (C4 Event-driven support)
+🔲 **Category extension.** Enables event-driven agents — agents triggered by Kafka / EventBridge / SQS / FHIR subscriptions.
+- Pre-graph adapter layer that subscribes to event sources, normalizes to invocation envelope.
+- Concurrency model (parallel agent instances per event batch).
+- DLQ + retry semantics.
+- Emit-as-output path (agent output fans back to event bus for downstream consumers).
+- Effort: 3–4 weeks.
+
+### A7. Agent Taxonomy reference — offering artifact
+✅ **Done — `docs/design/agent-taxonomy-matrix.html`** created as the canonical reference map of 8 categories × agent types × reasoning strategies × orchestration levels × AEA coverage. Includes healthcare payer + government use-case mapping. To be referenced in all customer and leadership conversations.
+
+### A8. Competitive positioning — updated
+- **AWS Bedrock AgentCore (Apr 2026 announcement)** shipped Managed Harness + CLI + coding-assistant skills + Filesystem Persistence. Overlaps with AEA generic platform layer. Healthcare domain, fleet control plane, HITL, multi-dim RAG, evaluation workbench remain differentiated.
+- **Microsoft Azure AI Foundry PA template (Apr 2026)** ships a 4-agent PA workflow with MCP tools + Pydantic output + OTel — essentially same pattern as AEA C7 multi-agent, on Azure. Validates direction. Differentiation: AEA is platform-agnostic, broader domain, fleet governance (not single template).
+- **AWS healthcare PA blog** — sequential pipeline with LLM steps (not true agentic). Customers already have workflow engines; AEA doesn't replace them.
+
+### A9. Agent embed-inside-customer-workflow posture
+🔲 **Positioning artifact.** Document explicitly that AEA agents are **embedded inside the customer's existing workflow engine** (Camunda, Pega, Step Functions, ServiceNow) as intelligent steps — not standalone workflow replacements. Add as callout in proposal + prototype-current-state.html.
+
+### A10. Dynamic routing — classifier layer in front of agent fleet
+🔲 **Critical — required for chatbot fleet use cases.** Reasoning strategy is fixed per-agent overlay (not switchable mid-run). So for a fleet of N chatbots (each with different strategy/tools/scope), we need a classifier that picks the right agent per query.
+
+**Architecture (additive, no fundamental change):**
+- New thin **router service** sits between UI and agent fleet.
+- Reads Agent Registry (C4) — knows what agents exist + their capabilities.
+- Classifies incoming query via lightweight LLM (Haiku) — picks best-match agent.
+- Forwards to chosen agent's `/invocations`. Streams response back.
+- C1/C2/C3 unchanged; Agent Factory UI adds a "routing hints" field to agent manifests.
+
+**Agent manifest extension:**
+```yaml
+routing_hints:
+  query_patterns: ["simple lookup", "single fact", "status of X"]
+  strategy_profile: simple
+  confidence_floor: 0.7
+```
+
+**Effort:** ~1–2 weeks.
+**Why critical:** (a) required for the client chatbot fleet use case (Tom/Joe conversation); (b) architectural answer to "how does AEA support dynamic reasoning selection" without changing the per-overlay strategy model; (c) Anthropic's "routing" pattern implemented concretely.
+
+**Placement:** new service in C4 control plane area (route-fit with Agent Registry consumer).
+
+---
+
 ## Next 10 Items to Build — Prioritized
 
 | # | Item | Type | Why Now |
@@ -2307,3 +2389,74 @@ Source: "Agentic Design Patterns: A Hands-On Guide to Building Intelligent Syste
    **monitoring_agent is the most natural fit** — already designed to run on a schedule or threshold. Event-driven gives it the trigger infrastructure it needs.
 
    **All agent types benefit:** pre-call assessment triggered by patient admission event, summarization triggered by document upload, extraction triggered by EHR record change, workflow triggered by order placement.
+
+---
+
+## Design Assessment — 8-Dimension Stress Critique
+
+**Methodology:** Red team + implementation reality check + frontier benchmarking. Scored 1–10 with honest notes on intent vs built vs battle-tested. Captured here to inform future design decisions and backlog prioritization.
+
+| # | Dimension | Today | Post v1.0 | Honest note |
+|---|---|---|---|---|
+| 1 | Architectural Complexity | 7/10 | 7/10 | Production-grade, not frontier research. 4-container split may over-scope for small payers. |
+| 2 | Engineering Discipline | 7.5/10 | 8/10 | Policy-as-code split is well-reasoned. 24-week plan is optimistic; offshore-heavy = knowledge-transfer risk. |
+| 3 | Pattern Selection & Execution | 8/10 (intent) | 8/10 (verified) | Same patterns PwC validated. Execution score depends on code audit. |
+| 4 | Pattern Novelty | 5–6/10 (intentional) | 5–6/10 | Established patterns = production-ready, low research risk. Not a weakness for SI. |
+| 5 | Architecture Objectives | 8/10 (intent) / 6–7 (built) | 8/10 | Documented intent strong. Customer ownership + Four Modes unproven in real engagement. |
+| 6 | Pattern Application & Reuse | 7/10 | 7.5/10 | Template + scaffold + overlay matrix is strong. No pattern recommendation / analytics / evolution. |
+| 7 | Adoption / Distribution | 7/10 | 8/10 | Git-native + CODEOWNERS + full IP transfer beats Big 4 peers. Manual fork creation; unproven until first engagement. |
+| 8 | Code Quality & Hygiene | 6–7/10 (tentative) | 8/10 (post-audit) | Not directly reviewed. Architectural thoughtfulness is positive signal; prototype gaps expected. Phase 1 audit required. |
+| | **Overall** | **~6.8–7/10** | **~7.5/10** | |
+
+**Dimension-level red-team notes:**
+
+- **#3 Pattern Execution:** Based on design docs, not verified against running code. Phase 1 audit confirms or adjusts.
+- **#5 Architecture Objectives:** Customer-deployed model, Four Modes, HIPAA compliance claim — all documented intent; none proven in a real customer engagement yet. First customer will stress-test.
+- **#7 Adoption Model:** Master repo not yet created (Phase 1 pre-req). Manual fork creation, no automated master→fork sync (drift risk after 5+ engagements). AWS Agent Starter Pack is more polished.
+- **#8 Code Quality:** Cannot rate without direct code review. Signals are positive (thoughtful architecture, explicit backlog, proactive self-awareness on "vibe coding"); typical prototype gaps expected (test coverage, hardcoded values, secrets handling, docstrings).
+
+### Phase 1 Code Audit — Scope & Effort
+
+**Duration:** 2 weeks (matches Phase 1 in the 24-week build plan)
+**Team:** Platform Architect (lead) + 1 offshore developer (supporting)
+**Deliverables:** Prototype Current-State Documentation + code audit report + technical debt inventory + remediation plan (what to fix in v1.0 vs what's v1.1+)
+
+**Audit activities (per week):**
+
+*Week 1:*
+- **Automated scans (2 days):** linting (pylint, ruff, mypy), security scans (TruffleHog / Gitleaks for secrets, SAST basic), dependency audit (safety, pip-audit)
+- **Architecture conformance (3 days):** does code match architecture docs? Are the 4 containers cleanly separated? Are overlays implemented per the matrix? Is policy-as-code actually YAML-driven?
+
+*Week 2:*
+- **Test coverage + quality assessment (2 days):** what's tested, what's not; unit vs integration vs E2E
+- **Technical debt inventory (2 days):** code smells, hardcoded values, magical numbers, copy-paste, coupling, naming inconsistencies
+- **Module walkthrough documentation (1 day):** Prototype Current-State Documentation companion doc produced
+
+**Red-flag checklist used during audit:**
+
+| Signal | Quick check |
+|---|---|
+| Missing unit tests | `grep -r "def test_" --include="*.py" | wc -l` |
+| Hardcoded secrets | TruffleHog / Gitleaks |
+| Magical numbers | Linter + review |
+| Inconsistent error handling | Exception pattern review across modules |
+| Copy-pasted code | Duplication scanner (jscpd, pylint) |
+| No type hints | `mypy --strict` pass rate |
+| Missing docstrings | Docstring coverage tool |
+| Loose coupling violations | Import graph analysis |
+| Missing input validation | Pydantic usage audit |
+| Poor git history | Commit message / squash review |
+
+**Audit output drives:**
+- Code remediation work added to backlog (v1.0 blockers vs v1.1+ items)
+- Prototype Current-State Documentation (companion doc, required pre-req before offshore onboarding)
+- Architectural Decision Records (ADRs) captured for anything discovered during audit
+- Target: move dimension #3 (Pattern Execution) and dimension #8 (Code Quality) from tentative to verified 8/10
+
+**Why this audit is a pre-requisite (not v1.0 work):**
+- Offshore team needs current-state knowledge before working on the code
+- Unresolved debt compounds faster after multiple contributors join
+- Customer-facing IP transfer demands code hygiene — cannot hand over a prototype "as-is"
+- Self-aware audit is itself a differentiator vs SIs who skip this step
+
+---

@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Agentic Enterprise Accelerator for Healthcare — PR/FAQ</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#f8fafc;color:#0f172a;font-size:14px;line-height:1.6;}
+
+.page{max-width:900px;margin:0 auto;padding:48px 48px 80px;}
+
+.cover{text-align:center;padding:60px 0 48px;border-bottom:3px solid #FF9900;margin-bottom:48px;}
+.cover .eyebrow{font-size:12px;font-weight:800;letter-spacing:3px;text-transform:uppercase;color:#FF9900;margin-bottom:16px;}
+.cover h1{font-size:38px;font-weight:900;letter-spacing:-.5px;line-height:1.15;margin-bottom:12px;color:#0f172a;}
+.cover .tagline{font-size:18px;color:#475569;font-weight:500;margin-bottom:32px;}
+.cover .meta{display:flex;justify-content:center;gap:32px;flex-wrap:wrap;}
+.cover .meta-item{font-size:12px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:1px;}
+.cover .meta-item span{display:block;font-size:14px;color:#334155;font-weight:700;text-transform:none;letter-spacing:0;margin-top:2px;}
+
+.section{margin-bottom:40px;}
+.section-num{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:2px;color:#FF9900;margin-bottom:4px;}
+.section h2{font-size:22px;font-weight:900;color:#0f172a;margin-bottom:14px;padding-bottom:6px;border-bottom:2px solid #e2e8f0;}
+.section h3{font-size:15px;font-weight:800;color:#1e293b;margin:18px 0 8px;}
+
+p{margin-bottom:10px;color:#334155;}
+
+.pr-headline{font-size:24px;font-weight:900;color:#0f172a;line-height:1.25;margin-bottom:6px;}
+.pr-subhead{font-size:15px;color:#475569;font-style:italic;margin-bottom:18px;}
+.pr-dateline{font-size:12px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-bottom:14px;}
+
+.quote{background:#fff8e6;border-left:4px solid #FF9900;padding:14px 18px;border-radius:0 8px 8px 0;margin:14px 0;}
+.quote p{margin:0;font-style:italic;color:#334155;font-size:13.5px;}
+.quote .attr{display:block;margin-top:8px;font-size:11.5px;color:#92400e;font-style:normal;font-weight:700;}
+
+.faq-q{font-weight:800;color:#0f172a;margin-top:16px;margin-bottom:4px;font-size:14px;}
+.faq-a{color:#334155;margin-bottom:10px;}
+
+.how-list{margin:6px 0 10px 0;list-style:none;}
+.how-list li{padding:3px 0 3px 16px;position:relative;color:#334155;}
+.how-list li::before{content:"→";position:absolute;left:0;color:#FF9900;font-weight:700;}
+
+.footer{margin-top:48px;padding-top:20px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;}
+.footer .conf{font-size:11px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:1px;}
+
+.break{border:none;border-top:1px dashed #e2e8f0;margin:36px 0;}
+
+.pointer{background:#f1f5f9;border-left:3px solid #94a3b8;padding:10px 14px;border-radius:0 6px 6px 0;margin:14px 0;font-size:12.5px;color:#475569;font-style:italic;}
+.pointer strong{color:#334155;font-style:normal;}
+
+@media print {
+  /* Preserve backgrounds and colors when printed */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  /* Page setup — Letter size, 0.6in margins */
+  @page { size: Letter; margin: 0.6in; }
+
+  /* Body and page wrapper — strip screen padding */
+  body {
+    font-size: 10.5pt;
+    line-height: 1.5;
+    background: white;
+    padding: 0;
+    margin: 0;
+    color: #0f172a;
+  }
+  .page { max-width: none; padding: 0; margin: 0; background: white; }
+
+  /* Compact cover sits at the top of page 1 — no page break after, so the PR starts on page 1 directly */
+  .cover {
+    page-break-after: avoid;
+    break-after: avoid;
+    padding: 0 0 14px;
+    margin-bottom: 18px;
+    border-bottom: 2px solid #FF9900;
+    text-align: left;
+  }
+  .cover .eyebrow { font-size: 9pt; margin-bottom: 4px; }
+  .cover h1 {
+    font-size: 18pt;
+    line-height: 1.15;
+    margin-bottom: 4px;
+  }
+  .cover h1 br { display: none; }
+  .cover p { font-size: 9pt; margin: 0; }
+
+  /* Sections flow naturally — no forced page breaks between PR, Customer FAQ, Internal FAQ */
+  .section {
+    page-break-before: auto;
+    break-before: auto;
+    margin-bottom: 20px;
+  }
+  .section h2 { font-size: 16pt; margin-bottom: 10px; }
+  .section h3 { font-size: 12pt; }
+
+  /* Press release — headline, sub-headline, dateline stay together with lead */
+  .pr-headline {
+    font-size: 18pt;
+    page-break-after: avoid;
+    break-after: avoid;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  .pr-subhead {
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+
+  /* Quotes stay intact on one page */
+  .quote {
+    page-break-inside: avoid;
+    break-inside: avoid;
+    margin: 12px 0;
+  }
+
+  /* Keep each FAQ Q + following A together — both question and answer on same page */
+  .faq-q {
+    page-break-after: avoid;
+    break-after: avoid;
+    page-break-inside: avoid;
+    break-inside: avoid;
+    margin-top: 14px;
+  }
+  .faq-a {
+    page-break-inside: avoid;
+    break-inside: avoid;
+    margin-bottom: 10px;
+  }
+
+  /* Headings stay with the content that follows them */
+  h1, h2, h3, h4 {
+    page-break-after: avoid;
+    break-after: avoid;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Paragraphs — avoid orphaned first/last lines */
+  p { orphans: 3; widows: 3; }
+
+  /* Bullet lists — let the list split across pages but keep each li whole */
+  ul, .how-list {
+    page-break-inside: auto;
+    break-inside: auto;
+  }
+  li {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Footer at bottom of last page */
+  .footer {
+    margin-top: 24px;
+    padding-top: 16px;
+  }
+
+  /* Divider rules — let them breathe around page boundaries */
+  .break { margin: 20px 0; }
+
+  /* Hide nothing by default, but don't print links' URL suffixes */
+  a { color: #0277bd; text-decoration: underline; }
+  a::after { content: none !important; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- COVER -->
+  <div class="cover">
+    <div class="eyebrow">PR / FAQ</div>
+    <h1>Agentic Enterprise Accelerator<br/>for Healthcare</h1>
+    <p style="margin-top:20px;font-size:11px;color:#94a3b8;font-style:italic;">Created by Tarun Gaba</p>
+  </div>
+
+
+  <!-- 1. PRESS RELEASE -->
+  <div class="section">
+    <div class="section-num">Press Release</div>
+
+    <h2 class="pr-headline">TEKsystems Launches Agentic Enterprise Accelerator for Healthcare Payers</h2>
+    <p class="pr-subhead">Pre-built digital buddies for payer workflows on Amazon Bedrock AgentCore. Production agents in weeks, not months.</p>
+
+    <p><strong>October 1, 2026</strong> — TEKsystems today introduces the Agentic Enterprise Accelerator for Healthcare — a pre-built, reusable platform that deploys <strong>digital buddies</strong> into healthcare payer workflows such as care management, prior authorization, claims triage, and member engagement. Each digital buddy is an enterprise-ready AI agent purpose-built for one payer workflow, configured and tailored during the engagement, and handed to the customer's team to own and extend.</p>
+
+    <p>Payer AI projects usually start by rebuilding the same platform plumbing every time — orchestration, memory, tool gateways, compliance controls. Teams spend the first several months of an engagement on infrastructure before any business logic gets written. Meanwhile, the business waits.</p>
+
+    <p>The Agentic Enterprise Accelerator starts customers further along. Built on Amazon Bedrock AgentCore, it ships with reference agents for common payer workflows, a four-container architecture, HIPAA-grade compliance posture, and a delivery playbook. Customers reach working production agents in weeks instead of months, and the full codebase and documentation transfer to the customer's AI COE at engagement end.</p>
+
+    <div class="quote">
+      <p>"Healthcare payers know where AI belongs — care coordination, prior auth, claims, member engagement. What slows them down is rebuilding the platform every time. We built it once, tailored for payer workflows, deployed in their AWS account. They move in weeks, own what they get, and skip the platform foundation work entirely."</p>
+      <span class="attr">— TEKsystems AWS Practice Lead</span>
+    </div>
+
+    <h3>How it works</h3>
+    <ul class="how-list">
+      <li>Deploys inside the customer's own AWS account — patient, claims, and member data stay within their existing network boundary</li>
+      <li>Reference agents arrive pre-configured and get tailored to the customer's specific workflows during the engagement</li>
+      <li>Prompts, tool access, HITL approval gates, memory scopes, and RAG patterns are <strong>config-driven</strong> — defined in YAML, versioned, and updated without redeploys</li>
+      <li>HIPAA-grade compliance posture, PHI handling, and audit logging are built in, not bolted on</li>
+      <li>Full codebase — HIPAA-aligned, security-reviewed, engagement-ready — along with configuration and documentation, transfers to the customer's AI COE at engagement end. The customer owns what they received.</li>
+    </ul>
+
+    <div class="quote">
+      <p>"We came in as early adopters while the accelerator was in preview. TEKsystems walked in with pre-built digital buddies for our workflows and a HIPAA-compliant platform where prompts, tool access, and HITL gates are configured in YAML — not rebuilt from code. Our first agent was in production in two weeks. Care Manager Assessment prep time dropped 70% — freeing clinical capacity worth an estimated $8M+ annually in productivity, driving outreach throughput, and contributing to measurable improvement in our CMS Star ratings on care coordination. Our engineering team stayed focused on domain work, not rebuilding the platform."</p>
+      <span class="attr">— Fictional Payer AI COE Lead, Early Adopter (illustrative)</span>
+    </div>
+
+    <h3>Availability</h3>
+    <p>The Agentic Enterprise Accelerator is available for healthcare payer engagements today. Three payer-tuned reference agent templates ship with v1.0 — Prior Authorization Denial Remediation, Pre-Call Assessment for Care Management, and Claims Triage — with more added as the accelerator evolves across engagements. Demo and engagement scoping: contact the TEKsystems AWS Practice.</p>
+  </div>
+
+
+  <hr class="break"/>
+
+
+  <!-- 2. CUSTOMER FAQ -->
+  <div class="section">
+    <div class="section-num">FAQ · Customer-Facing</div>
+    <h2>Customer FAQ</h2>
+    <p>What payer CIOs, AI COE leads, and business sponsors ask.</p>
+
+    <p class="faq-q">1. What do we actually get?</p>
+    <p class="faq-a">A complete, governed AI agent platform deployed in your AWS account — not slideware, not a hosted service. Specifically:</p>
+    <ul style="margin:4px 0 10px 20px;padding:0;font-size:13px;color:#334155;line-height:1.55;">
+      <li><strong>Three pre-built digital buddies</strong> for core payer workflows — Prior Authorization Denial Remediation, Pre-Call Assessment for Care Management, and Claims Triage. More added in future releases.</li>
+      <li><strong>Agent Factory UI</strong> — configure, extend, and govern agents through a console; no custom development required for standard agents</li>
+      <li><strong>Platform capabilities built in</strong> — reasoning patterns (ReAct, plan-execute, multi-hop, reflection, multi-agent), four-scope memory, multi-dimensional RAG, schema-validated tool gateway, and versioned prompt management</li>
+      <li><strong>Governance built in</strong> — HITL approval gates per agent, PHI masking, audit trails, policy-driven tool access, and an <strong>Agent Registry</strong> as the single source of truth for every agent deployed</li>
+      <li><strong>Observability and evaluation</strong> — per-agent traces, lineage across reasoning steps, business-metric dashboards, eval framework for continuous quality measurement</li>
+      <li><strong>HIPAA compliance posture</strong> plus evidence package for your InfoSec team, and full Infrastructure as Code with CI/CD</li>
+      <li><strong>Full codebase, configuration, and documentation</strong> transferred to your AI COE at engagement end</li>
+    </ul>
+    <p class="faq-a">Your team owns what's delivered — extend it, version it, run it on your terms.</p>
+
+    <p class="faq-q">2. Where does it run?</p>
+    <p class="faq-a">Inside your own AWS account. Patient, claims, and member data stays within your existing network boundary — accessed via AWS PrivateLink or Direct Connect, never over the public internet. HIPAA compliance posture and audit logging are built in.</p>
+
+    <p class="faq-q">3. Do we own it after the engagement?</p>
+    <p class="faq-a">Yes. Full codebase — HIPAA-aligned, security-reviewed, engagement-ready — along with configuration and documentation, transfers to your AI COE when the engagement ends. Your team owns it, can extend it, version it, or modify it however you want. No vendor lock.</p>
+
+    <p class="faq-q">4. How is this different from building on Amazon Bedrock AgentCore ourselves?</p>
+    <p class="faq-a">AgentCore ships the infrastructure primitives — runtime, memory, gateway, identity, observability. You still have to build the reasoning patterns, the human-in-the-loop approval service, RAG orchestration, the governance layer, and the vertical logic for payer workflows. The Accelerator is that layer — already built, already tested against a working reference agent, packaged for payer use.</p>
+
+    <p class="faq-q">5. How fast can we reach production?</p>
+    <p class="faq-a">Weeks of tailoring on top of a working foundation, instead of months rebuilding platform plumbing. The exact timeline depends on your workflows, integrations, and internal approval cycles. The first reference agent runs end-to-end on day one; the customer-specific agent is built on top during the engagement.</p>
+
+    <p class="faq-q">6. What measurable outcomes should we expect?</p>
+    <p class="faq-a">Two kinds. <strong>Workflow outcomes</strong> (per agent): shorter prep time, faster cycle times, higher completion or approval rates, less manual rework. For example — care managers cut the 20–40 minutes of prep per outreach call; prior-auth denials get faster appeal turnaround and higher approval rates; claims triage reduces rework on misrouted submissions. <strong>IT and delivery outcomes</strong>: faster time to first production agent (weeks instead of months), lower engagement cost (your IT funds domain tailoring, not platform rebuild), and each subsequent workflow reaches production faster as the platform patterns compound across agents.</p>
+
+    <p class="faq-q">7. What if our compliance or security team doesn't accept parts of it?</p>
+    <p class="faq-a">Four engagement modes are supported — full deployment, partial or hybrid deployment, reference-only (architecture as blueprint), and enablement-only (no code deployed; design and enablement support). Every mode delivers value; the shape varies based on what your environment allows.</p>
+
+    <p class="faq-q">8. We already have an AI COE. Why do we need this?</p>
+    <p class="faq-a">Your COE builds domain workflows faster because they skip the platform rebuild. The Accelerator becomes part of your platform foundation; your team extends it the same way they would extend any internal platform. Where you have an existing approach, those components can replace parts of the Accelerator — we do not require wholesale replacement of what you already have.</p>
+  </div>
+
+
+  <hr class="break"/>
+
+
+  <!-- 3. INTERNAL FAQ -->
+  <div class="section">
+    <div class="section-num">FAQ · Internal</div>
+    <h2>Internal FAQ</h2>
+    <p>What TEKsystems practice leadership, Sales and Solutions, and Delivery ask.</p>
+
+    <p class="faq-q">1. What's in v1.0, and what's coming next?</p>
+    <p class="faq-a">v1.0 ships with three payer-tuned reference agent templates (PA Denial Remediation, Pre-Call Assessment for Care Management, Claims Triage), the four-container platform on Amazon Bedrock AgentCore, the pre-built payer tool library, Amazon Connect integration pattern, IDP pipelines via Bedrock Data Automation, full Infrastructure as Code, CI/CD, PHI masking (as pre-response interceptor architecture), platform-level security evidence, and the delivery playbook. Future releases add additional reference agents, richer reasoning strategies, and expanded RAG patterns as the accelerator absorbs learnings from each engagement.</p>
+
+    <p class="faq-q">2. How do Sales and Solutions teams use it?</p>
+    <p class="faq-a">Live demo in pre-sales meetings. RFP responses lean on the pre-built reference agents and the compliance evidence package. Working proof of capability replaces slides and hypothetical designs. Every pitch walks in with a working asset, not a whiteboard.</p>
+
+    <p class="faq-q">3. How do Delivery teams use it?</p>
+    <p class="faq-a">Every engagement starts from the accelerator repo — no more rebuilding the platform layer on every project. Delivery teams tailor reference agents to the customer's workflows and use the delivery playbook for consistency. Staffing is broader — configuration work, not specialist-only platform construction.</p>
+
+    <p class="faq-q">4. What if the customer does not accept the full deployment?</p>
+    <p class="faq-a">Four engagement modes cover that — full deployment, partial or hybrid, reference-only, enablement-only. Even in the most restricted mode, we still skip the whiteboard phase and deliver faster than a bespoke build. ROI does not depend on any single customer accepting full deployment.</p>
+
+    <p class="faq-q">5. Is anyone else doing this already?</p>
+    <p class="faq-a">Major SIs are moving in this direction. PwC has published a case study on building multi-agent systems on the same platform — Amazon Bedrock AgentCore with LangGraph orchestration. Several independent practitioners converging on the same pattern validates the platform choice. We differentiate on healthcare payer vertical depth, the four-container architecture, agent-type × reasoning-strategy overlays, policy-as-code governance, and the delivery playbook — none of which competitor materials describe. Details are in the Accelerator Technical Design companion document.</p>
+
+    <p class="faq-q">6. What does the flywheel look like over time?</p>
+    <p class="faq-a">Each engagement reuses and refines the accelerator — reference agents grow, case studies accumulate, the playbook sharpens. Sales cycle shortens, win rate climbs, delivery throughput improves. Every engagement compounds the next.</p>
+
+    <p class="faq-q">7. The accelerator is built for healthcare payer — can it extend to other industries?</p>
+    <p class="faq-a">Yes. The architecture is domain-agnostic. Healthcare payer is the first vertical because that's where TEKsystems has deepest workflow knowledge. What changes per vertical: <strong>tool gateway catalog</strong> (different source systems), <strong>reference agents</strong> (different workflows), <strong>compliance evidence</strong>, and often <strong>LLM model choice</strong> (domain-trained models). The core architecture, reasoning strategies, HITL, RAG, and governance layer stay the same.</p>
+  </div>
+
+
+  <p style="margin-top:28px;margin-bottom:14px;font-size:12px;color:#64748b;font-style:italic;text-align:center;">An internal exercise — the press release and FAQ we would write the day the accelerator ships.</p>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <div class="conf">Internal — Sales &amp; Solutions Enablement · AWS Practice</div>
+    <div class="conf">Agentic Enterprise Accelerator for Healthcare · PR/FAQ · v1.0</div>
+  </div>
+
+</div>
+</body>
+</html>

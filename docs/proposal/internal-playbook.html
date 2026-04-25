@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>Intelligent Agent Accelerator for Healthcare — Internal Playbook</title>
+<title>Agentic Enterprise Accelerator for Healthcare — Internal Playbook</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'Segoe UI',system-ui,sans-serif;background:#f8fafc;color:#0f172a;font-size:14px;line-height:1.6;}
@@ -61,6 +61,51 @@ code{background:#f1f5f9;padding:1px 5px;border-radius:3px;font-family:'SF Mono',
 .footer .conf{font-size:11px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:1px;}
 
 .break{border:none;border-top:1px dashed #e2e8f0;margin:36px 0;}
+
+/* ── Print / PDF pagination rules ─────────────────────── */
+@media print {
+  /* Preserve backgrounds, colors, gradients in printed PDF */
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+
+  /* Page setup — standard Letter with 0.6in margins */
+  @page { size: Letter; margin: 0.6in; }
+
+  /* Body + page wrapper — no screen padding / max-width in print */
+  body { font-size: 10pt; background: white; padding: 0; margin: 0; }
+  .page { max-width: none; padding: 0; margin: 0; background: white; }
+
+  /* Cover ends first page */
+  .cover { page-break-after: always; break-after: page; }
+
+  /* Each major section starts on a new page (but not the first section after cover's forced break) */
+  .section { page-break-before: always; break-before: page; }
+  .section:first-of-type { page-break-before: auto; break-before: auto; }
+
+  /* Keep these compact blocks together on one page */
+  .highlight, .col-box, .lens, .phase-box, .cc, .flow-step, .deploy-col,
+  .ec, .wi, .folder-tree, .repo-tree, .deploy-flow, .flow, .uc-card,
+  .swim, .pointer, .cc-head, .cc-grid, .two-col, .eg {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Table handling — let long tables span pages, but keep individual rows together */
+  table { width: 100% !important; table-layout: auto; page-break-inside: auto; break-inside: auto; }
+  tr { page-break-inside: avoid; break-inside: avoid; page-break-after: auto; }
+  thead { display: table-header-group; }
+  tfoot { display: table-footer-group; }
+  td, th { word-wrap: break-word; overflow-wrap: break-word; }
+
+  /* Keep headings with following content */
+  h1, h2, h3, h4, h5 { page-break-after: avoid; break-after: avoid; page-break-inside: avoid; break-inside: avoid; }
+
+  /* Images / SVG should fit the page width */
+  img, svg { max-width: 100% !important; height: auto !important; }
+
+  /* Hide nothing, but avoid orphan paragraphs */
+  p { orphans: 3; widows: 3; }
+}
+
 </style>
 </head>
 <body>
@@ -69,20 +114,20 @@ code{background:#f1f5f9;padding:1px 5px;border-radius:3px;font-family:'SF Mono',
   <!-- COVER -->
   <div class="cover">
     <div class="eyebrow">Internal Playbook — Companion Document</div>
-    <h1>Intelligent Agent Accelerator<br/>for Healthcare</h1>
+    <h1>Agentic Enterprise Accelerator<br/>for Healthcare</h1>
     <p class="tagline">How the practice manages the accelerator,<br/>and how internal developers work with it.</p>
     <div class="meta">
       <div class="meta-item">Companion To<span>Offering Proposal Summary</span></div>
-      <div class="meta-item">Audience<span>Platform Team · Internal Developers · Architects</span></div>
       <div class="meta-item">Status<span>Internal Playbook · v1.0</span></div>
     </div>
+    <p style="margin-top:20px;font-size:11px;color:#94a3b8;font-style:italic;">Created by Tarun Gaba</p>
   </div>
 
 
   <!-- INTRO -->
   <div class="section">
     <h2>About This Document</h2>
-    <p>This is the Internal Playbook for the <strong>Intelligent Agent Accelerator for Healthcare</strong>. It describes how the practice's Platform Team manages the master accelerator repo and how internal developers work with the accelerator — locally for development and on the practice's playground AgentCore for real-runtime testing.</p>
+    <p>This is the Internal Playbook for the <strong>Agentic Enterprise Accelerator for Healthcare</strong>. It describes how the practice's Platform Team manages the master accelerator repo and how internal developers work with the accelerator — locally for development and on the practice's playground AgentCore for real-runtime testing.</p>
     <p>This document is separate from the <em>Customer Delivery Playbook</em>, which describes how delivery teams use the accelerator in customer engagements. Read both together when necessary; they share the same underlying accelerator but address different audiences.</p>
 
     <div class="highlight">
@@ -114,7 +159,7 @@ code{background:#f1f5f9;padding:1px 5px;border-radius:3px;font-family:'SF Mono',
       <li>Approve all changes to <code>platform-core/</code>, <code>platform-services/</code>, <code>shared-infra/</code>, <code>platform-tools/</code>, <code>templates/</code>, and <code>iac/</code></li>
       <li>Publish versioned releases (<code>v1.0</code>, <code>v1.1</code>, …) and release notes</li>
       <li>Coordinate security scans, SBOM generation, and penetration tests per release</li>
-      <li>Maintain the compliance evidence package (HIPAA controls, architecture security review, BAA service list)</li>
+      <li>Maintain the compliance evidence package (HIPAA controls, architecture security review, HIPAA-eligible service list)</li>
       <li>Review and merge pull requests from engagement teams that suggest platform improvements</li>
     </ul>
 
@@ -192,7 +237,7 @@ docker-compose up
       <li><strong>Reference agents</strong> already running at their respective ports (pre-call assessment chat at <code>localhost:5173</code>, etc.)</li>
       <li><strong>C2, C3, C4</strong> running as docker services with their APIs exposed internally</li>
       <li><strong>Mock claims / care-management fixtures</strong> loaded so agents can call "real" tools against fake payer data</li>
-      <li><strong>Local LLM access</strong> — configured to use Bedrock (via practice-issued IAM role) or OpenAI proxy (practice-issued scoped token) for non-PHI exploration</li>
+      <li><strong>Local LLM access</strong> — configured to use the practice-approved LLM provider (via practice-issued IAM role) or the practice exploration proxy (practice-issued scoped token) for non-PHI exploration</li>
     </ul>
 
     <h3>Scaffolding a New Agent</h3>
@@ -248,7 +293,7 @@ git merge upstream/v1.1
     <div class="section-num">Section 3</div>
     <h2>Deploying to Practice Playground AgentCore</h2>
 
-    <p>Local <code>docker-compose</code> covers most internal development. When a developer needs to test against real AWS AgentCore — verify managed runtime behavior, long-running session durability, real Bedrock latency, real memory service behavior — they deploy to the practice's <strong>playground AgentCore</strong> environment.</p>
+    <p>Local <code>docker-compose</code> covers most internal development. When a developer needs to test against real managed services — verify managed runtime behavior, long-running session durability, real LLM latency, real managed memory behavior — they deploy to the practice's <strong>playground AgentCore</strong> environment.</p>
 
     <h3>What the Playground Is</h3>
     <ul>
@@ -278,7 +323,7 @@ make deploy-playground AGENT_NAME=jane-doe-chat-agent
     <h3>What the Playground Is For</h3>
     <ul>
       <li>Verify the agent runs on AgentCore as expected (not just docker-compose)</li>
-      <li>Test real Bedrock latency and model behavior against production-like infrastructure</li>
+      <li>Test real LLM latency and model behavior against production-like managed infrastructure</li>
       <li>Exercise memory persistence across sessions using the real managed memory service</li>
       <li>Validate observability wiring — traces, metrics, logs in the expected shape</li>
       <li>Demo to internal stakeholders or sales teams in an environment that isn't a laptop</li>
@@ -371,48 +416,21 @@ make teardown-playground AGENT_NAME=jane-doe-chat-agent
     <div class="section-num">Section 5</div>
     <h2>LLM Keys &amp; Model Access for Internal Use</h2>
 
-    <p>Internal developers need LLM access for exploration and testing. The practice manages this centrally so developers never handle raw API keys.</p>
+    <p>Internal developers need LLM access for exploration and testing. The practice manages access centrally so developers never handle raw API keys.</p>
 
     <h3>Access Pattern</h3>
     <ul>
-      <li><strong>Bedrock (primary)</strong> — each developer receives a practice-issued IAM role with scoped Bedrock access. No static API keys. Role assumes from the developer's laptop via SSO.</li>
-      <li><strong>OpenAI proxy (optional, non-PHI only)</strong> — practice-run LiteLLM or equivalent proxy; developers receive a scoped, short-lived proxy token. Daily spend cap enforced at the proxy.</li>
-      <li><strong>No raw OpenAI / Anthropic keys on developer laptops</strong></li>
+      <li><strong>Practice-approved LLM providers</strong> — each developer receives a practice-issued IAM role (for primary-provider access) or a scoped proxy token (for non-PHI exploration through the practice-run proxy). No static API keys, no raw vendor keys on developer laptops.</li>
+      <li><strong>Provider selection</strong> — providers available for internal use are on the TEKsystems-approved LLM provider list and may change as the list evolves.</li>
     </ul>
 
     <h3>Model Availability</h3>
-    <table>
-      <tr>
-        <th>Model</th>
-        <th>Internal Use</th>
-        <th>Access Path</th>
-      </tr>
-      <tr>
-        <td><strong>Claude Opus 4.7</strong></td>
-        <td>Complex reasoning, research-grade work; reserved because expensive</td>
-        <td>Bedrock</td>
-      </tr>
-      <tr>
-        <td><strong>Claude Sonnet 4.6</strong></td>
-        <td>Default workhorse for internal development</td>
-        <td>Bedrock</td>
-      </tr>
-      <tr>
-        <td><strong>Claude Haiku 4.5</strong></td>
-        <td>Fast and cheap — classification, extraction, high-volume testing</td>
-        <td>Bedrock</td>
-      </tr>
-      <tr>
-        <td><strong>GPT-4o / 4o-mini</strong></td>
-        <td>Exploration only, never against PHI</td>
-        <td>OpenAI proxy</td>
-      </tr>
-    </table>
+    <p>Specific models are drawn from the <strong>TEKsystems-approved model list</strong>. Developers choose per-agent in <code>agent.yaml</code> based on reasoning complexity, latency budget, and cost envelope. Consult the current approved model list before scaffolding a new agent; the practice primary-provider path is used for production-aligned development and the practice proxy is used for non-PHI exploration only.</p>
 
     <h3>Cost Controls</h3>
     <ul>
-      <li>Per-developer daily spend caps at the OpenAI proxy</li>
-      <li>AWS Budgets alerts on the playground AWS account (50% / 80% / 100% of monthly cap)</li>
+      <li>Per-developer daily spend caps enforced at the practice proxy</li>
+      <li>Cloud account budget alerts on the playground account (50% / 80% / 100% of monthly cap)</li>
       <li>Per-agent cost metrics visible in the Agent Factory UI (even in local dev)</li>
       <li>Platform Team reviews monthly spend and adjusts caps as needed</li>
     </ul>
@@ -469,7 +487,7 @@ make teardown-playground AGENT_NAME=jane-doe-chat-agent
   <!-- FOOTER -->
   <div class="footer">
     <div class="conf">Internal — Practice Team Use Only · AWS Practice</div>
-    <div class="conf">Intelligent Agent Accelerator for Healthcare · Internal Playbook · v1.0</div>
+    <div class="conf">Agentic Enterprise Accelerator for Healthcare · Internal Playbook · v1.0</div>
   </div>
 
 </div>

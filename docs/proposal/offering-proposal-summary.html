@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Agentic Enterprise Accelerator for Healthcare — Offering Proposal</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#f8fafc;color:#0f172a;font-size:14px;line-height:1.6;}
+
+.page{max-width:900px;margin:0 auto;padding:48px 48px 80px;}
+
+/* Cover */
+.cover{text-align:center;padding:60px 0 48px;border-bottom:3px solid #FF9900;margin-bottom:48px;}
+.cover .eyebrow{font-size:12px;font-weight:800;letter-spacing:3px;text-transform:uppercase;color:#FF9900;margin-bottom:16px;}
+.cover h1{font-size:38px;font-weight:900;letter-spacing:-.5px;line-height:1.15;margin-bottom:12px;color:#0f172a;}
+.cover .tagline{font-size:18px;color:#475569;font-weight:500;margin-bottom:32px;}
+.cover .meta{display:flex;justify-content:center;gap:32px;flex-wrap:wrap;}
+.cover .meta-item{font-size:12px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:1px;}
+.cover .meta-item span{display:block;font-size:14px;color:#334155;font-weight:700;text-transform:none;letter-spacing:0;margin-top:2px;}
+.aws-badge{display:inline-flex;align-items:center;gap:8px;background:#232f3e;color:#FF9900;padding:6px 16px;border-radius:6px;font-size:12px;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin-bottom:24px;}
+
+/* Sections */
+.section{margin-bottom:40px;}
+.section-num{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:2px;color:#FF9900;margin-bottom:4px;}
+.section h2{font-size:22px;font-weight:900;color:#0f172a;margin-bottom:14px;padding-bottom:6px;border-bottom:2px solid #e2e8f0;}
+.section h3{font-size:15px;font-weight:800;color:#1e293b;margin:18px 0 8px;}
+.section h4{font-size:13px;font-weight:800;color:#334155;margin:14px 0 6px;}
+
+p{margin-bottom:10px;color:#334155;}
+ul{margin:6px 0 10px 0;list-style:none;}
+ul li{padding:3px 0 3px 16px;position:relative;color:#334155;}
+ul li::before{content:"→";position:absolute;left:0;color:#FF9900;font-weight:700;}
+
+/* Highlight */
+.highlight{background:#fff8e6;border-left:4px solid #FF9900;padding:12px 16px;border-radius:0 8px 8px 0;margin:14px 0;}
+.highlight strong{color:#92400e;}
+
+/* Tables */
+table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px;}
+th{background:#232f3e;color:#FF9900;padding:9px 12px;text-align:left;font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:.8px;}
+td{padding:8px 12px;border-bottom:1px solid #f1f5f9;color:#334155;vertical-align:top;}
+tr:nth-child(even) td{background:#fafafa;}
+
+/* Lens cards (opportunity + ROI) */
+.lens{background:white;border:1.5px solid #e2e8f0;border-radius:10px;padding:14px 16px;margin:10px 0;}
+.lens h4{font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:1.2px;color:#FF9900;margin:0 0 6px 0;}
+.lens p{font-size:13px;line-height:1.55;margin:0;}
+
+/* Phases */
+.phases{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:12px 0;}
+.phase-box{background:white;border:1.5px solid #e2e8f0;border-radius:10px;padding:12px 10px;text-align:center;}
+.phase-box .phase-num{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:1px;color:#FF9900;margin-bottom:4px;}
+.phase-box .phase-name{font-size:12px;font-weight:800;color:#0f172a;margin-bottom:4px;}
+.phase-box .phase-dur{font-size:10px;color:#64748b;font-weight:600;}
+
+/* Two-col */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:12px 0;}
+.col-box{background:white;border:1.5px solid #e2e8f0;border-radius:10px;padding:14px 16px;}
+.col-box h4{font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin-bottom:8px;}
+.col-box ul li{font-size:12px;padding:2px 0 2px 12px;}
+.col-box ul li::before{font-size:10px;}
+
+/* Footer */
+.footer{margin-top:48px;padding-top:20px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;}
+.footer .conf{font-size:11px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:1px;}
+
+.break{border:none;border-top:1px dashed #e2e8f0;margin:36px 0;}
+
+.pointer{background:#f1f5f9;border-left:3px solid #94a3b8;padding:10px 14px;border-radius:0 6px 6px 0;margin:14px 0;font-size:12.5px;color:#475569;font-style:italic;}
+.changed{background:#fef2f2 !important;border-left:3px solid #dc2626 !important;}
+.changed td{background:#fef2f2 !important;}
+.change-text{background:#fee2e2;padding:1px 4px;border-radius:3px;color:#b91c1c;font-weight:600;}
+.pointer strong{color:#334155;font-style:normal;}
+
+/* ── Print / PDF pagination rules ─────────────────────── */
+@media print {
+  /* Preserve backgrounds, colors, gradients in printed PDF */
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+
+  /* Page setup — standard Letter with 0.6in margins */
+  @page { size: Letter; margin: 0.6in; }
+
+  /* Body + page wrapper — no screen padding / max-width in print */
+  body { font-size: 10pt; background: white; padding: 0; margin: 0; }
+  .page { max-width: none; padding: 0; margin: 0; background: white; }
+
+  /* Cover ends first page */
+  .cover { page-break-after: always; break-after: page; }
+
+  /* Each major section starts on a new page (but not the first section after cover's forced break) */
+  .section { page-break-before: always; break-before: page; }
+  .section:first-of-type { page-break-before: auto; break-before: auto; }
+
+  /* Keep these compact blocks together on one page */
+  .highlight, .col-box, .lens, .phase-box, .cc, .flow-step, .deploy-col,
+  .ec, .wi, .folder-tree, .repo-tree, .deploy-flow, .flow, .uc-card,
+  .swim, .pointer, .cc-head, .cc-grid, .two-col, .eg {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Table handling — let long tables span pages, but keep individual rows together */
+  table { width: 100% !important; table-layout: auto; page-break-inside: auto; break-inside: auto; }
+  tr { page-break-inside: avoid; break-inside: avoid; page-break-after: auto; }
+  thead { display: table-header-group; }
+  tfoot { display: table-footer-group; }
+  td, th { word-wrap: break-word; overflow-wrap: break-word; }
+
+  /* Keep headings with following content */
+  h1, h2, h3, h4, h5 { page-break-after: avoid; break-after: avoid; page-break-inside: avoid; break-inside: avoid; }
+
+  /* Images / SVG should fit the page width */
+  img, svg { max-width: 100% !important; height: auto !important; }
+
+  /* Hide nothing, but avoid orphan paragraphs */
+  p { orphans: 3; widows: 3; }
+}
+
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- COVER -->
+  <div class="cover">
+    <div class="eyebrow">Offering Proposal — Summary</div>
+    <h1>Agentic Enterprise Accelerator<br/>for Healthcare</h1>
+    <p class="tagline">A pre-built, enterprise-ready AI agent accelerator.</p>
+    <div class="meta">
+      <div class="meta-item">Status<span>Proposal · v1.0</span></div>
+    </div>
+    <p style="margin-top:20px;font-size:11px;color:#94a3b8;font-style:italic;">Created by Tarun Gaba</p>
+  </div>
+
+
+  <!-- 1. EXECUTIVE SUMMARY -->
+  <div class="section">
+    <div class="section-num">Section 1</div>
+    <h2>Executive Summary</h2>
+
+    <p>The <strong>Agentic Enterprise Accelerator</strong> deploys agentic AI at enterprise scale on Amazon Bedrock AgentCore — <strong>pre-built digital buddies</strong> for healthcare payer workflows that orchestrate across claims, member, and care management systems, manage state, and adhere to HIPAA-grade governance.</p>
+
+    <p>The <strong>Agentic Enterprise Accelerator for Healthcare</strong> is a pre-built, reusable platform and delivery asset designed for healthcare payer AI engagements. It ships with <strong>enterprise-ready pre-built agents for core payer workflows</strong> — and the scaffolding to rapidly <strong>create new agents tailored to each customer's specific requirements</strong>. Compliance controls and a security evidence package come bundled. The accelerator is built once by the practice and maintained as a versioned asset the delivery teams and internal developers can draw on.</p>
+
+    <div class="highlight">
+      <strong>The ask.</strong> Approve this proposal. Delivery engagements shift from bespoke builds to accelerator-based delivery. Customers reach production agents in weeks instead of months. The practice gains a repeatable, sellable healthcare payer AI service.
+    </div>
+
+    <p style="font-size:12.5px;color:#64748b;font-style:italic;margin-top:10px;">The current proposal is for the accelerator. Should leadership choose to pivot toward an <strong style="color:#334155;font-style:normal;">Intelligent Agent Platform</strong> offered as <strong style="color:#334155;font-style:normal;">Agent-as-a-Service</strong>, the same architecture supports it — no rework required. The decision is strategic, not technical.</p>
+
+    <p style="font-size:12.5px;color:#64748b;font-style:italic;margin-top:10px;">While the accelerator is built for healthcare payers first, the architecture is domain-agnostic. The same platform and patterns can be adapted to financial services, insurance, and other regulated industries with similar compliance, auditability, and integration requirements — extending the practice's return beyond healthcare.</p>
+  </div>
+
+
+  <!-- 2. OPPORTUNITY -->
+  <div class="section">
+    <div class="section-num">Section 2</div>
+    <h2>Opportunity</h2>
+
+    <p>The <strong>Agentic Enterprise Accelerator for Healthcare</strong> solves the bespoke-build problem. Any new agentic AI engagement should not start from a blank repo — rebuilding platform capabilities (orchestration, memory, tool gateways, HITL, compliance controls) before the actual workflow begins. The accelerator provides a pre-built foundation that an agentic AI engagement can draw on: architectural patterns proven in a reference implementation, reusable platform components, and pre-built agent templates — creating a repeatable healthcare payer offering for the practice.</p>
+
+    <div class="lens">
+      <h4>Solution and Sales</h4>
+      <p>Solution and Sales teams gain a repeatable healthcare payer AI offering they can position, price, and sell consistently. Pre-built reference agents and a working demo make pre-sales faster — RFPs go out with working evidence, not slideware. The result is a sellable service line with a known shape, not a one-off build each time.</p>
+    </div>
+
+    <div class="lens">
+      <h4>Delivery</h4>
+      <p>Delivery teams don't start every engagement from scratch. They inherit a working platform, reference agents, and a delivery playbook. Engagements finish in weeks instead of months, staffing is simpler, and every team delivers to the same standard — no more rebuilding the same plumbing on every project.</p>
+    </div>
+
+    <div class="lens">
+      <h4>Customer AI COE / App Teams</h4>
+      <p>Payer AI COE and app teams have AI infrastructure and models available but lack a repeatable approach for building agent systems at scale. The accelerator delivers a reference architecture exercised against a working agent and a reusable platform foundation, so their team focuses on workflow implementation rather than platform construction.</p>
+    </div>
+
+    <div class="lens">
+      <h4>Customer Business</h4>
+      <p>High-value workflows — care management outreach, prior-auth remediation, claims triage — are well-suited for AI automation but remain constrained by manual effort and integration complexity. The accelerator enables AI agents to be built and deployed into these workflows faster, with compliance patterns built into the platform.</p>
+    </div>
+  </div>
+
+  <hr class="break"/>
+
+
+  <!-- 3. THE OFFERING -->
+  <div class="section">
+    <div class="section-num">Section 3</div>
+    <h2>The Offering</h2>
+
+    <p>This offering produces the Agentic Enterprise Accelerator for Healthcare — a curated set of reusable, enterprise-ready artifacts built once and applied across every customer engagement.</p>
+
+    <h3>What the Offering Produces</h3>
+    <table>
+      <tr>
+        <th style="width:230px;white-space:nowrap;">Artifact</th>
+        <th>What It Is</th>
+      </tr>
+      <tr>
+        <td style="white-space:nowrap;"><strong>Container platform (C1–C4)</strong></td>
+        <td>Four deployable, secured containers: agent runtime (thin shell, runs on Amazon Bedrock AgentCore Runtime), platform services (LangGraph-based, runs on ECS/Fargate, shared per tenant), tool gateway (runs on ECS/Fargate, shared per tenant), control plane (runs on ECS/Fargate, per tenant). Each container ships with least-privilege IAM, encryption at rest and in transit, audit logging, and an evidence trail tied to the release version. Same code runs locally under docker-compose.</td>
+      </tr>
+      <tr>
+        <td style="white-space:nowrap;"><strong>Backend adapters</strong></td>
+        <td>Memory, RAG, and graph backends for AWS-native stores (pgvector, OpenSearch, Bedrock Knowledge Bases, DynamoDB, S3, Neptune) behind a single swappable interface.</td>
+      </tr>
+      <tr>
+        <td style="white-space:nowrap;"><strong>Infrastructure as Code</strong></td>
+        <td>Terraform modules and AWS CDK stacks for the full AWS footprint — AgentCore, ECS/Fargate, RDS, ElastiCache, OpenSearch, Secrets Manager, KMS, CloudTrail.</td>
+      </tr>
+      <tr>
+        <td style="white-space:nowrap;"><strong>CI/CD pipelines</strong></td>
+        <td>Build, test, eval, security scan, ECR push, and environment promotion templates.</td>
+      </tr>
+      <tr>
+        <td style="white-space:nowrap;"><strong>Agent templates</strong></td>
+        <td>Overlay-pattern templates covering the agent-type × reasoning-strategy matrix — seven agent types combined with five reasoning strategies. Operators scaffold new agents by picking the template that matches.</td>
+      </tr>
+      <tr>
+        <td style="white-space:nowrap;"><strong>Agent Factory UI</strong></td>
+        <td>Admin web UI to scaffold, configure, govern, and observe agents without writing code.</td>
+      </tr>
+      <tr>
+        <td style="white-space:nowrap;"><strong>Agent Registry</strong></td>
+        <td>Single source of truth for every agent deployed <strong>across AWS accounts</strong> — indexed by Agent ID and LOB namespace, with prompts, RAG config, tools, and domain.yaml catalogued per agent. Used for governance, audit trail, version tracking, and cross-capability discovery.</td>
+      </tr>
+      <tr>
+        <td style="white-space:nowrap;"><strong>Authentication &amp; authorization patterns</strong></td>
+        <td>User authentication (SSO / Cognito / OIDC), service-to-service auth across the four containers, tool authentication to external payer systems, agent-level authorization (allow-listed tools, scoped memory access), and per-tenant scope enforcement for multi-LOB deployments. Applied at every layer of the platform.</td>
+      </tr>
+      <tr>
+        <td style="white-space:nowrap;"><strong>Compliance patterns</strong></td>
+        <td><span class="change-text"><strong>PHI masking as enforcement architecture</strong> (pre-response interceptor in C1, not just commodity detection)</span>, HITL approval gates, audit logging, KMS encryption, IAM least-privilege, HIPAA-compliant service selection — reusable modules, not documentation.</td>
+      </tr>
+      <tr>
+        <td style="white-space:nowrap;"><strong>Security &amp; compliance evidence package</strong></td>
+        <td>Bundled with every release: SAST / DAST / SCA scan reports, SBOM, container scans, secrets scans, internal penetration test, HIPAA controls matrix, architecture security review. Customer InfoSec reviews become validation, not discovery.</td>
+      </tr>
+      <tr class="changed">
+        <td style="white-space:nowrap;"><strong>Three pre-built reference agent templates</strong></td>
+        <td>Three end-to-end working payer-tuned agent templates: <strong>Prior Authorization Denial Remediation</strong>, <strong>Pre-Call Assessment for Care Management</strong>, <strong>Claims Triage</strong>. Each with payer-tuned prompts, tool configs, HITL gate patterns, and domain.yaml scope. Demo-ready and engagement-ready. The overlay matrix (agent-type × reasoning-strategy) remains a platform capability — the Agent Factory UI scaffolds any combination on demand.</td>
+      </tr>
+      <tr class="changed">
+        <td style="white-space:nowrap;"><strong>Pre-built payer tool library</strong></td>
+        <td>Tool wrappers with request/response schemas for publicly documented healthcare APIs — FHIR R4 resources, entity-level payer APIs (<code>get_claim</code>, <code>check_eligibility</code>, <code>get_prior_auth_status</code>, etc.), InterQual, MCG, Availity, Change Healthcare, and EHR FHIR (Epic, Cerner, Athena). Customer plugs in endpoints and credentials per engagement.</td>
+      </tr>
+      <tr class="changed">
+        <td style="white-space:nowrap;"><strong>Amazon Connect integration pattern</strong></td>
+        <td>Reference pattern for Connect-to-agent wiring — Connect calls agent endpoints via standard API for voice and chat member-facing channels. Agents expose endpoints; Connect handles channel.</td>
+      </tr>
+      <tr class="changed">
+        <td style="white-space:nowrap;"><strong>Intelligent Document Processing pipelines</strong></td>
+        <td>IDP via Bedrock Data Automation, exposed through the Tool Gateway — for payer documents (EOBs, clinical notes, appeal letters, PA request forms). Invocable by any agent that processes documents.</td>
+      </tr>
+      <tr>
+        <td style="white-space:nowrap;"><strong>Internal Playbook</strong></td>
+        <td>Runbook for the practice — how the Platform Team manages the master accelerator repo, how internal developers work with it locally and on the playground AgentCore sandbox, release cadence, governance model, and LLM key management for internal use.</td>
+      </tr>
+      <tr>
+        <td style="white-space:nowrap;"><strong>Customer Delivery Playbook</strong></td>
+        <td>Runbook for how engagement teams apply the accelerator to customer delivery — discovery motion, phase structure, team composition, customer security review process, engagement repo patterns, Four Modes of Accelerator Application, and handoff procedures.</td>
+      </tr>
+      <tr>
+        <td style="white-space:nowrap;"><strong>Demo + Demo Script</strong></td>
+        <td>A working end-to-end demo environment plus a presentation script. Used in customer pitches, internal enablement, and RFP responses. Keeps every customer conversation anchored to the same credible working demonstration.</td>
+      </tr>
+    </table>
+
+    <div class="highlight">
+      <p style="margin:0;font-size:13px;color:#334155;">Industry analyst taxonomies (<a href="https://www.gartner.com/en/articles/intelligent-agent-in-ai">Gartner</a>, <a href="https://www.wwt.com/blog/top-20-agentic-ai-use-cases-for-healthcare-in-2026">WWT</a>, <a href="https://www.mckinsey.com/industries/healthcare/our-insights/healthcare-blog/what-are-ai-agents-and-what-can-they-do-for-healthcare">McKinsey</a>) cluster healthcare payer agentic AI use cases into a consistent pattern set — workflow automation (claims, prior auth, RCM), care management, triage, monitoring, chat, summarization, and multi-agent orchestration. The accelerator's <strong>agent-type × reasoning-strategy overlay matrix</strong> covers these patterns directly. Based on this coverage, approximately <strong>80% of healthcare payer agentic AI engagements</strong> can be delivered from the accelerator foundation without new platform work — only the remaining ~20% (highly custom or novel patterns) require platform extensions.</p>
+    </div>
+
+    <h3>Built on Amazon Bedrock AgentCore</h3>
+    <p><strong>AgentCore is the infrastructure foundation, not a delivered solution.</strong> The accelerator is the reasoning, governance, productization, and vertical layer every healthcare payer engagement would otherwise rebuild from scratch.</p>
+    <table>
+      <tr>
+        <th>AgentCore provides<br><span style="font-weight:400;font-size:10px;color:#e2e8f0;text-transform:none;letter-spacing:0;">(out-of-the-box primitives)</span></th>
+        <th>Agentic Enterprise Accelerator adds</th>
+      </tr>
+      <tr>
+        <td>Runtime, Memory, Identity — infrastructure services</td>
+        <td>Reasoning strategies (ReAct, plan-execute, multi-hop, reflection) as graph patterns in LangGraph</td>
+      </tr>
+      <tr>
+        <td>LLM inference via Bedrock</td>
+        <td>HITL service — approval gates, durable state, audit trail, YAML-driven gates per agent</td>
+      </tr>
+      <tr>
+        <td>Per-agent container hosting with session isolation</td>
+        <td>Multi-dimensional RAG orchestration — Stage × Source × Extraction, per agent</td>
+      </tr>
+      <tr>
+        <td>Observability — infra-level traces, spans, metrics, logs</td>
+        <td>Domain observability — per-capability dashboards, eval surface, HITL outcome tracing, business-metric enrichment</td>
+      </tr>
+      <tr>
+        <td>Gateway, Prompt Management, Guardrails — general-purpose primitives</td>
+        <td>LOB-namespaced tool catalogs + per-agent allow/deny · prompt lifecycle (draft → active → retired) versioned per agent · PHI masking + HIPAA compliance evidence on top of Guardrails</td>
+      </tr>
+      <tr>
+        <td>— (not provided)</td>
+        <td>Agent-type × reasoning-strategy overlay matrix + Agent Factory UI + policy-as-code governance</td>
+      </tr>
+      <tr>
+        <td>— (not provided)</td>
+        <td>Healthcare payer vertical — reference agents, workflows, PHI masking, compliance evidence, payer source system adapters</td>
+      </tr>
+      <tr>
+        <td>— (not provided)</td>
+        <td>Delivery playbook + engagement model + customer handoff</td>
+      </tr>
+    </table>
+    <p style="font-size:12.5px;color:#64748b;"><em>Full "What We Plan to Build vs. What AgentCore Provides" table is in the Accelerator Technical Design companion document.</em></p>
+
+    <h3>Accelerator Differentiation</h3>
+    <p>The architectural patterns are shared with Amazon Bedrock AgentCore. The accelerator's differentiation is what sits on top of them:</p>
+    <ol style="margin:6px 0 10px 22px;padding:0;font-size:13px;color:#334155;line-height:1.7;">
+      <li><strong>Vertical packaging</strong> — healthcare payer-specific patterns, workflows, and compliance posture. AgentCore is domain-agnostic; this accelerator ships with payer context baked in.</li>
+      <li><strong>Delivery-integrated</strong> — comes with a Delivery Playbook, demo + demo script, security evidence package, and pre-built reference agents. Not code alone; a full engagement-ready asset.</li>
+      <li><span class="change-text"><strong>Three pre-built reference agent templates</strong> — PA Denial Remediation, Pre-Call Assessment for Care Management, Claims Triage — each with payer-tuned content. The overlay matrix (agent-type × reasoning-strategy) remains available as a platform capability via the Agent Factory UI.</span></li>
+    </ol>
+
+    <div class="changed" style="background:#fef2f2;border-left:3px solid #dc2626;padding:12px 16px;margin:14px 0;border-radius:0 6px 6px 0;">
+      <p style="margin:0;font-size:13px;"><strong>On PHI masking.</strong> Amazon Comprehend Medical and AWS Bedrock Guardrails are the AWS services that detect PHI. The accelerator uses them — doesn't replace them. What the accelerator adds: the PHI check is already wired into the agent flow. When an agent generates a response, the response passes through this check (which calls Amazon's service) before it reaches the user. If PHI is found, it gets masked. Rules for what to mask per agent live in YAML config. The accelerator ships with this pre-built — customer doesn't have to wire it themselves.</p>
+    </div>
+
+    <h3 class="change-text" style="display:inline-block;">Tier 1 (Shipped with v1.0) and Tier 2 (Per Engagement)</h3>
+    <p class="change-text">Not everything is pre-built. Some work is genuinely customer-specific and happens during engagement, not in the accelerator build.</p>
+    <table>
+      <tr class="changed">
+        <th>Tier 1 — Shipped with v1.0</th>
+        <th>Tier 2 — Delivered during engagement (customer-specific)</th>
+      </tr>
+      <tr class="changed">
+        <td>Platform code (four containers), reasoning strategies, HITL service, memory and RAG orchestration, Agent Registry, Agent Factory UI, policy-as-code governance</td>
+        <td>Customer-specific source system adapters (their Epic / Cerner / TruCare / care management platform instances)</td>
+      </tr>
+      <tr class="changed">
+        <td>Three reference agent templates (payer-tuned)</td>
+        <td>Customer-specific compliance evidence — pipeline that generates evidence from the customer's actual deployment</td>
+      </tr>
+      <tr class="changed">
+        <td>Pre-built tool library for publicly documented APIs (FHIR, InterQual, MCG, Availity, Change Healthcare, EHR FHIR)</td>
+        <td>Domain observability dashboards tuned to customer-specific KPIs</td>
+      </tr>
+      <tr class="changed">
+        <td>Amazon Connect integration pattern; IDP pipelines via Bedrock Data Automation</td>
+        <td>Custom agents beyond the three reference templates, scaffolded from the overlay matrix and tailored to customer workflows</td>
+      </tr>
+      <tr class="changed">
+        <td>Platform-level security evidence (SAST / DAST / SBOM per release, pen-test, HIPAA controls matrix)</td>
+        <td>Customer-specific tool integrations (licensed clinical engines, customer middleware)</td>
+      </tr>
+    </table>
+
+    <h3>Deployment Flexibility — Intelligent Agent Platform as Agent-as-a-Service</h3>
+    <p>The same architecture supports an alternative deployment where TEKsystems runs <strong>Platform Services, Tool Gateway + MCP Server, and Control Plane</strong> multi-tenant, with only a thin <strong>Run Plane</strong> deploying into the customer's AWS account. Data stays within customer boundary — tools reach customer systems via AWS PrivateLink. No additional architectural work; only the deployment topology changes. This is a strategic business-model option, not a separate build.</p>
+
+    <div class="pointer"><strong>Technical detail:</strong> Platform capabilities, reference architecture, per-container breakdown, deployment model, repo governance, LLM keys/cost controls, technical limitations, and current prototype state — see the <em>Accelerator Technical Design</em> companion document.</div>
+  </div>
+
+  <hr class="break"/>
+
+
+  <!-- 4. ROI -->
+  <div class="section">
+    <div class="section-num">Section 4</div>
+    <h2>ROI of Building This Offering</h2>
+
+    <p>Building the accelerator is a one-time investment. The return shows up across three audiences — practice, customer IT, customer business — each measuring ROI differently.</p>
+
+    <h3 style="color:#FF9900;border-left:4px solid #FF9900;padding-left:10px;">Lens A — TEKsystems Sales and Solutions</h3>
+    <ul>
+      <li><strong>Walks in with a working asset, not slides</strong> — live demo and reference agents make the pitch concrete</li>
+      <li><strong>Establishes credibility vs. competitors</strong> — working demo + reference agents + compliance evidence differentiate TEKsystems from SIs still pitching whiteboard designs. <strong>Resulting in: higher win rate in competitive selections, stronger RFP positioning.</strong></li>
+      <li><strong>Wins more deals, faster</strong> — pre-built demo, RFP-ready agents, and compliance evidence shorten the sales cycle. <strong>Resulting in: higher win rate, shorter sales cycle, faster pipeline velocity.</strong></li>
+      <li><strong>Sellable service line with a known shape</strong> — positioned, priced, and sold consistently instead of bespoke every time</li>
+    </ul>
+    <p style="font-size:12.5px;color:#334155;font-style:italic;margin-top:6px;">Flywheel: each win strengthens the reference deck — case studies, proof points, pricing benchmarks. The next pitch gets easier; pipeline compounds.</p>
+
+    <h3 style="color:#0277bd;border-left:4px solid #0277bd;padding-left:10px;">Lens B — TEKsystems Delivery</h3>
+    <ul>
+      <li><strong>Delivery teams don't start from scratch</strong> — inherit a working platform, reference agents, and a delivery playbook</li>
+      <li><strong>Engagements finish faster</strong> — weeks of customer-specific tailoring instead of months rebuilding platform plumbing. <strong>Resulting in: shorter engagement duration, stronger project margin, higher delivery throughput per team.</strong></li>
+      <li><strong>Staffing is simpler</strong> — broader engineer pool on configuration work, less dependence on specialist-only teams</li>
+    </ul>
+    <p style="font-size:12.5px;color:#334155;font-style:italic;margin-top:6px;">Flywheel: every engagement feeds learnings and new reference agents back into the accelerator. Next engagement is faster, stronger, more consistent.</p>
+
+    <h3 style="color:#2e7d32;border-left:4px solid #2e7d32;padding-left:10px;">Lens C — Customer AI COE / App Teams</h3>
+    <ul>
+      <li><strong>Less time and spend per engagement</strong> — IT funds domain tailoring, not the platform layer they'd otherwise build from scratch</li>
+      <li><strong>Speed to market for their business</strong> — production agents in weeks instead of months; business-side KPIs hit sooner</li>
+      <li><strong>No IP held back</strong> — full codebase, configuration, and documentation handed over at engagement end; IT owns what they received</li>
+    </ul>
+
+    <h3 style="color:#6a1b9a;border-left:4px solid #6a1b9a;padding-left:10px;">Lens D — Customer Business (Flagship Use Cases)</h3>
+
+    <h4>Pre-Call Assessment for Care Management</h4>
+    <ul>
+      <li><strong>Problem</strong> — care managers spend 20–40 minutes per outreach call on preparation (claims, care plans, notes, gaps); most of that is information assembly, not clinical work</li>
+      <li><strong>Agent</strong> — before the call, assembles member history, open gaps, risk flags, and relevant payer guidelines; HITL gate lets the care manager accept, edit, or reject before writing to the case</li>
+      <li><strong>ROI levers</strong> — prep time per call reduced · outreach volume per care manager per day increases · care plan note quality improves · rework from missed information declines</li>
+    </ul>
+
+    <h4>Prior Authorization Denial Remediation</h4>
+    <ul>
+      <li><strong>Problem</strong> — PA denials require manual review of denial reason, documentation gaps, policy rules, appeal drafting, and resubmission, often across multiple systems and often missing deadlines</li>
+      <li><strong>Agent</strong> — classifies denial reason, identifies missing documentation, pulls clinical policy criteria, assembles the appeal package, and routes for clinical review; HITL holds before submission</li>
+      <li><strong>ROI levers</strong> — appeal turnaround time reduced · approval rate improves · manual effort per denial reduced · missed-deadline leakage reduced</li>
+    </ul>
+
+    <h4>Other Supported Workflows</h4>
+    <ul>
+      <li>Care gap closure — identify, prioritize, draft plan updates</li>
+      <li>Clinical summarization — structured summaries of visit notes and case histories</li>
+      <li>Risk monitoring — event-driven alerts on threshold breaches</li>
+      <li>Claims triage — extract, validate, route, flag anomalies for review</li>
+      <li>Member engagement — self-service eligibility, benefits verification</li>
+    </ul>
+
+    <div class="pointer"><strong>For the complete list of healthcare payer use cases and detailed ROI analysis, see:</strong> <a href="#">[link to be added]</a></div>
+  </div>
+
+  <hr class="break"/>
+
+
+  <!-- 5. ACCELERATOR USE -->
+  <div class="section">
+    <div class="section-num">Section 5</div>
+    <h2>How the Agentic Enterprise Accelerator Is Adopted</h2>
+
+    <p>The accelerator serves two audiences: internal engineers and solutions teams, and customers during delivery engagements. Each audience uses the accelerator differently; each has its own companion playbook covering the detail.</p>
+
+    <p>The accelerator lives as a <strong>master repo</strong> owned by the Platform Team. Internal developers clone a sandbox from it for POCs and demos. For a customer engagement, the Platform Team creates an <strong>engagement fork</strong> that the delivery team tailors during delivery and hands to the customer as their source of truth. <em>Full repo governance, branch model, and clone mechanics are in the Internal Playbook and Accelerator Technical Design companion documents (currently work in progress).</em></p>
+
+    <h3>Inside TEKsystems</h3>
+    <p>Internal engineers and solutions teams apply the accelerator as soon as it is released — not only during customer engagements. Typical internal activities:</p>
+    <ul>
+      <li><strong>Onboarding</strong> — engineers and solutions teams review the Internal Playbook (master repo governance, local dev workflow, playground AgentCore usage, release cadence, LLM key management) before working with the accelerator</li>
+      <li><strong>POCs and exploration</strong> — create a sandbox repo from the master template, run the platform locally with <code>docker-compose up</code>, scaffold agents through the Agent Factory UI in minutes</li>
+      <li><strong>Pre-sales demos and RFP responses</strong> — use the pre-built reference agents and working demo script to show capability without building from scratch for every conversation</li>
+      <li><strong>Design and prototype work ahead of engagements</strong> — validate customer-specific agent designs against the platform before engagement kickoff</li>
+      <li><strong>Real-runtime validation</strong> — optional deploy to the practice's playground AgentCore sandbox to test against real AWS managed services (AgentCore Runtime, Memory, Identity, Gateway, Observability, and Bedrock) before customer deployment</li>
+      <li><strong>Feedback and feature requests</strong> — engineers suggest features, report issues, and provide delivery feedback; the Platform Team evaluates and incorporates improvements into the master repo in future releases</li>
+    </ul>
+    <div class="pointer"><strong>Internal detail — Platform Team ownership model, master repo governance, local development workflow, playground AgentCore usage, release cadence, LLM key management for internal use — is in the <em>Internal Playbook</em> companion document.</strong></div>
+
+    <h3>At the Customer — Four Modes</h3>
+    <p>Not every customer will accept every part of the accelerator into their environment. Healthcare payers have strict policies on what runs in their AWS accounts, what code they accept from outside, and which open-source dependencies they approve. The accelerator is structured so it delivers value across a spectrum — from full deployment down to reference-only use — without losing its benefit to the delivery team.</p>
+
+    <table>
+      <tr>
+        <th style="width:180px;white-space:nowrap;">Mode</th>
+        <th>Deployed to Customer</th>
+        <th>Customer AI COE Post-Handoff</th>
+      </tr>
+      <tr>
+        <td style="white-space:nowrap;"><strong>1. Full deployment</strong></td>
+        <td>Entire accelerator (all four containers, IaC, agents, admin UI) in customer AWS; engagement repo handed over as their master copy</td>
+        <td>Owns platform code and templates. Scaffolds new agents independently. Pulls our upstream releases or freezes on the version they received.</td>
+      </tr>
+      <tr>
+        <td style="white-space:nowrap;"><strong>2. Partial / hybrid</strong></td>
+        <td>Selected components accepted; others rebuilt or swapped for customer-standard equivalents</td>
+        <td>Owns the deployed portion plus the custom integration layer. Upstream release adoption depends on which components they accepted.</td>
+      </tr>
+      <tr>
+        <td style="white-space:nowrap;"><strong>3. Reference only</strong></td>
+        <td>Nothing deployed; customer builds their own version using our architecture as blueprint</td>
+        <td>Owns what they built. No ongoing upstream relationship with us on platform code.</td>
+      </tr>
+      <tr>
+        <td style="white-space:nowrap;"><strong>4. Enablement only</strong></td>
+        <td>No deployment, no code sharing; used for design, demo, and enablement</td>
+        <td>No code ownership. Customer uses the enablement to inform their own build-vs-buy decisions.</td>
+      </tr>
+    </table>
+
+    <div class="highlight">
+      <strong>Why this matters:</strong> the value of building this accelerator does not depend on any single customer accepting full deployment. Every engagement captures some subset of the value — and in the worst case (mode 4), the practice still skips the whiteboard phase and delivers faster.
+    </div>
+
+    <div class="pointer"><strong>Per-mode detail — what exactly the customer receives, deployment shape, AI COE role, and when each mode fits — is in the <em>Customer Delivery Playbook</em> companion document.</strong></div>
+  </div>
+
+  <hr class="break"/>
+
+
+  <!-- 6. INTERNAL BUILD PLAN -->
+  <div class="section">
+    <div class="section-num">Section 6</div>
+    <h2>How the Agentic Enterprise Accelerator Gets Built</h2>
+
+    <p>Building the accelerator is what this proposal is asking to fund. The build is not starting from zero — a working prototype is already in place. The four-container platform, the core shared library (memory, RAG, HITL, tool gateway, observability, prompt management), one end-to-end reference agent (pre-call assessment for care management), and a capability UI for care management are running today. Major architectural decisions — runtime split, agent-type × reasoning-strategy model, policy-as-code approach, HIPAA posture — are locked and documented. <em>Full detail of what exists today is in the Accelerator Technical Design companion document.</em></p>
+
+    <p>The remaining work is to <strong>complete the accelerator for delivery</strong> — produce the Prototype Current-State Documentation and complete a codebase audit as a Phase 1 pre-requisite, establish the enterprise master repo with governance (branch protection, CODEOWNERS, release tagging), add the missing backend adapters, implement remaining reasoning strategies, expand from one to three reference agent templates (PA Denial Remediation, Pre-Call Assessment for Care Management, Claims Triage — each payer-tuned), build the pre-built payer tool library (FHIR, entity-level payer APIs, InterQual, MCG, Availity, Change Healthcare, EHR FHIR), wire Amazon Connect integration pattern and IDP pipelines via Bedrock Data Automation, add Infrastructure as Code and CI/CD, implement PHI masking as an enforced layer (pre-response interceptor architecture), produce the platform-level security evidence package, and author the delivery playbook and demo script.</p>
+
+    <p>With a planned team of <strong>one offshore Delivery Lead, two full-time offshore developers</strong>, plus a part-time Platform Architect / Team Lead, a part-time Security Engineer, and a part-time DevOps Engineer, the build runs approximately <span class="change-text"><strong>22 weeks</strong></span> across eight phases. Final scope, team, and duration are subject to sizing during Phase 2.</p>
+
+    <h3>Build Phases</h3>
+    <table>
+      <tr>
+        <th style="width:220px;white-space:nowrap;">Phase</th>
+        <th style="width:90px;white-space:nowrap;">Duration</th>
+        <th>Deliverable</th>
+      </tr>
+      <tr>
+        <td style="white-space:nowrap;"><strong>Phase 1 — Prototype Audit + Master Repo Setup</strong></td>
+        <td style="white-space:nowrap;">Weeks 1–2</td>
+        <td>Platform Architect audits the current prototype codebase for architecture alignment and best practices. Full <strong>Prototype Current-State Documentation</strong> produced (module-by-module walkthrough, design decisions, known gaps, local setup, extension points). Enterprise master repo established with branch protection, CODEOWNERS, and release-tagging conventions. Offshore team onboarding pre-requisite complete.</td>
+      </tr>
+      <tr>
+        <td style="white-space:nowrap;"><strong>Phase 2 — Roadmap</strong></td>
+        <td style="white-space:nowrap;">Weeks 3–4</td>
+        <td>Product roadmap defined: what goes into v1.0, what is deferred to v1.1 and beyond, feature priorities, sequencing, and dependencies. Sets the scope the rest of the phases execute against.</td>
+      </tr>
+      <tr>
+        <td style="white-space:nowrap;"><strong>Phase 3 — Design Finalization</strong></td>
+        <td style="white-space:nowrap;">Weeks 5–6</td>
+        <td>Remaining architecture gaps closed: final runtime-split wiring decisions, IaC pattern selection, backend adapter priorities, auth model confirmation, release and governance conventions locked. Most design work leverages what already exists in the prototype.</td>
+      </tr>
+      <tr class="changed">
+        <td style="white-space:nowrap;"><strong>Phase 4 — Core Platform Completion</strong></td>
+        <td style="white-space:nowrap;">Weeks 6–12</td>
+        <td>Runtime split completed. Backend adapters beyond file backend (S3, DynamoDB, pgvector, OpenSearch, Redis) implemented. Remaining reasoning strategies (multi-hop, reflection) added. Auth hardened across the four containers. IaC (Terraform + CDK) and CI/CD pipelines built out.</td>
+      </tr>
+      <tr class="changed">
+        <td style="white-space:nowrap;"><strong>Phase 5 — Reference Agent Templates, Tool Library, Connect, IDP</strong></td>
+        <td style="white-space:nowrap;">Weeks 10–17</td>
+        <td>Build three payer-tuned reference agent templates (PA Denial Remediation, Pre-Call Assessment for Care Management, Claims Triage) with payer-tuned prompts, tool configs, HITL gate patterns, and domain.yaml. Build pre-built tool library for publicly documented healthcare APIs. Wire Amazon Connect integration pattern. Build IDP pipelines via Bedrock Data Automation for payer documents.</td>
+      </tr>
+      <tr class="changed">
+        <td style="white-space:nowrap;"><strong>Phase 6 — Platform Security &amp; Compliance Evidence</strong></td>
+        <td style="white-space:nowrap;">Weeks 14–18</td>
+        <td>PHI masking enforced as a platform layer (pre-response interceptor architecture). SAST / DAST / SCA automated in CI. SBOM generated per release. Internal penetration test completed with remediation trail. HIPAA controls matrix documented. Platform-level compliance evidence compiled (customer-specific evidence generation is Tier 2, per engagement).</td>
+      </tr>
+      <tr class="changed">
+        <td style="white-space:nowrap;"><strong>Phase 7 — Delivery Playbook &amp; Demo</strong></td>
+        <td style="white-space:nowrap;">Weeks 16–21</td>
+        <td>Delivery playbook written. Demo environment stood up with working demo script. Internal enablement materials produced.</td>
+      </tr>
+      <tr class="changed">
+        <td style="white-space:nowrap;"><strong>Phase 8 — v1.0 Release &amp; Rollout</strong></td>
+        <td style="white-space:nowrap;">Weeks 21–22</td>
+        <td>Accelerator tagged as v1.0. Release notes published. Practice-wide enablement session.</td>
+      </tr>
+    </table>
+
+    <h3>Team Composition</h3>
+    <table>
+      <tr>
+        <th>Role</th>
+        <th>Allocation</th>
+        <th>Responsibility</th>
+      </tr>
+      <tr>
+        <td><strong>Platform Architect / Team Lead</strong></td>
+        <td>1 · part-time</td>
+        <td>Architecture and design decisions, PR reviews, release governance, coordination, practice-wide communication, and release sign-off</td>
+      </tr>
+      <tr>
+        <td><strong>Offshore Delivery Lead</strong></td>
+        <td>1 · full-time</td>
+        <td>Offshore team coordination, sprint execution, code reviews, reference agent build-out</td>
+      </tr>
+      <tr>
+        <td><strong>Offshore Developers</strong></td>
+        <td>2 · full-time</td>
+        <td>Platform code, backend adapters, reference agents, agent UIs, IaC, CI/CD — the bulk of the build</td>
+      </tr>
+      <tr>
+        <td><strong>Security Engineer</strong></td>
+        <td>1 · part-time (≈25%)</td>
+        <td>PHI masking layer design, security scan setup, pen-test coordination, HIPAA controls documentation</td>
+      </tr>
+      <tr>
+        <td><strong>DevOps Engineer</strong></td>
+        <td>1 · part-time</td>
+        <td>Master repo setup and governance, IaC (CDK / Terraform), CI/CD pipeline, AWS account governance</td>
+      </tr>
+    </table>
+
+    <p style="font-size:12px;color:#64748b;margin-top:4px;">Offshore-heavy team is the default plan. If additional onshore capacity becomes available, Phases 2 and 3 can be accelerated and the total duration compressed. Final allocation to be confirmed during Phase 1.</p>
+
+    <h3>Investment</h3>
+    <p>Direct cost is the team allocation across 22 weeks, plus tooling (AWS sandbox, LLM provider access, third-party penetration test engagement, security scanning licenses). Because the core platform is already prototyped, the remaining investment is weighted toward completing the accelerator (backend adapters, IaC, CI/CD), the reference agent build-out (one to six), and the compliance + delivery artifact package.</p>
+
+    <div class="highlight">
+      <strong>Payback reminder (see Section 4):</strong> The build investment is absorbed across subsequent engagements. Each engagement that uses the accelerator begins from a hardened foundation rather than a blank repo.
+    </div>
+  </div>
+
+  <hr class="break"/>
+
+
+  <!-- 7. RECOMMENDED NEXT STEPS -->
+  <div class="section">
+    <div class="section-num">Section 7</div>
+    <h2>Recommended Next Steps</h2>
+
+    <p>If the proposal is approved, the following sequence is the recommended path from approval to a deliverable every future engagement draws on.</p>
+
+    <table>
+      <tr><th style="width:60px;">Step</th><th>Action</th><th>Outcome</th></tr>
+      <tr>
+        <td><strong>1</strong></td>
+        <td>Review and socialize the proposal with the Solutions Lead and practice leadership. Walk through the architecture, delivery model, team composition, timeline, and pre-requisites. Address questions and iterate the proposal to a final version.</td>
+        <td>Feedback captured; proposal refined; leadership alignment achieved; <strong>formal approval granted to begin the build</strong>.</td>
+      </tr>
+    </table>
+
+    <p style="margin-top:12px;"><em>Once approved, the 22-week build plan in Section 6 executes.</em></p>
+
+    <div class="highlight">
+      <strong>The ask.</strong> Approve this proposal. The practice gains a reusable asset that shortens every future healthcare payer engagement — from a bespoke platform build to a delivery on an existing foundation. The first engagement absorbs the build investment; subsequent engagements begin further along.
+    </div>
+  </div>
+
+  <hr class="break"/>
+
+
+  <!-- 8. INDUSTRY ALIGNMENT & PEER SI VALIDATION -->
+  <div class="section">
+    <div class="section-num">Section 8</div>
+    <h2>Competitive Validation — Major SI Competitors and Where TEKsystems Differentiates</h2>
+
+    <p>The accelerator's core architectural choices match reference architectures published by major agentic AI platform vendors, and multiple major SI competitors are productizing agent offerings in the same market. TEKsystems' differentiation is what it covers end-to-end for its specific niche.</p>
+
+    <h3>Platform &amp; Pattern Alignment</h3>
+    <ul>
+      <li><strong>Per-agent runtime + shared tenant services</strong> — the model used by <strong>Amazon Bedrock AgentCore</strong>. Each agent deploys as its own containerized runtime with unique ARN and versions; Memory, Gateway, Identity, Observability are shared account services. AgentCore is HIPAA-eligible as of February 2026. (<a href="https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-how-it-works.html">runtime docs</a>, <a href="https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/compliance-validation.html">HIPAA compliance</a>)</li>
+      <li><strong>Developer configures; platform is read-only</strong> — the model used by <strong>AgentCore</strong> (Memory, Gateway, Identity, Observability consumed as managed services) and <strong>Microsoft Azure AI Foundry Agent Service</strong>. (<a href="https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/what-is-bedrock-agentcore.html">AgentCore overview</a>, <a href="https://learn.microsoft.com/en-us/azure/foundry/agents/overview">Foundry Agent Service</a>)</li>
+      <li><strong>Agent-type × reasoning-strategy overlays</strong> — builds on Microsoft Foundry's Prompt / Workflow / Hosted agent-type taxonomy and established reasoning-strategy patterns (ReAct, plan-and-execute, multi-hop, reflection) implementable as graph patterns in <strong>LangGraph</strong>. (<a href="https://learn.microsoft.com/en-us/azure/foundry/agents/overview">Foundry agent types</a>, <a href="https://www.langchain.com/blog/langgraph-platform-ga">LangGraph Platform</a>)</li>
+    </ul>
+
+    <h3>SI Competitors — Three Tiers of Validation</h3>
+
+    <h4>Tier 1 — PwC (Architectural Convergence)</h4>
+    <p>PwC has publicly documented a multi-agent system on Amazon Bedrock AgentCore (2026). The core architecture pattern PwC describes matches TEKsystems' foundation directly.</p>
+
+    <table>
+      <tr>
+        <th>Dimension</th>
+        <th>PwC</th>
+        <th>TEKsystems</th>
+      </tr>
+      <tr><td><strong>Platform</strong></td><td>Amazon Bedrock AgentCore</td><td>Amazon Bedrock AgentCore</td></tr>
+      <tr><td><strong>Orchestration engine</strong></td><td>LangGraph state graph</td><td>LangGraph (Container 2)</td></tr>
+      <tr><td><strong>Agent hosting</strong></td><td>Per-agent AgentCore Runtime</td><td>Per-agent AgentCore Runtime (C1)</td></tr>
+      <tr><td><strong>Tool execution</strong></td><td>Separated (EKS)</td><td>Separated (C3 on ECS/Fargate + MCP)</td></tr>
+      <tr><td><strong>Memory</strong></td><td>AgentCore Memory per agent</td><td>AgentCore Memory, four scopes</td></tr>
+      <tr><td><strong>Multi-agent pattern</strong></td><td>Supervisor + specialist agents</td><td>Multi-Agent overlay — supervisor + specialists</td></tr>
+    </table>
+
+    <p>PwC also extended their cross-cloud <em>agent OS</em> to AWS with Bedrock + MCP Server support (2026). Sources: <a href="https://www.google.com/search?q=%22Deploying+agentic+AI+at+enterprise+scale+with+Amazon+Bedrock+AgentCore%22+PwC">PwC AgentCore case study</a>, <a href="https://www.google.com/search?q=%22PwC+agent+OS%22+AWS+Bedrock+integration">PwC agent OS AWS integration</a>.</p>
+
+    <h4>Tier 2 — Accenture AI Refinery + Distiller (Conceptual Peer, Different Stack)</h4>
+    <p>Accenture launched AI Refinery with the Distiller agentic framework (2025, expanded 2026) — a full agentic platform covering Data &amp; Knowledge Management, Model Customization, Multi-Agent Orchestration, governance, and observability, with 12 industry agent solutions. Same conceptual pattern as TEKsystems, but built on <strong>NVIDIA</strong> (NeMo, NIM, AI Blueprints) rather than AWS AgentCore, with a capability-grouped architectural decomposition (not TEKsystems' deployment-grouped four-container model). (<a href="https://www.accenture.com/us-en/services/data-ai/ai-refinery">AI Refinery</a>, <a href="https://newsroom.accenture.com/news/2025/accenture-launches-distiller-agentic-ai-framework-to-accelerate-scalable-industry-ai-solutions">Distiller launch</a>)</p>
+
+    <h4>Tier 3 — Deloitte Enterprise AI Navigator (Adjacent Category, Different Layer)</h4>
+    <p>Deloitte launched Enterprise AI Navigator (February 2026) on Deloitte Ascend — a consulting-delivery toolkit with four modules: AI Identifier (opportunity discovery), Impact Analyzer (ROI), Workflow Designer (process mapping), and Agent Studio (agent generation). Strong on consulting-led discovery and design. Lighter on deployable customer-owned runtime; more oriented to Deloitte-led engagements. (<a href="https://www.deloitte.com/us/en/about/press-room/deloitte-announces-launch-of-enterprise-ai-navigator.html">Deloitte press release</a>)</p>
+
+    <h3>End-to-End Coverage — What Makes TEKsystems Unique</h3>
+    <p>Each competitor specializes in part of the arc. TEKsystems covers the full arc for one specific, high-value niche (AWS-native + healthcare payer + customer-owned).</p>
+
+    <div class="highlight">
+      <p style="margin:0;font-size:13px;color:#334155;"><em>The Agentic Enterprise Accelerator was designed, architected, and built independently. Seeing PwC land on the same core architecture on AgentCore tells us the pattern is right. The differentiation is the end-to-end coverage for a specific niche — discovery, design, generation, runtime, handoff, and optional AaaS — combined with AWS-native depth and healthcare payer vertical specialization that competitor materials do not match. Full citation table is in the Technical Design companion doc.</em></p>
+    </div>
+
+    <table>
+      <tr>
+        <th>Capability</th>
+        <th>TEKsystems</th>
+        <th>PwC</th>
+        <th>Accenture</th>
+        <th>Deloitte</th>
+      </tr>
+      <tr><td><strong>Discovery + design (consulting-led)</strong></td><td>✓ Productized in Four Modes</td><td>✓ Big 4 consulting practice</td><td>✓ Global consulting practice</td><td>✓ AI Navigator modules</td></tr>
+      <tr><td><strong>Agent generation toolkit</strong></td><td>✓ (Agent Factory UI + overlay matrix)</td><td>✓ (per engagement)</td><td>✓ (agent builder + SDKs)</td><td>✓ (Agent Studio)</td></tr>
+      <tr><td><strong>Deployable runtime platform</strong></td><td>✓ (four-container, AgentCore)</td><td>✓ (AgentCore-based)</td><td>✓ (AI Refinery platform)</td><td>less emphasized</td></tr>
+      <tr><td><strong>AWS-native end-to-end</strong></td><td>✓ deep AgentCore integration</td><td>✓ (partial — also cross-cloud)</td><td>✗ NVIDIA-based</td><td>✗ Deloitte Ascend</td></tr>
+      <tr><td><strong>Healthcare payer vertical depth</strong></td><td>✓ payer workflows, PHI, HIPAA-compliant, payer adapters</td><td>✗ horizontal</td><td>✗ horizontal (12 industries)</td><td>✗ horizontal</td></tr>
+      <tr><td><strong>Customer-owned codebase + IP transfer</strong></td><td>✓ full transfer at engagement end</td><td>varies</td><td>✗ SaaS-leaning</td><td>✗ consulting-embedded</td></tr>
+      <tr><td><strong>Deployment flexibility (customer-deployed OR AaaS)</strong></td><td>✓ same architecture supports both</td><td>varies</td><td>SaaS-centric</td><td>SI-led</td></tr>
+    </table>
+
+    <h3>Where the Agentic Enterprise Accelerator Adds on Top</h3>
+    <p>The core architecture is the right bet — converged across AWS reference implementations, LangChain, PwC's public case, and conceptually across the Big 4 SI category. TEKsystems' value is the layer <strong>above</strong> that common foundation, which competitor materials do not describe.</p>
+    <ul>
+      <li><strong>Vertical packaging for healthcare payer</strong> — reference agents aligned to payer workflows (UM, CM, claims, prior-auth), HIPAA-eligible compliance evidence, PHI masking, payer-specific source system adapters.</li>
+      <li><strong>Explicit four-container architecture</strong> — C1 Agent Runtime, C2 Platform Services, C3 Tool Gateway, C4 Control Plane with defined boundaries and deployment topology.</li>
+      <li><strong>Agent-type × reasoning-strategy overlay matrix</strong> — productized combinations each with strategy implementation, prompt scaffolding, and YAML config; discoverable in the Agent Factory UI.</li>
+      <li><strong>Agent Factory UI + pre-built templates</strong> — create, configure, and govern new agents through a web console using pre-built templates; no code for standard agents.</li>
+      <li><strong>Agent Registry</strong> — single source of truth for every agent deployed <strong>across AWS accounts</strong>, indexed by Agent ID + LOB namespace; one place for audit, discovery, version tracking, and governance.</li>
+      <li><strong>Policy-as-code governance</strong> — prompts, HITL gates, memory scopes, RAG config (Stage × Source × Extraction), tool allow/deny — all in YAML, no redeploys.</li>
+      <li><strong>Multi-LOB isolation</strong> — per-LOB AWS accounts and Container 1 / Container 3 pairs; shared Container 2 + Container 4 with Agent ID + LOB namespace enforcement.</li>
+      <li><strong>Delivery-integrated</strong> — engagement playbook, repo governance, CODEOWNERS-enforced platform/app split, template + scaffolded-instance pattern.</li>
+    </ul>
+  </div>
+
+  <hr class="break"/>
+
+  <div class="pointer">
+    <strong>Companion documents — all currently work in progress:</strong>
+    <ul style="margin:6px 0 0 20px;padding:0;">
+      <li><em>Agentic Enterprise Accelerator for Healthcare — Reference Architecture</em>: the visual architecture with detailed explanations of each container, runtime split, data flows, and deployment model.</li>
+      <li><em>Agentic Enterprise Accelerator for Healthcare — Technical Design</em>: platform capabilities in detail, request flow, per-container breakdown, deployment topology, repo governance, LLM and cost controls, technical limitations, industry alignment, and current prototype state.</li>
+      <li><em>Agentic Enterprise Accelerator for Healthcare — Internal Playbook</em>: practice-internal operating model — Platform Team ownership, master repo governance, local development, playground AgentCore, release cadence.</li>
+      <li><em>Agentic Enterprise Accelerator for Healthcare — Customer Delivery Playbook</em>: customer engagement model — four modes, discovery motion, phases, security evidence, pattern handoff.</li>
+      <li><em>Agentic Enterprise Accelerator for Healthcare — Customer Discovery Questionnaire</em>: structured questionnaire used in pre-engagement and Phase 1 discovery — customer current state (AI/ML platforms, cloud posture, compliance maturity, existing agents), future state (target workflows, KPIs, timeline), technical context (AWS account structure, LOB boundaries, SSO/IAM, existing Bedrock usage), compliance requirements (HIPAA posture, InfoSec review, data residency), stakeholders, and constraints. Helps size the engagement and select the right Four Modes option.</li>
+      <li><em>Agentic Enterprise Accelerator for Healthcare — Prototype Current-State Documentation</em>: module-by-module walkthrough of the current prototype codebase, design decisions, technical debt, known gaps, local setup, and extension points. <strong>Required pre-requisite before offshore team onboarding in Phase 1.</strong></li>
+    </ul>
+  </div>
+
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <div class="conf">Internal — Sales &amp; Solutions Enablement · AWS Practice</div>
+    <div class="conf">Agentic Enterprise Accelerator for Healthcare · Proposal Summary · v1.0</div>
+  </div>
+
+</div>
+</body>
+</html>

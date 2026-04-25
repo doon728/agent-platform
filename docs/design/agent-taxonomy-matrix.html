@@ -1,0 +1,1490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Agent Taxonomy &amp; Capability Matrix — Agentic Enterprise Accelerator</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#f8fafc;color:#0f172a;font-size:14px;line-height:1.6;}
+.page{max-width:1200px;margin:0 auto;padding:40px 48px 80px;}
+.cover{text-align:center;padding:48px 0 32px;border-bottom:3px solid #FF9900;margin-bottom:32px;}
+.cover .eyebrow{font-size:11px;font-weight:800;letter-spacing:3px;text-transform:uppercase;color:#FF9900;margin-bottom:14px;}
+.cover h1{font-size:30px;font-weight:900;letter-spacing:-.3px;line-height:1.2;margin-bottom:8px;color:#0f172a;}
+.cover .tagline{font-size:14px;color:#475569;font-weight:500;}
+.toc{background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px;padding:16px 20px;margin-bottom:36px;}
+.toc h3{font-size:12px;font-weight:800;color:#0f172a;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:10px;}
+.toc ol{margin:0;padding-left:22px;font-size:13px;color:#334155;line-height:1.7;}
+.toc ol li a{color:#0277bd;text-decoration:none;}
+.section{margin-bottom:40px;}
+.section-num{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:2px;color:#FF9900;margin-bottom:4px;}
+.section h2{font-size:20px;font-weight:900;color:#0f172a;margin-bottom:12px;padding-bottom:6px;border-bottom:2px solid #e2e8f0;}
+.section h3{font-size:15px;font-weight:800;color:#1e293b;margin:22px 0 10px;}
+.section h4{font-size:13px;font-weight:800;color:#334155;margin:14px 0 6px;}
+p{margin-bottom:10px;color:#334155;}
+ul{margin:6px 0 10px 20px;}
+ul li{color:#334155;margin-bottom:3px;}
+pre{background:#0f172a;color:#e2e8f0;padding:12px 16px;border-radius:6px;font-size:11.5px;line-height:1.55;overflow-x:auto;margin:10px 0;font-family:'SF Mono',Monaco,'Courier New',monospace;}
+code{background:#f1f5f9;color:#334155;padding:1px 5px;border-radius:3px;font-size:12px;font-family:'SF Mono',Monaco,'Courier New',monospace;}
+pre code{background:transparent;color:inherit;padding:0;font-size:inherit;}
+table{width:100%;border-collapse:collapse;margin:12px 0;font-size:12px;}
+th{background:#232f3e;color:#FF9900;padding:8px 10px;text-align:left;font-weight:800;font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;}
+td{padding:7px 10px;border-bottom:1px solid #f1f5f9;color:#334155;vertical-align:top;}
+tr:nth-child(even) td{background:#fafafa;}
+.highlight{background:#fff8e6;border-left:4px solid #FF9900;padding:12px 16px;border-radius:0 8px 8px 0;margin:14px 0;}
+.callout{background:#e8edf8;border-left:4px solid #0277bd;padding:12px 16px;border-radius:0 8px 8px 0;margin:14px 0;}
+.note{background:#f1f5f9;border-left:3px solid #94a3b8;padding:10px 14px;border-radius:0 6px 6px 0;margin:12px 0;font-size:12.5px;color:#475569;font-style:italic;}
+.cat-tag{display:inline-block;font-size:10px;font-weight:800;padding:2px 8px;border-radius:3px;letter-spacing:.6px;text-transform:uppercase;margin-right:4px;}
+.cat-1{background:#dbeafe;color:#1e40af;}
+.cat-2{background:#d1fae5;color:#065f46;}
+.cat-3{background:#fef3c7;color:#92400e;}
+.cat-4{background:#fce7f3;color:#9f1239;}
+.cat-5{background:#ede9fe;color:#5b21b6;}
+.cat-6{background:#ffe4e6;color:#9f1239;}
+.cat-7{background:#cffafe;color:#155e75;}
+.cat-8{background:#fed7aa;color:#9a3412;}
+.yes{color:#16a34a;font-weight:700;}
+.no{color:#dc2626;font-weight:700;}
+.partial{color:#d97706;font-weight:700;}
+.covered{background:#dcfce7;}
+.extension{background:#fef3c7;}
+.notcovered{background:#fee2e2;}
+.coverage-box{display:inline-block;padding:4px 10px;border-radius:3px;font-size:11px;font-weight:700;margin:2px;}
+.cov-full{background:#dcfce7;color:#166534;}
+.cov-partial{background:#fef3c7;color:#92400e;}
+.cov-gap{background:#fee2e2;color:#991b1b;}
+.footer{margin-top:48px;padding-top:20px;border-top:1px solid #e2e8f0;font-size:11px;color:#94a3b8;}
+.hr{border:none;border-top:1px dashed #e2e8f0;margin:32px 0;}
+.refs{font-size:11px;color:#64748b;padding-left:18px;}
+.refs li{margin-bottom:3px;}
+.refs a{color:#0277bd;text-decoration:none;}
+
+@media print {
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+  @page { size: Letter landscape; margin: 0.5in; }
+  body { font-size: 9.5pt; background: white; padding: 0; margin: 0; }
+  .page { max-width: none; padding: 0; margin: 0; background: white; }
+  .section { page-break-inside: auto; break-inside: auto; margin-bottom: 20px; }
+  .highlight, .callout, .note { page-break-inside: avoid; break-inside: avoid; }
+  h1, h2, h3, h4 { page-break-after: avoid; break-after: avoid; }
+  table { page-break-inside: auto; font-size: 8.5pt; }
+  tr { page-break-inside: avoid; break-inside: avoid; }
+  pre { page-break-inside: avoid; break-inside: avoid; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="cover">
+  <div class="eyebrow">Agent Taxonomy &amp; Capability Matrix</div>
+  <h1>Agentic Enterprise Accelerator</h1>
+  <p class="tagline">A research-grounded map of agent categories, types, reasoning patterns, RAG, HITL, memory, and tools — and how AEA covers them.</p>
+</div>
+
+<div class="toc">
+  <h3>Contents</h3>
+  <ol>
+    <li><a href="#overview">Overview — what this matrix is and how to read it</a></li>
+    <li><a href="#industry">Industry reference taxonomies (Anthropic, LangGraph, Confluent, Bain)</a></li>
+    <li><a href="#categories">The 8 agent categories — top-level taxonomy</a></li>
+    <li><a href="#deep-dive">Category-by-category deep dive</a></li>
+    <li><a href="#master-matrix">Master capability matrix — all categories, all dimensions</a></li>
+    <li><a href="#aea-coverage">AEA coverage scorecard — today, with extensions, and gaps</a></li>
+    <li><a href="#healthcare">Healthcare payer use-case mapping</a></li>
+    <li><a href="#government">Government IT &amp; enterprise business use-case mapping</a></li>
+    <li><a href="#control-plane">Control plane — runtime-agnostic across all categories</a></li>
+    <li><a href="#roadmap">Implementation roadmap for full coverage</a></li>
+    <li><a href="#sources">Sources &amp; references</a></li>
+  </ol>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="section" id="overview">
+  <div class="section-num">Section 1</div>
+  <h2>Overview — what this matrix is and how to read it</h2>
+
+  <p>Enterprise agent deployments cluster into a small number of <strong>architectural categories</strong>, each with characteristic runtime patterns, reasoning needs, RAG applicability, HITL fit, memory shape, and tool invocation style. A single "agent platform" rarely covers all of them — real systems pick a subset and optimize for it.</p>
+
+  <p>This matrix does three things:</p>
+  <ul>
+    <li><strong>Taxonomy:</strong> categorizes all common enterprise agent patterns (request-response, conversational, long-running autonomous, event-driven, batch, voice/video, multi-agent, specialized).</li>
+    <li><strong>Capability map:</strong> shows which reasoning strategies, RAG dimensions, HITL patterns, memory scopes, and tool patterns apply to each category.</li>
+    <li><strong>AEA coverage scorecard:</strong> calls out what AEA covers today, what it covers with extensions, and what sits outside its scope.</li>
+  </ul>
+
+  <p>The categorization synthesizes public industry taxonomies (Anthropic's five patterns, LangGraph design patterns, Confluent's event-driven multi-agent patterns, Bain's three-layer platform model), then maps them onto real enterprise use cases in healthcare payer, government IT, and business applications.</p>
+
+  <div class="note"><strong>How to read this document.</strong> Sections 2–3 establish vocabulary. Section 4 is the heart — one dense page per category. Section 5 is the cross-cutting matrix. Section 6 is the honest scorecard of what AEA does and doesn't cover. Sections 7–8 are concrete use-case mappings. Section 9 is the build plan to close gaps.</div>
+</div>
+
+<hr class="hr"/>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="section" id="industry">
+  <div class="section-num">Section 2</div>
+  <h2>Industry reference taxonomies</h2>
+
+  <p>Rather than inventing categories, AEA's taxonomy draws from four widely-cited industry references. Each captures a different slice.</p>
+
+  <h3>2.1 Anthropic — "Building Effective Agents" (five workflow patterns)</h3>
+  <p>Anthropic's 2024 paper (updated in 2026) distinguishes <em>workflows</em> (predefined paths orchestrating LLMs and tools) from <em>agents</em> (dynamically directed systems). The five canonical workflow patterns:</p>
+
+  <table>
+    <tr><th>Pattern</th><th>What it does</th><th>When to use</th></tr>
+    <tr><td><strong>Prompt chaining</strong></td><td>Sequential LLM calls; each step processes prior output.</td><td>Deterministic pipelines where steps are known.</td></tr>
+    <tr><td><strong>Routing</strong></td><td>Classify input and direct to specialized handler.</td><td>Triage, intake, classification.</td></tr>
+    <tr><td><strong>Parallelization</strong></td><td>Sectioning (independent subtasks) or voting (multiple runs for consensus).</td><td>Speedup or reliability via redundancy.</td></tr>
+    <tr><td><strong>Orchestrator-workers</strong></td><td>Central LLM dynamically delegates to worker LLMs.</td><td>Complex tasks with unpredictable subtasks.</td></tr>
+    <tr><td><strong>Evaluator-optimizer</strong></td><td>Iterative loop between a generator and an evaluator until quality bar is met.</td><td>High-quality outputs where critique improves drafts.</td></tr>
+  </table>
+
+  <p><strong>Anthropic's principle:</strong> start at the lowest complexity that works; add more only when measurable improvement justifies it.</p>
+
+  <h3>2.2 LangGraph — six design patterns (orchestrator-worker, ReAct, fan-out/fan-in, reflection, supervisor, hierarchical)</h3>
+  <p>LangGraph models agents as typed-state directed graphs with conditional edges. Its six canonical design patterns overlap with Anthropic's but emphasize execution control:</p>
+  <ul>
+    <li><strong>ReAct</strong> — interleave reasoning (think) and action (tool call) in a loop.</li>
+    <li><strong>Orchestrator-worker</strong> — planner decomposes; workers execute sub-tasks.</li>
+    <li><strong>Fan-out / fan-in</strong> — one node triggers N parallel nodes, converges back.</li>
+    <li><strong>Reflection</strong> — self-critique loop for quality improvement.</li>
+    <li><strong>Supervisor</strong> — one agent routes between a pool of specialists.</li>
+    <li><strong>Hierarchical</strong> — nested supervisors (multi-level delegation).</li>
+  </ul>
+  <p>LangGraph adds first-class <strong>checkpointing</strong> and <strong>interrupt points</strong> for HITL — making it the closest mainstream framework to enterprise-grade production requirements.</p>
+
+  <h3>2.3 Confluent — four event-driven multi-agent patterns</h3>
+  <p>Confluent's 2026 architecture blueprint identifies four patterns when agents coordinate over event streams (Kafka / EventBridge):</p>
+  <ul>
+    <li><strong>Orchestrator-worker (event-driven)</strong> — orchestrator emits task events; workers consume and emit results.</li>
+    <li><strong>Hierarchical agent</strong> — parent monitors a topic and spawns ephemeral child agents per event.</li>
+    <li><strong>Blackboard</strong> — all agents share a single event log that acts as shared memory.</li>
+    <li><strong>Market-based</strong> — agents bid on opportunity events; a coordinator assigns work.</li>
+  </ul>
+
+  <h3>2.4 Bain — three-layer agentic platform model</h3>
+  <p>Bain's 2026 enterprise framework separates an agentic platform into three layers — useful for positioning AEA inside customer architectures:</p>
+  <ol>
+    <li><strong>Experience layer</strong> — front-end/chat/voice interfaces, HITL review consoles, operator dashboards.</li>
+    <li><strong>Agent layer</strong> — reasoning engine, tool invocation, memory, governance — what most people mean by "the agent."</li>
+    <li><strong>Data &amp; tool layer</strong> — knowledge bases, vector stores, MCP tool servers, external APIs, source systems.</li>
+  </ol>
+
+  <h3>2.5 Other emerging vocabulary (2026)</h3>
+  <ul>
+    <li><strong>Guardrail agents</strong> — specialized agents monitoring other agents and blocking high-risk actions in real time (Berkeley California Management Review, March 2026).</li>
+    <li><strong>Propose-commit pattern</strong> — separation of "propose an action" (stored durably, reviewed) from "commit the action" (idempotent execution).</li>
+    <li><strong>Agentic RAG</strong> — specialized retrieval agents handling decomposition, validation, synthesis in parallel.</li>
+    <li><strong>AgeMem / memory-as-tool</strong> — treat memory operations (store, retrieve, update, summarize, discard) as tools the agent calls.</li>
+    <li><strong>Continue-as-new</strong> (Temporal) — long-running workflow pattern that restarts graph state to avoid event-history bloat.</li>
+  </ul>
+</div>
+
+<hr class="hr"/>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="section" id="categories">
+  <div class="section-num">Section 3</div>
+  <h2>The 8 agent categories</h2>
+
+  <p>Combining Anthropic's behavioral patterns with deployment realities (latency, concurrency, state durability, modality), enterprise agents cluster into eight top-level categories:</p>
+
+  <table>
+    <tr><th>#</th><th>Category</th><th>Defining traits</th><th>Example use cases</th></tr>
+    <tr><td><span class="cat-tag cat-1">C1</span></td><td><strong>Request-Response</strong></td><td>Synchronous, one-shot or short conversation. Latency budget seconds. Stateless or session-scoped.</td><td>Policy Q&amp;A, classification, summarization, one-off tool call.</td></tr>
+    <tr><td><span class="cat-tag cat-2">C2</span></td><td><strong>Conversational</strong></td><td>Multi-turn dialog, session-scoped memory, HITL often inline. Latency budget 1–3 seconds per turn.</td><td>Nurse/agent copilot, member service chat, clinical Q&amp;A.</td></tr>
+    <tr><td><span class="cat-tag cat-3">C3</span></td><td><strong>Long-running Autonomous</strong></td><td>Runs hours/days. Durable state, checkpoint-resume. HITL gates mid-flow. May suspend indefinitely.</td><td>Appeals adjudication, complex PA review, claim investigation, population health outreach.</td></tr>
+    <tr><td><span class="cat-tag cat-4">C4</span></td><td><strong>Event-Driven / Streaming</strong></td><td>Reactive. Consumes from Kafka / EventBridge / FHIR subscriptions. High throughput.</td><td>Real-time fraud detection, FHIR change reactions, live claim intake triage.</td></tr>
+    <tr><td><span class="cat-tag cat-5">C5</span></td><td><strong>Batch / High-Throughput</strong></td><td>Thousands to millions of units in a window. Parallelization-first. Idempotent, retry-safe.</td><td>Nightly claim adjudication, bulk eligibility recertification, mass document extraction.</td></tr>
+    <tr><td><span class="cat-tag cat-6">C6</span></td><td><strong>Real-Time Voice / Video</strong></td><td>Sub-500ms latency. Streaming STT/TTS or speech-to-speech. Interruption handling.</td><td>Contact center voice agents, telehealth intake, real-time translation.</td></tr>
+    <tr><td><span class="cat-tag cat-7">C7</span></td><td><strong>Multi-Agent Collaborative</strong></td><td>Two or more agents coordinate — hierarchically, as peers, or via debate/consensus.</td><td>Appeals panel simulation, multi-specialty consult, adversarial review.</td></tr>
+    <tr><td><span class="cat-tag cat-8">C8</span></td><td><strong>Specialized / Outlier</strong></td><td>Don't fit the standard graph. Browser-use, formal verification, autonomous open-ended research.</td><td>Legacy-portal navigation, medical-policy proof checking, literature review.</td></tr>
+  </table>
+
+  <div class="highlight">
+    <strong>Important boundary — agents vs. business workflow engines.</strong> Throughout this document, references to "durable agent session state" (AgentCore FS Persistence, Temporal, Step Functions) refer to persisting the <em>agent's own reasoning state</em> — plan, tool results, pending HITL approval, memory — across pauses and failures. This is <strong>not</strong> a business workflow engine and does <strong>not</strong> replace the customer's Camunda / Pega / IBM BPM / ServiceNow. Those remain the customer's property. The agent participates <em>inside</em> a business workflow step (the WF engine calls the agent), but AEA never replaces the BPM platform. Agent types like <code>workflow_agent</code> refer to <em>agent-internal</em> multi-step plans, not business workflows.
+  </div>
+
+  <div class="callout"><strong>Category vs. agent type vs. reasoning strategy vs. behavior — the distinction.</strong>
+    <ul>
+      <li><strong>Category</strong> = runtime / architectural shape (how it's deployed and invoked).</li>
+      <li><strong>Agent type</strong> = behavioral role within a category (chat, summary, classifier, workflow, etc.).</li>
+      <li><strong>Reasoning strategy</strong> = the control-loop inside the agent (simple, ReAct, plan-execute, multi-hop, reflection).</li>
+      <li><strong>Behavior</strong> = compound term describing what the agent <em>does</em> internally. Composed of: reasoning strategy + tool-use pattern + memory interaction + HITL interaction. Example phrases: "single-shot LLM call", "multi-step reasoning with tools", "iterative refinement with critic", "streaming turn-taking with barge-in."</li>
+    </ul>
+    One category contains many agent types; each agent type can use multiple reasoning strategies; each combination produces a distinct behavior profile. A chat_agent (type) in the Conversational (category) running ReAct (strategy) with 5 tools and session memory has a different behavior than the same chat_agent running plan-execute with 0 tools and no memory.
+  </div>
+</div>
+
+<hr class="hr"/>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="section" id="deep-dive">
+  <div class="section-num">Section 4</div>
+  <h2>Category-by-category deep dive</h2>
+
+  <!-- C1 -->
+  <h3><span class="cat-tag cat-1">C1</span> Request-Response</h3>
+  <p><strong>Defining traits:</strong> Synchronous HTTP-style invocation. Agent receives input, produces output, returns. Latency budget seconds. Stateless or minimal session state.</p>
+  <p><strong>Typical behavior profile:</strong> single-shot LLM call (or short ReAct loop) → structured output. Minimal tools. No memory. No HITL (except low-confidence escalation).</p>
+  <p><strong>Orchestration types:</strong> Reasoning (C2-style) only. No runtime orchestration, no multi-agent.</p>
+
+  <h4>Agent types in this category</h4>
+  <ul>
+    <li><strong>classifier_agent</strong> — intake triage, routing decisions (e.g., "is this an appeal, PA, or claim dispute?"). Structured output.</li>
+    <li><strong>retrieval_agent</strong> — pure RAG response, no tool loop. "What's the PA policy for knee MRI?"</li>
+    <li><strong>summary_agent</strong> — summarize a document, case, or member record. Single-pass.</li>
+    <li><strong>transform_agent</strong> — reformat / extract / redact / translate (pre-defined I/O contract).</li>
+  </ul>
+
+  <h4>Reasoning strategies applicable</h4>
+  <ul>
+    <li><strong>simple</strong> (default) — single planner → execute → respond.</li>
+    <li><strong>ReAct</strong> — only if multi-step tool use is needed.</li>
+    <li><em>Not applicable:</em> plan-execute, multi-hop, reflection (overkill for single-shot).</li>
+  </ul>
+
+  <h4>RAG applicability</h4>
+  <ul>
+    <li><strong>Dim 1 (stage)</strong> — pre-graph retrieval or planner-tool retrieval both common.</li>
+    <li><strong>Dim 2 (source)</strong> — usually single-source (policy docs, clinical guidelines).</li>
+    <li><strong>Dim 3 (extraction)</strong> — simple top-k or query decomposition for harder questions.</li>
+  </ul>
+
+  <h4>HITL applicability</h4>
+  <p>Usually <strong>no HITL</strong> — too fast-turn. Exception: classifier with low confidence routes to human review queue (propose-commit on classification decision).</p>
+
+  <h4>Memory applicability</h4>
+  <ul>
+    <li>Short-term: usually off (stateless).</li>
+    <li>Episodic / semantic / summary: typically off.</li>
+  </ul>
+
+  <h4>Tools applicability</h4>
+  <p>Light — maybe 0–3 tool calls. API / MCP. No stateful sessions.</p>
+
+  <h4>AEA architecture fit</h4>
+  <p><strong>✅ Covered today.</strong> Pre-graph → simple/ReAct → post-graph fits cleanly. <code>summary_agent</code> already exists; <code>classifier_agent</code> is a small addition (new overlay, new prompt pattern).</p>
+
+  <hr class="hr"/>
+
+  <!-- C2 -->
+  <h3><span class="cat-tag cat-2">C2</span> Conversational</h3>
+  <p><strong>Defining traits:</strong> Multi-turn dialog. Session state matters. User and agent exchange messages over time. HITL may be inline (agent asks user). Latency target 1–3 seconds per turn.</p>
+  <p><strong>Typical behavior profile:</strong> multi-step reasoning with tools → agentic RAG → memory read/write → inline HITL confirmations → streamed response. Session-scoped throughout.</p>
+  <p><strong>Orchestration types:</strong> Reasoning (C2-style) + lightweight session manager (persisting session state between turns). No runtime workflow engine, no multi-agent.</p>
+
+  <h4>Agent types in this category</h4>
+  <ul>
+    <li><strong>chat_agent</strong> — general-purpose conversational assistant with tools + RAG.</li>
+    <li><strong>copilot_agent</strong> — domain-focused assistant alongside a primary workflow (e.g., nurse copilot during call).</li>
+    <li><strong>workflow_agent (interactive)</strong> — guides user through a multi-step process (intake, assessment, form-fill).</li>
+    <li><strong>advisor_agent</strong> — decision-support copilot for high-judgement work (clinical Q&amp;A with policy context).</li>
+  </ul>
+
+  <h4>Reasoning strategies applicable</h4>
+  <ul>
+    <li><strong>simple</strong> — per-turn Q&amp;A with tools.</li>
+    <li><strong>ReAct</strong> — common default for tool-rich chat.</li>
+    <li><strong>plan-execute</strong> — for multi-step user requests ("do X, then Y, then Z").</li>
+    <li><strong>reflection</strong> — when quality matters more than speed (clinical draft review).</li>
+  </ul>
+
+  <h4>RAG applicability</h4>
+  <ul>
+    <li>All three dimensions active.</li>
+    <li>Dim 2 source selection often per-turn (what corpus this question needs).</li>
+    <li>Agentic RAG pattern (query decomposition → parallel retrieval → synthesis) fits here.</li>
+  </ul>
+
+  <h4>HITL applicability</h4>
+  <p><strong>First-class.</strong> Inline user confirmations ("did I get this right?"), gated tool calls (draft email before send), escalation to supervisor.</p>
+
+  <h4>Memory applicability</h4>
+  <ul>
+    <li><strong>Short-term</strong>: always on (session history).</li>
+    <li><strong>Episodic</strong>: common (remember prior sessions with same member).</li>
+    <li><strong>Semantic</strong>: common (learned facts about member, ongoing treatment plan).</li>
+    <li><strong>Summary</strong>: common (rolling summaries for long sessions).</li>
+  </ul>
+
+  <h4>Tools applicability</h4>
+  <p>Rich — API, MCP, stateful tool sessions (ongoing searches, drafts).</p>
+
+  <h4>AEA architecture fit</h4>
+  <p><strong>✅ Covered today.</strong> This is the current reference architecture (pre-call-assessment). <code>chat_agent</code> overlay with simple/ReAct strategies is the primary runnable path.</p>
+
+  <hr class="hr"/>
+
+  <!-- C3 -->
+  <h3><span class="cat-tag cat-3">C3</span> Long-running Autonomous</h3>
+  <p><strong>Defining traits:</strong> Runs minutes to days. Durable state. Checkpoint-resume. May pause indefinitely on HITL gate. Needs workflow-engine-like semantics.</p>
+  <p><strong>Typical behavior profile:</strong> plan → execute phased steps with checkpoints → pause on HITL gate → resume → iterative refinement with critic → propose-commit on each non-reversible action. Heavy memory + summarization across phases.</p>
+  <p><strong>Orchestration types:</strong> Durable agent session state (AgentCore Runtime Filesystem Persistence / Temporal-as-session-store / Step Functions-as-session-store — stores the agent's own reasoning state across pauses and failures) + reasoning (C2-style per phase). Multi-agent optional if sub-agents participate.</p>
+  <p class="note" style="font-style:normal;"><strong>What this is NOT:</strong> a business workflow engine (Camunda / Pega / IBM BPM / ServiceNow). Those remain the customer's property and are untouched. The agent may be <em>invoked from</em> a business workflow step, but the agent doesn't replace the BPM platform. Durable session state here is purely about the <em>agent's own reasoning state</em>.</p>
+
+  <h4>Agent types in this category</h4>
+  <ul>
+    <li><strong>adjudication_agent</strong> — appeals, complex claims, PA with clinical review.</li>
+    <li><strong>investigation_agent</strong> — fraud, waste, abuse cases with evidence collection over time.</li>
+    <li><strong>outreach_agent</strong> — population-health campaigns with multi-contact sequences.</li>
+    <li><strong>recertification_agent</strong> — eligibility/benefits renewals spanning weeks.</li>
+    <li><strong>research_agent</strong> — longer-horizon information gathering (hours).</li>
+  </ul>
+
+  <h4>Reasoning strategies applicable</h4>
+  <ul>
+    <li><strong>plan-execute</strong> — plan spans across durable steps.</li>
+    <li><strong>multi-hop</strong> — evidence chains over external sources.</li>
+    <li><strong>reflection</strong> — quality gates between phases.</li>
+    <li><strong>evaluator-optimizer</strong> — iterative refinement of drafts.</li>
+    <li>Needs new <strong>interrupt-resume loop</strong> as first-class strategy.</li>
+  </ul>
+
+  <h4>RAG applicability</h4>
+  <ul>
+    <li>Multi-source, multi-stage retrieval common.</li>
+    <li>Dim 3 extraction varies per step (iterative retrieval, hypothesis-driven).</li>
+  </ul>
+
+  <h4>HITL applicability</h4>
+  <p><strong>Heavy.</strong> Propose-commit pattern for every non-reversible action. Durable pause for hours/days. Audit trail mandatory.</p>
+
+  <h4>Memory applicability</h4>
+  <ul>
+    <li>All four scopes active.</li>
+    <li>Summary scope critical — long contexts must be compacted.</li>
+    <li>Checkpoint = durable snapshot of state + memory at each step.</li>
+  </ul>
+
+  <h4>Tools applicability</h4>
+  <p>Extensive. External APIs, source systems, document extraction, potentially browser automation. Idempotency keys required on every tool call.</p>
+
+  <h4>AEA architecture fit</h4>
+  <p><strong>⚠ Partial — needs extension.</strong> Current graph supports per-invocation runs. Needs:
+    <ul>
+      <li>Durable agent session state — checkpoint/resume mechanism (AgentCore Runtime's Filesystem Persistence, Temporal, or Step Functions used as session store). This stores the agent's own reasoning state, not a business workflow.</li>
+      <li>HITL service already exists — needs hardening for long-pause scenarios.</li>
+      <li>Continue-as-new pattern for event-history bloat.</li>
+    </ul>
+  </p>
+
+  <hr class="hr"/>
+
+  <!-- C4 -->
+  <h3><span class="cat-tag cat-4">C4</span> Event-Driven / Streaming</h3>
+  <p><strong>Defining traits:</strong> Agents subscribe to event topics (Kafka, EventBridge, FHIR subscriptions). Reactive. Often high concurrency. Agents may emit events for downstream consumption.</p>
+  <p><strong>Typical behavior profile:</strong> per-event classify / enrich / score → emit decision event. Short-lived per invocation. Stateless per event (state lives in blackboard or downstream). Low-confidence routes to async review queue.</p>
+  <p><strong>Orchestration types:</strong> Runtime (Kafka / EventBridge / SQS / FHIR subscriptions — event routing + delivery) + reasoning (C2-style per event). Multi-agent optional — Confluent's blackboard, orchestrator-worker, or market patterns may apply.</p>
+
+  <h4>Agent types in this category</h4>
+  <ul>
+    <li><strong>fraud_detection_agent</strong> — scores claim-stream events in real time.</li>
+    <li><strong>intake_triage_agent</strong> — event-driven version of classifier (new document lands → agent picks up).</li>
+    <li><strong>alert_agent</strong> — monitors event streams for clinical or operational thresholds.</li>
+    <li><strong>change_reaction_agent</strong> — reacts to FHIR subscriptions, claim status changes, eligibility updates.</li>
+  </ul>
+
+  <h4>Reasoning strategies applicable</h4>
+  <ul>
+    <li><strong>simple</strong> — most common; per-event classification / scoring.</li>
+    <li><strong>ReAct</strong> — when event needs enrichment via tool calls.</li>
+    <li>Confluent's patterns apply: orchestrator-worker, hierarchical, blackboard, market-based.</li>
+  </ul>
+
+  <h4>RAG applicability</h4>
+  <ul>
+    <li>Usually enrichment-style (fetch related context for the event).</li>
+    <li>Dim 1 pre-graph retrieval most common.</li>
+  </ul>
+
+  <h4>HITL applicability</h4>
+  <p>Queue-based, not inline. Agent routes low-confidence decisions to review queue; humans process asynchronously.</p>
+
+  <h4>Memory applicability</h4>
+  <ul>
+    <li>Short-term: usually off (per-event stateless).</li>
+    <li>Episodic / semantic: key-scoped (per member / per provider).</li>
+    <li>Blackboard pattern: shared event log as memory.</li>
+  </ul>
+
+  <h4>Tools applicability</h4>
+  <p>Enrichment tools (look up member, fetch claim history). Emit events as a tool output.</p>
+
+  <h4>AEA architecture fit</h4>
+  <p><strong>⚠ Partial — needs extension.</strong> Pre-graph becomes an event-consumer adapter (Kafka / EventBridge / SQS → invoke agent). Agent graph largely unchanged. Requires:
+    <ul>
+      <li>Event-adapter pre-graph nodes (new).</li>
+      <li>Concurrency model (parallel agent instances per event batch).</li>
+      <li>Dead-letter + retry semantics.</li>
+      <li>Emit-as-output side (agent output fans back to an event bus).</li>
+    </ul>
+  </p>
+
+  <hr class="hr"/>
+
+  <!-- C5 -->
+  <h3><span class="cat-tag cat-5">C5</span> Batch / High-Throughput</h3>
+  <p><strong>Defining traits:</strong> Large windowed workloads — thousands to millions of units processed in a single job. Parallelization-first. Idempotent, retry-safe. Not session-based.</p>
+  <p><strong>Typical behavior profile:</strong> fan-out units across workers → per-unit single-shot LLM call (or short per-unit ReAct if complex) → shared context cache → fan-in results → exceptions to human queue. No inline HITL. For simple classification/extraction, LangGraph is skipped entirely; for complex per-unit reasoning, a LangGraph run executes inside each worker.</p>
+  <p><strong>Orchestration types:</strong> Runtime (Step Functions / Spark / Ray / Glue / Airflow — batch scheduler + fan-out/fan-in) + <em>optional</em> reasoning (C2-style per unit — used only when per-unit reasoning is complex; simple per-unit skips C2 entirely) + multi-agent fan-out/fan-in worker pool.</p>
+
+  <h4>Agent types in this category</h4>
+  <ul>
+    <li><strong>bulk_adjudication_agent</strong> — nightly claim auto-adjudication at scale.</li>
+    <li><strong>bulk_extraction_agent</strong> — mass document extraction (IDP pipelines).</li>
+    <li><strong>bulk_classification_agent</strong> — mass triage / categorization jobs.</li>
+    <li><strong>recertification_sweep</strong> — bulk eligibility renewal checks.</li>
+  </ul>
+
+  <h4>Reasoning strategies applicable</h4>
+  <ul>
+    <li><strong>simple</strong> — dominant (same template applied per unit).</li>
+    <li>Halo-style <strong>batch query optimization</strong> — DAG-level plan with cache reuse and GPU placement.</li>
+    <li>Fan-out / fan-in pattern for parallelization.</li>
+  </ul>
+
+  <h4>RAG applicability</h4>
+  <ul>
+    <li>Shared context (policy docs) pre-loaded and reused across batch.</li>
+    <li>Per-unit retrieval minimized for efficiency.</li>
+  </ul>
+
+  <h4>HITL applicability</h4>
+  <p>Exception queue only. Units that fail confidence threshold route to human review; batch continues.</p>
+
+  <h4>Memory applicability</h4>
+  <ul>
+    <li>Short-term: per-unit (transient).</li>
+    <li>Episodic / semantic: shared across batch (cached for reuse).</li>
+  </ul>
+
+  <h4>Tools applicability</h4>
+  <p>Bulk-optimized tools (batch lookups, vectorized inference). Not per-unit API calls.</p>
+
+  <h4>AEA architecture fit</h4>
+  <p><strong>⚠ Partial — needs extension.</strong> Current graph is per-invocation. Needs:
+    <ul>
+      <li>Batch orchestration layer (Step Functions, Spark, Ray, Glue).</li>
+      <li>Scatter-gather pre-graph / post-graph hooks.</li>
+      <li>Caching layer for shared context.</li>
+      <li>Cost-model-aware scheduling (Halo-style).</li>
+    </ul>
+  </p>
+
+  <hr class="hr"/>
+
+  <!-- C6 -->
+  <h3><span class="cat-tag cat-6">C6</span> Real-Time Voice / Video</h3>
+  <p><strong>Defining traits:</strong> Sub-500ms end-to-end latency. Streaming audio/video. Interruption (barge-in) handling. Continuous duplex operation.</p>
+  <p><strong>Typical behavior profile:</strong> streaming turn-taking with barge-in → S2S or cascade STT→LLM→TTS → cached context only (no inline RAG) → cascade-fallback on tool calls → post-call summarization. Supervisor whisper for HITL.</p>
+  <p><strong>Orchestration types:</strong> Media-server runtime (Pipecat / LiveKit / AgentCore Voice — manages streaming audio + interruption). <em>Not</em> C2-style reasoning — the voice loop is its own control architecture. No multi-agent typically (voice agent + supervisor whisper = 1.5 agents).</p>
+
+  <h4>Agent types in this category</h4>
+  <ul>
+    <li><strong>voice_agent</strong> — contact center inbound/outbound.</li>
+    <li><strong>telehealth_intake_agent</strong> — voice triage before clinician join.</li>
+    <li><strong>real_time_translator_agent</strong> — simultaneous translation.</li>
+    <li><strong>video_observer_agent</strong> — video analysis with real-time reporting.</li>
+  </ul>
+
+  <h4>Reasoning strategies applicable</h4>
+  <ul>
+    <li>Standard reasoning strategies <strong>don't fit</strong> — latency budget is too tight.</li>
+    <li>Needs <strong>streaming-turn-taking</strong> strategy (new).</li>
+    <li>Hybrid: speech-to-speech (S2S) for low-latency small talk; cascade fallback when RAG or tools are needed.</li>
+  </ul>
+
+  <h4>RAG applicability</h4>
+  <ul>
+    <li>Pre-loaded / cached context only — no inline retrieval during speech.</li>
+    <li>Async RAG on tool-fallback path.</li>
+  </ul>
+
+  <h4>HITL applicability</h4>
+  <p>Supervisor listen-in + barge-in. Real-time whispered suggestions to live agent.</p>
+
+  <h4>Memory applicability</h4>
+  <ul>
+    <li>Short-term: rolling audio buffer.</li>
+    <li>Summary: post-call.</li>
+  </ul>
+
+  <h4>Tools applicability</h4>
+  <p>Tool calls interrupt speech flow — used sparingly. Often cascade-fallback: S2S for conversation, switch to cascade pipeline when a tool is needed.</p>
+
+  <h4>AEA architecture fit</h4>
+  <p><strong>❌ Doesn't fit cleanly — different architecture.</strong> Would require voice-specific runtime (Pipecat, LiveKit, or AgentCore Voice). AEA can contribute tools, RAG, memory, HITL services as a backend for the voice pipeline — but the voice loop itself is a separate product.</p>
+
+  <hr class="hr"/>
+
+  <!-- C7 -->
+  <h3><span class="cat-tag cat-7">C7</span> Multi-Agent Collaborative</h3>
+  <p><strong>Defining traits:</strong> Two or more agents coordinate. Can be hierarchical (supervisor + workers), peer-to-peer (agents as equals), or debate-based (structured disagreement with consensus).</p>
+  <p><strong>Typical behavior profile:</strong> orchestrator plans and delegates (or peers negotiate / debate / bid) → each sub-agent runs its own reasoning strategy → shared blackboard memory → guardrail agent monitors for high-risk actions → consensus or supervisor commit → final human sign-off on high-stakes outputs.</p>
+  <p><strong>Orchestration types:</strong> Multi-agent (hierarchical / peer-to-peer / debate / market / blackboard — the <em>primary</em> orchestration here) + reasoning (C2-style per sub-agent) + optional runtime (Temporal / Step Functions when the collaboration runs long).</p>
+
+  <h4>Agent types in this category</h4>
+  <ul>
+    <li><strong>workflow_agent</strong> — hierarchical orchestrator with sub-agents (common).</li>
+    <li><strong>panel_agent</strong> — peer agents (clinical, legal, policy) review same case; consensus required.</li>
+    <li><strong>debate_agent</strong> — adversarial review (advocate vs. reviewer).</li>
+    <li><strong>market_agent</strong> — agents bid on work; coordinator assigns.</li>
+    <li><strong>guardrail_agent</strong> — monitors other agents, blocks high-risk actions.</li>
+  </ul>
+
+  <h4>Reasoning strategies applicable</h4>
+  <ul>
+    <li>Each sub-agent has its own reasoning strategy (mix-and-match).</li>
+    <li>Coordination pattern is a <em>meta-strategy</em>: orchestrator-worker, debate, consensus, market.</li>
+    <li>Needs <strong>debate / vote / consensus</strong> pattern (new).</li>
+  </ul>
+
+  <h4>RAG applicability</h4>
+  <ul>
+    <li>Each sub-agent may have its own corpus / retrieval strategy.</li>
+    <li>Blackboard pattern: shared context written/read by multiple agents.</li>
+  </ul>
+
+  <h4>HITL applicability</h4>
+  <p>Guardrail agents provide autonomous oversight; human review still layered for high-stakes outcomes.</p>
+
+  <h4>Memory applicability</h4>
+  <ul>
+    <li>Shared memory (blackboard) common.</li>
+    <li>Per-agent private memory for specialized reasoning.</li>
+  </ul>
+
+  <h4>Tools applicability</h4>
+  <p>Each agent has its own tool allow-list. Cross-agent communication via message protocol (A2A).</p>
+
+  <h4>AEA architecture fit</h4>
+  <p><strong>⚠ Partial — planned.</strong> <code>workflow_agent</code> (hierarchical) is in roadmap. Peer / debate / market patterns require new orchestrator types.</p>
+
+  <hr class="hr"/>
+
+  <!-- C8 -->
+  <h3><span class="cat-tag cat-8">C8</span> Specialized / Outlier</h3>
+  <p><strong>Defining traits:</strong> Fall outside the pre-graph → reasoning → post-graph architecture. Usually need a different primary runtime or special-purpose tools.</p>
+  <p><strong>Typical behavior profile:</strong> specialized control loop (perceive-act-observe for browser / proof-search for formal verification / open-ended multi-hop for research) → domain-specific tools → pre-approval gates on non-reversible actions → validation step after each action.</p>
+  <p><strong>Orchestration types:</strong> Specialized runtime (browser-use / Claude Computer Use / proof engine / research harness — manages the perceive-act-observe or proof-search loop). <em>Not</em> C2-style reasoning. Multi-agent optional (e.g., a browser-use agent called by a supervising agent as a tool).</p>
+
+  <h4>Agent types in this category</h4>
+  <ul>
+    <li><strong>browser_use_agent</strong> — navigates web UIs, clicks, fills forms (Epic, legacy Medicaid portals, provider portals).</li>
+    <li><strong>computer_use_agent</strong> — desktop automation (Claude Computer Use, OpenAI Operator).</li>
+    <li><strong>formal_verification_agent</strong> — proof-carrying reasoning over medical policies or legal texts.</li>
+    <li><strong>open_research_agent</strong> — open-ended literature / evidence synthesis (hours of exploration).</li>
+    <li><strong>federated_agent</strong> — agents across organizations with isolated state (payer ↔ provider ↔ HIE).</li>
+  </ul>
+
+  <h4>Reasoning strategies applicable</h4>
+  <ul>
+    <li>Browser-use: perceive-act-observe loop (accessibility tree + screenshot).</li>
+    <li>Formal verification: proof-search (not LLM-native).</li>
+    <li>Open research: multi-hop + reflection + continue-as-new.</li>
+  </ul>
+
+  <h4>AEA architecture fit</h4>
+  <p><strong>❌ Doesn't fit cleanly — separate architecture.</strong> AEA can integrate with these as tools/services (e.g., expose a browser-use agent as a tool), but the primary runtime is not AEA's graph.</p>
+</div>
+
+<hr class="hr"/>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="section" id="master-matrix">
+  <div class="section-num">Section 5</div>
+  <h2>Master capability matrix</h2>
+
+  <p>Cross-cutting view — all eight categories, all capability dimensions, side by side.</p>
+
+  <div class="callout">
+    <strong>Orchestration — unifying definition + three levels.</strong>
+    <p style="margin:6px 0;"><strong>Orchestration = coordinating work across multiple steps or actors to produce a result.</strong> The definition does not change by category — only the <em>scope</em> of what's being coordinated changes. Three scope levels exist:</p>
+    <ul>
+      <li><strong>Reasoning orchestration (C2-style)</strong> — <em>micro scope, inside one agent.</em> Coordinates the agent's internal steps (planner → executor → responder). This is what C2 does today via LangGraph.</li>
+      <li><strong>Runtime orchestration</strong> — <em>macro scope, above the agent.</em> Coordinates when, how, where, and how often agents run. Temporal, Step Functions, Kafka, EventBridge, Spark/Ray.</li>
+      <li><strong>Multi-agent orchestration</strong> — <em>meta scope, between agents.</em> Coordinates multiple agents cooperating. Hierarchical, peer-to-peer, debate, market, blackboard.</li>
+    </ul>
+    <p style="margin:6px 0;"><strong>Which levels apply per category:</strong></p>
+    <table style="margin-top:6px;">
+      <tr>
+        <th>Category</th>
+        <th>Reasoning (micro)</th>
+        <th>Runtime (macro)</th>
+        <th>Multi-agent (meta)</th>
+      </tr>
+      <tr>
+        <td><span class="cat-tag cat-1">C1</span> Request-Response</td>
+        <td><span class="yes">✅ Required</span></td>
+        <td><span class="no">✗</span></td>
+        <td><span class="no">✗</span></td>
+      </tr>
+      <tr>
+        <td><span class="cat-tag cat-2">C2</span> Conversational</td>
+        <td><span class="yes">✅ Required</span></td>
+        <td>Session manager only</td>
+        <td><span class="no">✗</span></td>
+      </tr>
+      <tr>
+        <td><span class="cat-tag cat-3">C3</span> Long-running</td>
+        <td><span class="yes">✅ Required (per phase)</span></td>
+        <td><span class="yes">✅ Required (durable session state)</span></td>
+        <td>Optional (if sub-agents)</td>
+      </tr>
+      <tr>
+        <td><span class="cat-tag cat-4">C4</span> Event-driven</td>
+        <td><span class="yes">✅ Required (per event)</span></td>
+        <td><span class="yes">✅ Required (event bus)</span></td>
+        <td>Optional (blackboard / orchestrator-worker)</td>
+      </tr>
+      <tr>
+        <td><span class="cat-tag cat-5">C5</span> Batch</td>
+        <td>Optional (only when per-unit is complex)</td>
+        <td><span class="yes">✅ Required (batch scheduler)</span></td>
+        <td><span class="yes">✅ Required (fan-out/fan-in worker pool)</span></td>
+      </tr>
+      <tr>
+        <td><span class="cat-tag cat-6">C6</span> Voice / Video</td>
+        <td>Specialized (streaming turn-taking — not C2-style)</td>
+        <td><span class="yes">✅ Required (media server)</span></td>
+        <td><span class="no">✗</span></td>
+      </tr>
+      <tr>
+        <td><span class="cat-tag cat-7">C7</span> Multi-agent</td>
+        <td><span class="yes">✅ Required (per sub-agent)</span></td>
+        <td>Optional (Temporal / SFN for long-running cases)</td>
+        <td><span class="yes">✅ Required (primary)</span></td>
+      </tr>
+      <tr>
+        <td><span class="cat-tag cat-8">C8</span> Specialized</td>
+        <td>Specialized (perceive-act-observe / proof-search — not C2-style)</td>
+        <td>Depends on runtime</td>
+        <td>Optional</td>
+      </tr>
+    </table>
+    <p style="margin:6px 0 0;">Most categories use one or two levels; C3/C4/C5/C7 use two, C8 varies. Only C1 + C2 use just one (reasoning only).</p>
+  </div>
+
+  <table>
+    <tr>
+      <th>Category</th>
+      <th>Typical Behavior Profile</th>
+      <th>Orchestration Types</th>
+      <th>Reasoning Strategies</th>
+      <th>RAG Dim 1 (stage)</th>
+      <th>RAG Dim 2 (source)</th>
+      <th>RAG Dim 3 (extraction)</th>
+      <th>HITL</th>
+      <th>Memory</th>
+      <th>Tools</th>
+      <th>AEA fit</th>
+    </tr>
+    <tr>
+      <td><span class="cat-tag cat-1">C1</span> Request-Response</td>
+      <td>Single-shot LLM call → structured output</td>
+      <td>Reasoning (C2-style) only</td>
+      <td>simple, ReAct</td>
+      <td>Pre-graph / planner</td>
+      <td>Single-source typical</td>
+      <td>Top-k or query decomp</td>
+      <td>Rare (low-confidence escalate)</td>
+      <td>Off / minimal</td>
+      <td>0–3 calls, MCP/API</td>
+      <td><span class="yes">✅ Covered</span></td>
+    </tr>
+    <tr>
+      <td><span class="cat-tag cat-2">C2</span> Conversational</td>
+      <td>Multi-step reasoning with tools + agentic RAG + session memory</td>
+      <td>Reasoning (C2-style) + lightweight session manager</td>
+      <td>simple, ReAct, plan-execute, reflection</td>
+      <td>All stages</td>
+      <td>Multi-source per turn</td>
+      <td>Agentic RAG, adaptive</td>
+      <td>First-class (inline + gates)</td>
+      <td>All 4 scopes active</td>
+      <td>Rich, stateful sessions</td>
+      <td><span class="yes">✅ Covered</span></td>
+    </tr>
+    <tr>
+      <td><span class="cat-tag cat-3">C3</span> Long-running</td>
+      <td>Phased plan-execute with checkpoints + HITL pauses + iterative refinement</td>
+      <td>Reasoning (C2-style per phase) + durable agent session state (AgentCore FS Persistence / Temporal-as-session-store). NOT a business WF engine.</td>
+      <td>plan-execute, multi-hop, reflection, evaluator-optimizer, interrupt-resume</td>
+      <td>Multi-stage per phase</td>
+      <td>Multi-source, evolving</td>
+      <td>Iterative, hypothesis-driven</td>
+      <td>Heavy (propose-commit, durable pause)</td>
+      <td>All 4 + checkpoints</td>
+      <td>Extensive, idempotent</td>
+      <td><span class="partial">⚠ Covered by workflow_agent type (planned) + durable agent session state</span></td>
+    </tr>
+    <tr>
+      <td><span class="cat-tag cat-4">C4</span> Event-driven</td>
+      <td>Per-event classify / enrich / score → emit decision event</td>
+      <td>Runtime (Kafka / EventBridge / SQS) + reasoning (C2-style per event) + optional multi-agent (blackboard)</td>
+      <td>simple, ReAct; Confluent patterns</td>
+      <td>Pre-graph enrichment</td>
+      <td>Key-scoped per event</td>
+      <td>Targeted / cached</td>
+      <td>Queue-based, async</td>
+      <td>Key-scoped; blackboard option</td>
+      <td>Enrichment + emit-events</td>
+      <td><span class="partial">⚠ Partial — event adapter needed</span></td>
+    </tr>
+    <tr>
+      <td><span class="cat-tag cat-5">C5</span> Batch</td>
+      <td>Fan-out workers → per-unit single-shot (or LangGraph if complex) → fan-in → exceptions to queue</td>
+      <td>Runtime (Step Functions / Spark / Ray / Glue) + <em>optional</em> reasoning (C2-style per unit — only when per-unit is complex; simple per-unit skips C2 for direct LLM call) + multi-agent fan-out/fan-in</td>
+      <td>simple; DAG-level batch optimization</td>
+      <td>Pre-batch shared retrieval</td>
+      <td>Shared corpora</td>
+      <td>Fan-out/fan-in</td>
+      <td>Exception queue</td>
+      <td>Shared semantic cache</td>
+      <td>Bulk-optimized</td>
+      <td><span class="partial">⚠ Partial — batch orchestrator needed</span></td>
+    </tr>
+    <tr>
+      <td><span class="cat-tag cat-6">C6</span> Voice / Video</td>
+      <td>Streaming turn-taking with barge-in → S2S or cascade → post-call summary</td>
+      <td>Media-server runtime (Pipecat / LiveKit / AgentCore Voice) — not C2-style reasoning</td>
+      <td>streaming-turn-taking (new); S2S + cascade fallback</td>
+      <td>Pre-loaded only</td>
+      <td>Cached corpora</td>
+      <td>Minimal inline</td>
+      <td>Supervisor whisper / barge-in</td>
+      <td>Rolling buffer + post-call summary</td>
+      <td>Sparse; async fallback</td>
+      <td><span class="no">❌ Separate runtime (Pipecat / LiveKit / AgentCore Voice)</span></td>
+    </tr>
+    <tr>
+      <td><span class="cat-tag cat-7">C7</span> Multi-agent</td>
+      <td>Orchestrator delegates (or peers debate/bid) → sub-agents reason → consensus/commit → guardrail monitors</td>
+      <td>Multi-agent (hierarchical / peer / debate / market) + reasoning (C2-style per sub-agent) + optional runtime (Temporal / SFN)</td>
+      <td>Per-sub-agent; meta: orchestrator-worker / debate / market / consensus</td>
+      <td>Per-agent retrieval</td>
+      <td>Per-agent corpora</td>
+      <td>Per-agent pattern</td>
+      <td>Guardrail agent + human gate</td>
+      <td>Blackboard + per-agent private</td>
+      <td>Per-agent allow-list + A2A</td>
+      <td><span class="partial">⚠ Partial — hierarchical planned; peer/debate/market new</span></td>
+    </tr>
+    <tr>
+      <td><span class="cat-tag cat-8">C8</span> Specialized</td>
+      <td>Specialized control loop (perceive-act-observe / proof-search / open-ended research)</td>
+      <td>Specialized runtime (browser / desktop / proof engine) — not C2-style reasoning</td>
+      <td>Perceive-act-observe / proof-search / open-ended</td>
+      <td>Variable</td>
+      <td>Variable</td>
+      <td>Variable</td>
+      <td>Variable</td>
+      <td>Variable</td>
+      <td>Browser / desktop / proof tools</td>
+      <td><span class="no">❌ Separate architecture; AEA integrates as tools</span></td>
+    </tr>
+  </table>
+
+  <div class="note"><strong>Reading this matrix.</strong> Each row is a category; the columns tell you which capabilities AEA's primitives (reasoning strategies, RAG dims, HITL, memory scopes, tools) light up for that category. The last column is the architecture-fit verdict — covered / partial / separate.</div>
+
+  <div class="note"><strong>Footnote — "Orchestration Types" vs. "Reasoning Strategies" columns.</strong> The Orchestration Types column names <em>which scope levels of orchestration apply</em> (reasoning / runtime / multi-agent) per category. The Reasoning Strategies column lists the <em>specific strategies</em> (simple, ReAct, plan-execute, multi-hop, reflection) used <em>when</em> reasoning orchestration applies. For categories where reasoning happens outside C2 (C6 voice — streaming turn-taking; C8 specialized — perceive-act-observe / proof-search), the Reasoning Strategies column lists those specialized control loops instead.</div>
+</div>
+
+<hr class="hr"/>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="section" id="aea-coverage">
+  <div class="section-num">Section 6</div>
+  <h2>AEA coverage scorecard</h2>
+
+  <p>Honest assessment: which categories AEA covers today vs. needs extension vs. is outside scope.</p>
+
+  <h3>6.1 AEA's agent types — backlog mapping to categories</h3>
+
+  <p>Before the coverage scorecard, here is how the agent types AEA is actively building (or planning) map to the 8 categories. One agent type can serve multiple categories — the category is determined by <em>invocation pattern</em>, not the agent's internal behavior.</p>
+
+  <table>
+    <tr>
+      <th>AEA agent type</th>
+      <th>Status</th>
+      <th>Primary category</th>
+      <th>Also applicable to</th>
+      <th>Example payer use case</th>
+    </tr>
+    <tr>
+      <td><code>chat_agent</code></td>
+      <td><span class="yes">✅ Built</span></td>
+      <td><span class="cat-tag cat-2">C2</span> Conversational</td>
+      <td>—</td>
+      <td>Nurse pre-call assessment, member service chat, clinical Q&amp;A</td>
+    </tr>
+    <tr>
+      <td><code>summary_agent</code></td>
+      <td><span class="yes">✅ Built</span></td>
+      <td><span class="cat-tag cat-1">C1</span> Request-Response</td>
+      <td><span class="cat-tag cat-5">C5</span> Batch (bulk summaries)</td>
+      <td>Case summary, assessment summary, bulk case-note summarization</td>
+    </tr>
+    <tr>
+      <td><code>workflow_agent</code></td>
+      <td><span class="partial">🔲 Planned</span></td>
+      <td><span class="cat-tag cat-3">C3</span> Long-running Autonomous</td>
+      <td><span class="cat-tag cat-7">C7</span> Multi-agent (hierarchical orchestrator)</td>
+      <td>PA review, appeals adjudication, outreach campaigns</td>
+    </tr>
+    <tr>
+      <td><code>classifier_agent</code> / <code>triage_agent</code></td>
+      <td><span class="partial">🔲 Planned</span></td>
+      <td><span class="cat-tag cat-1">C1</span> Request-Response</td>
+      <td><span class="cat-tag cat-4">C4</span> Event-driven (event-triggered intake), <span class="cat-tag cat-5">C5</span> Batch (bulk classification)</td>
+      <td>Document intake triage, claim-stream triage, bulk appeals classification</td>
+    </tr>
+    <tr>
+      <td><code>retrieval_agent</code></td>
+      <td><span class="partial">🔲 Planned</span></td>
+      <td><span class="cat-tag cat-1">C1</span> Request-Response</td>
+      <td><span class="cat-tag cat-2">C2</span> Conversational (as sub-component)</td>
+      <td>Policy lookup, clinical guideline retrieval</td>
+    </tr>
+    <tr>
+      <td><code>panel_agent</code> / <code>debate_agent</code></td>
+      <td><span class="partial">🔲 Future</span></td>
+      <td><span class="cat-tag cat-7">C7</span> Multi-agent Collaborative</td>
+      <td>—</td>
+      <td>Multi-specialty appeals review, compliance-vs-legal-vs-clinical consensus</td>
+    </tr>
+    <tr>
+      <td><code>guardrail_agent</code></td>
+      <td><span class="partial">🔲 Future</span></td>
+      <td><span class="cat-tag cat-7">C7</span> Multi-agent (monitor)</td>
+      <td>Cross-cutting (any category)</td>
+      <td>PHI masking enforcement, high-risk action blocking, policy compliance monitor</td>
+    </tr>
+    <tr>
+      <td>Voice / browser-use / formal-verification</td>
+      <td><span class="no">— Out of scope</span></td>
+      <td><span class="cat-tag cat-6">C6</span> / <span class="cat-tag cat-8">C8</span></td>
+      <td>—</td>
+      <td>Not hosted natively; integrated as tools or partner runtimes.</td>
+    </tr>
+  </table>
+
+  <div class="callout">
+    <strong>Key insight — one agent type, many categories.</strong> A <code>classifier_agent</code> template is the <em>same code</em> whether invoked synchronously (C1), from an event stream (C4), or across a batch of units (C5). Only the pre-graph adapter and orchestration layer change per category. That's why AEA can target multiple categories without duplicating agent-type implementations — the agent-type × reasoning-strategy matrix stays bounded, and <em>category support</em> is a one-time platform extension (event adapter, batch orchestrator, durable session state) that all applicable agent types can then use via config.
+  </div>
+
+  <h3>6.2 Summary — coverage by category</h3>
+  <table>
+    <tr><th>Category</th><th>Coverage today</th><th>Gap</th><th>Effort to close</th></tr>
+    <tr>
+      <td><span class="cat-tag cat-1">C1</span> Request-Response</td>
+      <td><span class="coverage-box cov-full">FULL</span></td>
+      <td>Minor — classifier_agent overlay not yet built.</td>
+      <td>~1 week overlay work.</td>
+    </tr>
+    <tr>
+      <td><span class="cat-tag cat-2">C2</span> Conversational</td>
+      <td><span class="coverage-box cov-full">FULL</span></td>
+      <td>—</td>
+      <td>Current reference path.</td>
+    </tr>
+    <tr>
+      <td><span class="cat-tag cat-3">C3</span> Long-running Autonomous</td>
+      <td><span class="coverage-box cov-partial">PARTIAL</span></td>
+      <td>Build <code>workflow_agent</code> type (planned). Wire durable agent session state (AgentCore FS Persistence / Temporal / Step Functions as session store). Harden HITL for day-long pauses. Continue-as-new pattern.</td>
+      <td>4–6 weeks.</td>
+    </tr>
+    <tr>
+      <td><span class="cat-tag cat-4">C4</span> Event-Driven / Streaming</td>
+      <td><span class="coverage-box cov-partial">PARTIAL</span></td>
+      <td>Event-adapter pre-graph (Kafka / EventBridge / SQS). Concurrency model. DLQ + retries. Emit-as-output.</td>
+      <td>3–4 weeks.</td>
+    </tr>
+    <tr>
+      <td><span class="cat-tag cat-5">C5</span> Batch / High-Throughput</td>
+      <td><span class="coverage-box cov-partial">PARTIAL</span></td>
+      <td>Batch orchestration (Step Functions / Spark / Ray). Scatter-gather hooks. Shared-context cache. Cost-model scheduler.</td>
+      <td>4–6 weeks.</td>
+    </tr>
+    <tr>
+      <td><span class="cat-tag cat-6">C6</span> Real-Time Voice / Video</td>
+      <td><span class="coverage-box cov-gap">OUT OF SCOPE</span></td>
+      <td>Different runtime entirely (Pipecat, LiveKit, AgentCore Voice). AEA contributes backend services only.</td>
+      <td>Separate product.</td>
+    </tr>
+    <tr>
+      <td><span class="cat-tag cat-7">C7</span> Multi-Agent Collaborative</td>
+      <td><span class="coverage-box cov-partial">PARTIAL</span></td>
+      <td>Hierarchical workflow_agent planned. Peer / debate / market / guardrail types new.</td>
+      <td>6–8 weeks for hierarchical; 12+ for peer/debate/market.</td>
+    </tr>
+    <tr>
+      <td><span class="cat-tag cat-8">C8</span> Specialized / Outlier</td>
+      <td><span class="coverage-box cov-gap">OUT OF SCOPE</span></td>
+      <td>Integrated as tools (expose browser-use, formal-verification, etc. as MCP tools that AEA's agents can call).</td>
+      <td>Per-tool integration, not platform work.</td>
+    </tr>
+  </table>
+
+  <h3>6.3 The 80/20 view</h3>
+  <div class="highlight">
+    <strong>AEA covers ~80% of enterprise agentic use cases today:</strong> all request-response, conversational, and hierarchical multi-agent patterns — with strong HITL, multi-dim RAG, agent-type × reasoning-strategy matrix, and a customer-deployed control plane.
+    <br/><br/>
+    <strong>~15% requires planned extensions:</strong> long-running autonomous, event-driven streaming, batch high-throughput, peer multi-agent debate — each achievable in 3–8 weeks on top of the existing platform.
+    <br/><br/>
+    <strong>~5% is outside AEA's architecture:</strong> real-time voice/video (separate runtime) and specialized outliers (browser-use, formal verification, open research — integrated as tools, not hosted natively).
+  </div>
+</div>
+
+<hr class="hr"/>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="section" id="healthcare">
+  <div class="section-num">Section 7</div>
+  <h2>Healthcare payer use-case mapping</h2>
+
+  <p>Public industry data: 56% of insurers use AI for UM, 44% for claims adjudication, 37% for prior authorization. CMS-0057-F mandates electronic PA turnaround times (72h expedited, 7 days standard) for Medicare Advantage / Medicaid / CHIP / marketplace plans by 2026–2027. Agentic AI is the most viable path to meeting those mandates at scale.</p>
+
+  <table>
+    <tr><th>Use case</th><th>Category</th><th>Agent type</th><th>Reasoning</th><th>HITL</th><th>AEA fit</th></tr>
+    <tr><td>Nurse copilot (pre-call assessment)</td><td><span class="cat-tag cat-2">C2</span></td><td>chat_agent</td><td>simple / ReAct</td><td>Inline</td><td><span class="yes">✅ Built</span></td></tr>
+    <tr><td>Case summary generation</td><td><span class="cat-tag cat-1">C1</span></td><td>summary_agent</td><td>simple</td><td>No</td><td><span class="yes">✅ Built</span></td></tr>
+    <tr><td>Prior authorization review</td><td><span class="cat-tag cat-3">C3</span></td><td>adjudication_agent</td><td>plan-execute + reflection</td><td>Heavy (clinician approval)</td><td><span class="partial">⚠ workflow_agent + session state</span></td></tr>
+    <tr><td>Appeals adjudication</td><td><span class="cat-tag cat-3">C3</span></td><td>adjudication_agent</td><td>multi-hop + reflection</td><td>Heavy</td><td><span class="partial">⚠ workflow_agent + session state</span></td></tr>
+    <tr><td>Claims intake triage</td><td><span class="cat-tag cat-4">C4</span></td><td>intake_triage_agent</td><td>simple</td><td>Queue-based</td><td><span class="partial">⚠ Needs event adapter</span></td></tr>
+    <tr><td>Nightly auto-adjudication</td><td><span class="cat-tag cat-5">C5</span></td><td>bulk_adjudication_agent</td><td>simple (DAG-optimized)</td><td>Exception queue</td><td><span class="partial">⚠ Needs batch orch</span></td></tr>
+    <tr><td>Fraud detection (claim stream)</td><td><span class="cat-tag cat-4">C4</span></td><td>fraud_detection_agent</td><td>simple / ReAct</td><td>Investigator queue</td><td><span class="partial">⚠ Needs event adapter</span></td></tr>
+    <tr><td>Member service chat</td><td><span class="cat-tag cat-2">C2</span></td><td>chat_agent</td><td>simple / ReAct</td><td>Escalation</td><td><span class="yes">✅ Built</span></td></tr>
+    <tr><td>Contact center voice agent</td><td><span class="cat-tag cat-6">C6</span></td><td>voice_agent</td><td>streaming-turn-taking</td><td>Supervisor whisper</td><td><span class="no">❌ Separate runtime</span></td></tr>
+    <tr><td>Population health outreach</td><td><span class="cat-tag cat-3">C3</span></td><td>outreach_agent</td><td>plan-execute</td><td>Campaign review</td><td><span class="partial">⚠ workflow_agent + session state</span></td></tr>
+    <tr><td>Eligibility recertification sweep</td><td><span class="cat-tag cat-5">C5</span></td><td>recertification_sweep</td><td>simple</td><td>Exception queue</td><td><span class="partial">⚠ Needs batch orch</span></td></tr>
+    <tr><td>Clinical Q&amp;A for UM nurse</td><td><span class="cat-tag cat-2">C2</span></td><td>advisor_agent</td><td>ReAct + RAG</td><td>Inline</td><td><span class="yes">✅ Built</span></td></tr>
+    <tr><td>Provider portal navigation (legacy UI)</td><td><span class="cat-tag cat-8">C8</span></td><td>browser_use_agent</td><td>perceive-act-observe</td><td>Pre-approval of actions</td><td><span class="no">❌ Tool integration</span></td></tr>
+    <tr><td>Medical policy proof-checking</td><td><span class="cat-tag cat-8">C8</span></td><td>formal_verification_agent</td><td>proof-search</td><td>Clinical + legal review</td><td><span class="no">❌ Tool integration</span></td></tr>
+    <tr><td>Multi-specialty appeals panel</td><td><span class="cat-tag cat-7">C7</span></td><td>panel_agent (peer)</td><td>debate / consensus</td><td>Final human override</td><td><span class="partial">⚠ Needs peer pattern</span></td></tr>
+  </table>
+
+  <div class="callout">
+    <strong>Healthcare payer coverage summary.</strong> Of 15 canonical payer use cases, AEA covers 4 fully today, 8 with planned extensions (3–8 weeks each), 3 are outside its architecture (voice, browser-use, formal verification). That's ~80% addressable coverage — the 20% outliers are either handled by partner tech (voice) or can be integrated as callable tools (browser / formal verification).
+  </div>
+</div>
+
+<hr class="hr"/>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="section" id="government">
+  <div class="section-num">Section 8</div>
+  <h2>Government IT &amp; enterprise business use-case mapping</h2>
+
+  <h3>8.1 Government IT</h3>
+  <p>Agentic AI in government is moving from proof-of-concept to operational deployment in 2026. SSA's virtual agent handles 2M+ annual interactions. Agency savings projected at up to 35% over ten years for AI-enabled case processing.</p>
+
+  <table>
+    <tr><th>Use case</th><th>Category</th><th>Agent type</th><th>AEA fit</th><th>Gov-specific note</th></tr>
+    <tr><td>Benefits eligibility copilot</td><td><span class="cat-tag cat-2">C2</span></td><td>chat_agent / advisor</td><td><span class="yes">✅</span></td><td>Needs state/federal policy packs + FISMA controls.</td></tr>
+    <tr><td>Permit / license application guidance</td><td><span class="cat-tag cat-2">C2</span></td><td>workflow_agent (interactive)</td><td><span class="yes">✅</span></td><td>Section 508 accessibility required.</td></tr>
+    <tr><td>Citizen status / case lookup</td><td><span class="cat-tag cat-1">C1</span></td><td>retrieval_agent</td><td><span class="yes">✅</span></td><td>PII handling + FedRAMP boundary.</td></tr>
+    <tr><td>Case processing / adjudication</td><td><span class="cat-tag cat-3">C3</span></td><td>adjudication_agent</td><td><span class="partial">⚠ workflow_agent + session state</span></td><td>Heavy HITL + audit; fairness reviews.</td></tr>
+    <tr><td>Application intake triage</td><td><span class="cat-tag cat-4">C4</span></td><td>intake_triage_agent</td><td><span class="partial">⚠ event adapter</span></td><td>High volume; SLA-bound.</td></tr>
+    <tr><td>Bulk recertification / renewal</td><td><span class="cat-tag cat-5">C5</span></td><td>recertification_sweep</td><td><span class="partial">⚠ batch orch</span></td><td>Exception handling for appeals.</td></tr>
+    <tr><td>Contact center voice agent</td><td><span class="cat-tag cat-6">C6</span></td><td>voice_agent</td><td><span class="no">❌</span></td><td>Separate runtime; ADA + multilingual.</td></tr>
+    <tr><td>Inspection report generation</td><td><span class="cat-tag cat-3">C3</span></td><td>report_agent</td><td><span class="partial">⚠ workflow_agent + session state</span></td><td>Evidence capture + chain-of-custody.</td></tr>
+  </table>
+
+  <div class="note"><strong>Gov-specific additions needed for AEA v2:</strong> FedRAMP / IL4–6 / GovCloud deployment targets, air-gapped option, Section 508 accessibility in capability UIs, FISMA / FedRAMP audit patterns as policy packs, multi-lingual support as first-class.</div>
+
+  <h3>8.2 Enterprise business applications</h3>
+  <table>
+    <tr><th>Use case</th><th>Category</th><th>Agent type</th><th>AEA fit</th></tr>
+    <tr><td>Sales copilot / account research</td><td><span class="cat-tag cat-2">C2</span></td><td>chat_agent + research_agent</td><td><span class="yes">✅</span></td></tr>
+    <tr><td>Contract review / clause extraction</td><td><span class="cat-tag cat-1">C1</span></td><td>extraction_agent</td><td><span class="yes">✅</span></td></tr>
+    <tr><td>Expense / invoice processing (bulk)</td><td><span class="cat-tag cat-5">C5</span></td><td>bulk_classification_agent</td><td><span class="partial">⚠ batch</span></td></tr>
+    <tr><td>Incident response (event-driven)</td><td><span class="cat-tag cat-4">C4</span></td><td>alert_agent</td><td><span class="partial">⚠ event</span></td></tr>
+    <tr><td>HR onboarding guide</td><td><span class="cat-tag cat-2">C2</span></td><td>workflow_agent (interactive)</td><td><span class="yes">✅</span></td></tr>
+    <tr><td>Internal IT helpdesk</td><td><span class="cat-tag cat-2">C2</span></td><td>chat_agent</td><td><span class="yes">✅</span></td></tr>
+    <tr><td>Compliance review of deals</td><td><span class="cat-tag cat-7">C7</span></td><td>panel_agent + guardrail_agent</td><td><span class="partial">⚠ peer + guardrail</span></td></tr>
+    <tr><td>Research / analyst brief</td><td><span class="cat-tag cat-3">C3</span></td><td>research_agent</td><td><span class="partial">⚠ workflow_agent + session state</span></td></tr>
+  </table>
+</div>
+
+<hr class="hr"/>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="section" id="control-plane">
+  <div class="section-num">Section 9</div>
+  <h2>Control plane — runtime-agnostic across all categories</h2>
+
+  <p>A central, often-missed point: <strong>the control plane is the most durable and portable part of AEA.</strong> Even when an agent runs on a runtime outside AEA's pre-graph → reasoning → post-graph model (voice on Pipecat, batch on Step Functions, long-running on Temporal, multi-agent on peer-to-peer orchestrators, browser-use on Claude Computer Use), the <em>scaffolding, configuration, prompt management, governance, and fleet management</em> still flow through one UI.</p>
+
+  <h3>9.1 The category-agnostic design</h3>
+  <p>Every agent — regardless of category — has the same control-plane needs:</p>
+  <ul>
+    <li><strong>Template</strong> — a reference pattern for the agent type (chat, classifier, voice, batch, etc.).</li>
+    <li><strong>Overlay</strong> — per-instance YAML + prompts + config, layered on the template.</li>
+    <li><strong>UI-driven configuration</strong> — non-developers (ops, compliance, clinical SMEs) tune agents without code.</li>
+    <li><strong>Agent registry</strong> — fleet view, ownership, lifecycle, status.</li>
+    <li><strong>Prompt management</strong> — versioning, evaluation, A/B, rollback.</li>
+    <li><strong>Governance &amp; policy packs</strong> — allow/deny, PHI handling, HIPAA audit patterns, FedRAMP policies.</li>
+    <li><strong>Deployment wiring</strong> — IaC templates per runtime (AgentCore, Fargate, Pipecat, Temporal, Step Functions, Mosaic).</li>
+    <li><strong>Observability</strong> — trace aggregation across heterogeneous runtimes.</li>
+  </ul>
+
+  <p>These needs <strong>don't change</strong> when the runtime underneath changes. That's why the control plane is runtime-agnostic: it abstracts <em>over</em> runtimes, not <em>inside</em> one.</p>
+
+  <h3>9.2 How it generalizes across all eight categories</h3>
+
+  <table>
+    <tr>
+      <th>Category</th>
+      <th>Template</th>
+      <th>Overlay configures</th>
+      <th>Underlying runtime</th>
+    </tr>
+    <tr>
+      <td><span class="cat-tag cat-1">C1</span> Request-Response</td>
+      <td><code>classifier_agent</code> / <code>summary_agent</code> / <code>retrieval_agent</code></td>
+      <td>Prompts, tools, output schema, reasoning strategy, RAG dims</td>
+      <td>C1+C2 (LangGraph) on AgentCore Runtime + Fargate</td>
+    </tr>
+    <tr>
+      <td><span class="cat-tag cat-2">C2</span> Conversational</td>
+      <td><code>chat_agent</code> / <code>copilot_agent</code> / <code>workflow_agent (interactive)</code></td>
+      <td>Prompts, reasoning strategy, tools, RAG dims, memory scopes, HITL gates</td>
+      <td>C1+C2 (LangGraph) on AgentCore Runtime + Fargate</td>
+    </tr>
+    <tr>
+      <td><span class="cat-tag cat-3">C3</span> Long-running Autonomous</td>
+      <td><code>adjudication_agent</code> / <code>investigation_agent</code> / <code>outreach_agent</code></td>
+      <td>Prompts, workflow steps, checkpoints, HITL gates, tools, memory + summaries</td>
+      <td>Temporal / Step Functions / AgentCore Runtime filesystem persistence</td>
+    </tr>
+    <tr>
+      <td><span class="cat-tag cat-4">C4</span> Event-Driven / Streaming</td>
+      <td><code>intake_triage_agent</code> / <code>fraud_detection_agent</code> / <code>alert_agent</code></td>
+      <td>Prompts, event source, subscription filters, classification schema, enrichment tools</td>
+      <td>Kafka / EventBridge / SQS adapter → C1+C2 (LangGraph)</td>
+    </tr>
+    <tr>
+      <td><span class="cat-tag cat-5">C5</span> Batch / High-Throughput</td>
+      <td><code>bulk_adjudication_agent</code> / <code>bulk_extraction_agent</code></td>
+      <td>Prompts, batch size, parallelism, exception rules, shared-context cache, cost model</td>
+      <td>Step Functions / Spark / Ray + C1+C2 worker instances</td>
+    </tr>
+    <tr>
+      <td><span class="cat-tag cat-6">C6</span> Real-Time Voice / Video</td>
+      <td><code>voice_agent</code> / <code>telehealth_intake_agent</code></td>
+      <td>Prompts (system + barge-in responses), STT model, TTS model, interruption policy, fallback tools</td>
+      <td>Pipecat / LiveKit / AgentCore Voice</td>
+    </tr>
+    <tr>
+      <td><span class="cat-tag cat-7">C7</span> Multi-Agent Collaborative</td>
+      <td><code>panel_agent</code> / <code>debate_agent</code> / <code>workflow_agent (hierarchical)</code> / <code>guardrail_agent</code></td>
+      <td>Prompts (per sub-agent), coordination pattern, sub-agent overlays, shared memory, A2A protocol</td>
+      <td>Orchestrator (AEA) + sub-agent C1s + optional peer mesh</td>
+    </tr>
+    <tr>
+      <td><span class="cat-tag cat-8">C8</span> Specialized / Outlier</td>
+      <td><code>browser_use_agent</code> / <code>computer_use_agent</code> / <code>formal_verification_agent</code></td>
+      <td>Prompts, target UI/environment, action scripts, validation checks, proof rules</td>
+      <td>Claude Computer Use / browser-use / proof engine (integrated as tools)</td>
+    </tr>
+  </table>
+
+  <div class="note"><strong>Prompts appear in every row.</strong> Every agent type uses prompts — system prompts, planner prompts, executor prompts, responder prompts, sub-agent prompts, critic prompts, voice system prompts, batch extraction prompts. Prompts are the primary configuration knob for every category, not just request-response.</div>
+
+  <h3>9.3 Why this is strategically important</h3>
+
+  <div class="highlight">
+    <strong>The durable differentiation.</strong> Runtimes come and go. AgentCore Managed Harness shipped this month. Databricks Mosaic AI is in market. Pipecat, LiveKit, Temporal, Step Functions, future open-source entrants will keep emerging. Enterprises can't pick one and freeze — they need to operate agents across whatever runtime fits each use case.
+    <br/><br/>
+    <strong>A unified, category-agnostic control plane — with healthcare domain packs, prompt management, governance, fleet registry, and evaluation — is what survives all of that.</strong> The control plane is where AEA's IP compounds; the runtimes are commodity layers underneath.
+  </div>
+
+  <h3>9.4 What this means for positioning</h3>
+  <ul>
+    <li><strong>AEA is not locked to LangGraph / AgentCore / any single runtime.</strong> The control plane manages agents running on heterogeneous runtimes.</li>
+    <li><strong>Same operator experience</strong> for a nurse copilot (LangGraph), a contact-center voice agent (Pipecat), a nightly claims batch (Step Functions), and a long-running appeals adjudication (Temporal).</li>
+    <li><strong>Customer-deployable.</strong> The control plane runs in the customer's environment, governing agents they operate.</li>
+    <li><strong>Platform-agnostic framing</strong>: "AEA is a category-agnostic agent control plane with healthcare domain packs, runnable over AgentCore, Mosaic, Pipecat, Temporal, Step Functions, or any future agent runtime."</li>
+  </ul>
+
+  <h3>9.5 Meeting-ready one-liners</h3>
+  <ul>
+    <li><strong>For architects:</strong> "The control plane is the durable layer. Runtimes are pluggable — same UI scaffolds and governs agents whether they run on AgentCore, Mosaic, Pipecat, or Temporal."</li>
+    <li><strong>For sales / Tony:</strong> "Customers buy one operator console that manages their entire agent portfolio across every runtime they use. Runtimes are commodity; the control plane is the IP."</li>
+    <li><strong>For internal architects:</strong> "Every agent — voice, batch, long-running, multi-agent — needs templates, overlays, prompt mgmt, governance, registry. We build that once, for all categories."</li>
+  </ul>
+
+  <h3>9.6 Config-only vs. requires new platform code</h3>
+
+  <p>The "build agent types × reasoning strategies once, configure everything else" promise has a real boundary. It holds for agents running inside AEA's pre-graph → reasoning → post-graph architecture. It does not hold for runtime adapters, category-level extensions, or entirely separate runtimes.</p>
+
+  <p><strong>This table makes that boundary explicit and ties back to prior sections.</strong></p>
+
+  <table>
+    <tr>
+      <th>What it is</th>
+      <th>Config-only (overlay YAML + prompts)</th>
+      <th>Requires new platform code</th>
+    </tr>
+    <tr>
+      <td><strong>New agent instance of an existing type</strong></td>
+      <td><span class="yes">✅ Yes</span> — create new overlay folder, edit <code>agent_manifest.yaml</code>, <code>agent.yaml</code>, <code>memory.yaml</code>, <code>prompt-defaults.yaml</code>. See §5 master matrix columns (Reasoning, RAG, HITL, Memory, Tools) and §9.2 "Overlay configures" column.</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><strong>New agent type (e.g., classifier_agent, panel_agent)</strong></td>
+      <td>—</td>
+      <td><span class="no">❌ Code</span> — new template with default graph wiring, capability manifest, platform-core additions. One-time platform work per type.</td>
+    </tr>
+    <tr>
+      <td><strong>New reasoning strategy (e.g., interrupt-resume, streaming-turn-taking)</strong></td>
+      <td>—</td>
+      <td><span class="no">❌ Code</span> — new strategy file in <code>platform-core/reasoning/strategies/</code>. One-time platform work per strategy.</td>
+    </tr>
+    <tr>
+      <td><strong>Prompts, tools, RAG config, memory scopes, HITL gates</strong></td>
+      <td><span class="yes">✅ Yes</span> — overlay YAML + prompt files. No code.</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><strong>Domain scope (e.g., new ID fields, new context scopes)</strong></td>
+      <td><span class="yes">✅ Yes</span> — <code>domain.yaml</code> scaffold-time config.</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><strong>Category <span class="cat-tag cat-3">C3</span> long-running support</strong></td>
+      <td>—</td>
+      <td><span class="no">❌ Code</span> — <code>workflow_agent</code> type + durable agent session state (AgentCore FS Persistence / Temporal / Step Functions as session store). Checkpoint-resume wiring. Not a business workflow engine. See §9.2 "Underlying runtime" column and §10 Phase 1.</td>
+    </tr>
+    <tr>
+      <td><strong>Category <span class="cat-tag cat-4">C4</span> event-driven support</strong></td>
+      <td>—</td>
+      <td><span class="no">❌ Code</span> — event-adapter pre-graph (Kafka / EventBridge / SQS), concurrency model, DLQ. See §9.2 and §10 Phase 1.</td>
+    </tr>
+    <tr>
+      <td><strong>Category <span class="cat-tag cat-5">C5</span> batch support</strong></td>
+      <td>—</td>
+      <td><span class="no">❌ Code</span> — batch orchestration (Step Functions / Spark / Ray), scatter-gather hooks, shared-context cache. See §9.2 and §10 Phase 2.</td>
+    </tr>
+    <tr>
+      <td><strong>Category <span class="cat-tag cat-6">C6</span> voice / video support</strong></td>
+      <td>—</td>
+      <td><span class="no">❌ Separate runtime</span> — Pipecat / LiveKit / AgentCore Voice. AEA contributes backend tools/RAG/memory/HITL services only. See §6 coverage scorecard and §10 Phase 3.</td>
+    </tr>
+    <tr>
+      <td><strong>Category <span class="cat-tag cat-7">C7</span> multi-agent peer / debate / market</strong></td>
+      <td>Config enables hierarchical workflow_agent once built</td>
+      <td><span class="no">❌ Code</span> — new orchestrator types, A2A protocol, blackboard memory scope. See §10 Phase 2.</td>
+    </tr>
+    <tr>
+      <td><strong>Category <span class="cat-tag cat-8">C8</span> browser-use / formal verification</strong></td>
+      <td>—</td>
+      <td><span class="no">❌ External runtime</span> — integrated as MCP tools, not native hosting. See §6 coverage scorecard and §10 Phase 3.</td>
+    </tr>
+    <tr>
+      <td><strong>Runtime adapter swap (LangGraph → Mosaic / AgentCore Harness)</strong></td>
+      <td>—</td>
+      <td><span class="no">❌ Code</span> — new adapter in <code>platform-core/plugins/</code>. One-time platform work per runtime. Then all downstream agents can target that runtime via config.</td>
+    </tr>
+    <tr>
+      <td><strong>Gov deployment targets (FedRAMP / IL4–6 / GovCloud / air-gapped)</strong></td>
+      <td>—</td>
+      <td><span class="no">❌ Infra + code</span> — separate IaC stacks, hardened adapters, policy packs. See §10 Phase 4.</td>
+    </tr>
+    <tr>
+      <td><strong>Section 508 accessibility in capability UIs</strong></td>
+      <td>—</td>
+      <td><span class="no">❌ Code</span> — UI component work, not overlay config. See §10 Phase 4.</td>
+    </tr>
+  </table>
+
+  <div class="highlight">
+    <strong>The honest boundary in one sentence.</strong> <em>Within</em> AEA's supported architecture and already-built runtimes, the "agent types × reasoning strategies built once; everything else config-only" promise holds. Extending <em>beyond</em> that boundary — to new categories, new runtimes, new deployment targets, or separate architectures (voice, browser-use, formal verification) — is one-time platform code, not overlay config. Once that platform code ships, agents in the new category/runtime become configurable like the rest.
+  </div>
+
+  <div class="note"><strong>How to use this table in conversations.</strong> When a stakeholder asks "can AEA handle X?", use this table to answer: (1) is X a new instance of an existing type → config-only, days of work. (2) Is X a new type / strategy → one-time platform work, then config. (3) Is X a new category → see §10 roadmap for effort. (4) Is X a separate architecture (voice, browser-use, formal verification) → AEA integrates but doesn't host natively.</div>
+
+  <h3>9.7 Infrastructure applicability per category (summary view)</h3>
+
+  <p>Clean summary of which infrastructure pieces each category uses. Two levels:</p>
+  <ul>
+    <li><strong>Runtime containers (C1/C2/C3)</strong> — the agent's runtime. Varies by category.</li>
+    <li><strong>Control plane (C4)</strong> — universal across all categories; the configuration panels inside it are category-specific.</li>
+    <li><strong>Memory</strong> — infrastructure used by all categories, but with different scope/degree.</li>
+    <li><strong>Tools</strong> — infrastructure used by all categories, but with different pattern.</li>
+  </ul>
+
+  <table>
+    <tr>
+      <th>Category</th>
+      <th>Runtime containers</th>
+      <th>Control plane (C4)</th>
+      <th>Memory</th>
+      <th>Tools</th>
+    </tr>
+    <tr>
+      <td><span class="cat-tag cat-1">C1</span> Request-Response</td>
+      <td>C1 + C2 + C3</td>
+      <td>✅ Universal + standard config panel</td>
+      <td>Minimal / off</td>
+      <td>0–3 calls, MCP/API</td>
+    </tr>
+    <tr>
+      <td><span class="cat-tag cat-2">C2</span> Conversational</td>
+      <td>C1 + C2 + C3 + session manager</td>
+      <td>✅ Universal + standard config panel</td>
+      <td>All 4 scopes active (short-term, episodic, semantic, summary)</td>
+      <td>Rich, stateful sessions</td>
+    </tr>
+    <tr>
+      <td><span class="cat-tag cat-3">C3</span> Long-running Autonomous</td>
+      <td>C1 + C2 + C3 + <strong>durable agent session state</strong> (AgentCore FS Persistence / Temporal-as-session-store)</td>
+      <td>✅ Universal + workflow config panel (checkpoints, HITL gates, step definitions)</td>
+      <td>All 4 scopes + session checkpoints</td>
+      <td>Extensive, idempotent (idempotency keys)</td>
+    </tr>
+    <tr>
+      <td><span class="cat-tag cat-4">C4</span> Event-driven</td>
+      <td>Event adapter (Kafka / EventBridge / SQS) → C1 + C2 + C3</td>
+      <td>✅ Universal + event config panel (topic filters, schema, concurrency)</td>
+      <td>Key-scoped (per member / provider); blackboard option for shared</td>
+      <td>Enrichment tools + emit-as-output</td>
+    </tr>
+    <tr>
+      <td><span class="cat-tag cat-5">C5</span> Batch</td>
+      <td>Batch orchestrator (Step Functions / Spark / Ray) + worker pool. Workers may use C1+C2+C3 (complex per-unit) or direct LLM call (simple)</td>
+      <td>✅ Universal + batch config panel (batch size, parallelism, exception rules)</td>
+      <td>Shared semantic cache across batch; transient per-unit</td>
+      <td>Bulk-optimized (batch lookups, vectorized inference)</td>
+    </tr>
+    <tr>
+      <td><span class="cat-tag cat-6">C6</span> Voice / Video</td>
+      <td><strong>Different runtime</strong> (Pipecat / LiveKit / AgentCore Voice) — may call C2/C3 as backend services for tools/RAG</td>
+      <td>✅ Universal + voice config panel (STT, TTS, barge-in, fallback)</td>
+      <td>Rolling audio buffer + post-call summary</td>
+      <td>Sparse; cascade-fallback when tools needed</td>
+    </tr>
+    <tr>
+      <td><span class="cat-tag cat-7">C7</span> Multi-agent Collaborative</td>
+      <td>Multiple C1 instances (one per sub-agent) + shared C2 + shared C3 + orchestrator</td>
+      <td>✅ Universal + multi-agent config panel (sub-agent overlays, coordination pattern, A2A protocol)</td>
+      <td>Blackboard (shared across agents) + per-agent private</td>
+      <td>Per-agent allow-list + A2A protocol</td>
+    </tr>
+    <tr>
+      <td><span class="cat-tag cat-8">C8</span> Specialized / Outlier</td>
+      <td><strong>Separate runtime</strong> (Claude Computer Use / browser-use / proof engine) — may expose C3 tools to the outer agent</td>
+      <td>✅ Universal + specialized config panel (target URLs, action scripts, proof rules)</td>
+      <td>Variable (per runtime)</td>
+      <td>Specialized (browser, desktop, proof tools) — integrated as MCP tools</td>
+    </tr>
+  </table>
+
+  <div class="callout">
+    <strong>Two clean assertions from this table:</strong>
+    <ol>
+      <li><strong>Runtime containers (C1/C2/C3) are NOT universal.</strong> They cover 6 of 8 categories directly; voice (C6) and specialized (C8) use different runtimes entirely. Batch (C5) uses them per worker when per-unit reasoning is complex.</li>
+      <li><strong>Control plane (C4) IS universal.</strong> Every category uses Agent Factory UI, registry, prompt management, governance, evaluation — with category-specific <em>config panels</em> inside the same UI. Memory + tools infrastructure are also universal (every category uses them, degree and pattern vary).</li>
+    </ol>
+  </div>
+
+  <div class="note"><strong>Why this matters.</strong> The <em>runtime</em> is commodity — and varies by category. The <em>control plane + shared infrastructure (memory, tools, governance, prompt mgmt, evaluation)</em> is universal and is where AEA's IP compounds across categories. Same operator experience, many runtimes.</div>
+
+  <h3>9.8 Dynamic routing — classifier in front of the agent fleet</h3>
+
+  <p><strong>Problem:</strong> reasoning strategy in AEA is <strong>fixed per-agent overlay</strong> (not switchable mid-run by design — keeps observability and evaluation deterministic). For a fleet of N chatbots tuned for different query shapes, we need a way to pick the right agent per query.</p>
+
+  <p><strong>Pattern:</strong> a lightweight <strong>router service</strong> sits between the UI and the agent fleet. It classifies the query, picks the best-match pre-deployed agent, forwards the invocation, and streams the response back. Aligns with Anthropic's canonical <strong>"routing"</strong> pattern.</p>
+
+  <pre>
+User types in Chat UI
+      │
+      ▼
+┌────────────────────────────────────────────┐
+│  Router service (new, thin)                │
+│  • Reads Agent Registry (C4)               │
+│  • Calls classifier LLM (Haiku — fast)     │
+│  • Returns: pick agent X, confidence Y     │
+└──────┬─────────────────────────────────────┘
+       │  (forwards to chosen agent's /invocations)
+       ▼
+┌──────┴────┬──────────┬───────────┐
+▼           ▼          ▼           ▼
+chat_simple chat_react chat_plan  chat_reflection
+(each is a separately-deployed C1, strategy fixed)
+       │
+       ▼
+  Response streams back to UI
+  </pre>
+
+  <h4>Why this fits AEA's 4-container model without architectural change</h4>
+  <ul>
+    <li><strong>Agents unchanged</strong> — pre-graph → reasoning (C2) → post-graph intact per agent.</li>
+    <li><strong>C2 orchestration unchanged</strong> — each agent still runs its own LangGraph loop with its configured strategy.</li>
+    <li><strong>C3 Tool Gateway unchanged.</strong></li>
+    <li><strong>C4 Control Plane unchanged</strong> — Agent Registry already exists; router just consumes its data.</li>
+    <li><strong>Additive</strong> — new thin service, not a structural container change.</li>
+  </ul>
+
+  <h4>Agent manifest extension (routing hints)</h4>
+
+  <pre>
+routing_hints:
+  query_patterns: ["simple lookup", "single fact", "status of X"]
+  strategy_profile: simple
+  confidence_floor: 0.7
+  example_queries:
+    - "Status of ticket JIRA-123?"
+    - "What is the owner of project X?"
+  </pre>
+
+  <p>The classifier LLM sees the incoming query + all agents' routing hints → returns best-match agent ID + confidence. Below-threshold → fall back to a default agent or escalate to HITL.</p>
+
+  <h4>When the router is needed vs. not</h4>
+  <ul>
+    <li><strong>Needed:</strong> fleet with multiple agents per use case (e.g., chatbot platform with <code>simple</code>, <code>ReAct</code>, <code>plan-execute</code>, <code>reflection</code> variants for same domain).</li>
+    <li><strong>Not needed:</strong> single-agent deployments — UI calls agent directly.</li>
+    <li><strong>Not needed:</strong> when the UI already knows which agent to call (e.g., dedicated status bot).</li>
+  </ul>
+
+  <div class="callout"><strong>Architectural principle.</strong> Reasoning strategy stays fixed per-agent overlay (deterministic, observable, evaluable). Dynamic adaptation happens at the <em>fleet level</em> via routing, not inside a single agent. This is Anthropic's "routing" pattern applied to AEA — adaptive where it belongs, deterministic where it should be.</div>
+
+  <div class="note"><strong>Effort:</strong> ~1–2 weeks. Router service (Lambda or Fargate) ~1 week; manifest extension + Agent Registry UI field ~3 days; Capability UI POST redirect ~2 days. No changes to C1/C2/C3 internals. Sits in C4 control plane area as an Agent Registry consumer.</div>
+</div>
+
+<hr class="hr"/>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="section" id="roadmap">
+  <div class="section-num">Section 10</div>
+  <h2>Implementation roadmap for full coverage</h2>
+
+  <p>To move AEA from ~80% coverage to ~95%, in order of impact × effort:</p>
+
+  <h3>Phase 1 — Tier-1 extensions (core v1.0)</h3>
+  <ul>
+    <li><strong>classifier_agent overlay</strong> (C1) — ~1 week. Unlocks intake triage and routing use cases.</li>
+    <li><strong><code>workflow_agent</code> type + durable agent session state</strong> (C3) — 4–6 weeks. Build the <code>workflow_agent</code> type and wire durable session state via AgentCore Runtime Filesystem Persistence (just shipped), Temporal used as a session store, or Step Functions session state. This is agent session persistence, <em>not</em> a business workflow engine. Unlocks appeals, PA, outreach, investigations.</li>
+    <li><strong>Event-adapter pre-graph</strong> (C4) — 3–4 weeks. Kafka / EventBridge / SQS / FHIR-subscription ingress. Unlocks real-time fraud, intake triage, change reactions.</li>
+    <li><strong>Hierarchical workflow_agent</strong> (C7) — 6–8 weeks. Orchestrator + worker sub-graphs. Unlocks complex multi-step cases.</li>
+  </ul>
+
+  <h3>Phase 2 — Tier-2 extensions (v1.5)</h3>
+  <ul>
+    <li><strong>Batch orchestration layer</strong> (C5) — 4–6 weeks. Step Functions / Spark / Ray integration + scatter-gather hooks + shared-context cache.</li>
+    <li><strong>Peer / debate / market multi-agent patterns</strong> (C7) — 12+ weeks. New orchestrator types, A2A protocol, blackboard memory scope.</li>
+    <li><strong>Guardrail agents</strong> — 4 weeks. First-class agent type that monitors others and blocks high-risk actions.</li>
+  </ul>
+
+  <h3>Phase 3 — Integrations (not platform work)</h3>
+  <ul>
+    <li><strong>Voice pipeline integration</strong> (C6) — partner with Pipecat / LiveKit / AgentCore Voice. AEA exposes tools, RAG, memory, HITL services as backends; voice loop runs in partner runtime.</li>
+    <li><strong>Browser-use / computer-use as MCP tools</strong> (C8) — wrap Claude Computer Use, browser-use CLI, or equivalent as callable tools.</li>
+    <li><strong>Formal verification as MCP tool</strong> (C8) — wrap proof engines for medical policy / legal reasoning.</li>
+  </ul>
+
+  <h3>Phase 4 — Government-readiness</h3>
+  <ul>
+    <li>FedRAMP / IL4–6 / GovCloud deployment profile.</li>
+    <li>Air-gapped option (on-prem / classified).</li>
+    <li>Section 508 accessibility pass on capability UIs.</li>
+    <li>FISMA / FedRAMP policy packs.</li>
+  </ul>
+
+  <div class="highlight">
+    <strong>Total roadmap envelope to reach ~95% coverage:</strong> 6–9 months of platform engineering (Phases 1–2), plus integration partnerships (Phase 3) and a Gov v2.0 track (Phase 4). 80% coverage is already shipping-ready today.
+  </div>
+</div>
+
+<hr class="hr"/>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="section" id="sources">
+  <div class="section-num">Section 11</div>
+  <h2>Sources &amp; references</h2>
+
+  <h3>Industry taxonomies</h3>
+  <ol class="refs">
+    <li><a href="https://www.anthropic.com/research/building-effective-agents">Anthropic — Building Effective AI Agents (original)</a></li>
+    <li><a href="https://resources.anthropic.com/hubfs/Building%20Effective%20AI%20Agents-%20Architecture%20Patterns%20and%20Implementation%20Frameworks.pdf">Anthropic — Architecture Patterns and Implementation Frameworks (PDF)</a></li>
+    <li><a href="https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents">Anthropic — Effective harnesses for long-running agents</a></li>
+    <li><a href="https://docs.langchain.com/oss/python/langgraph/workflows-agents">LangChain / LangGraph — Workflows and agents</a></li>
+    <li><a href="https://www.sitepoint.com/the-definitive-guide-to-agentic-design-patterns-in-2026/">SitePoint — Agentic Design Patterns: The 2026 Guide</a></li>
+    <li><a href="https://www.bain.com/insights/the-three-layers-of-an-agentic-ai-platform/">Bain &amp; Company — The Three Layers of an Agentic AI Platform</a></li>
+  </ol>
+
+  <h3>Multi-agent &amp; coordination</h3>
+  <ol class="refs">
+    <li><a href="https://arxiv.org/html/2508.12683">arXiv — A Taxonomy of Hierarchical Multi-Agent Systems</a></li>
+    <li><a href="https://arxiv.org/html/2501.06322v1">arXiv — Multi-Agent Collaboration Mechanisms: A Survey of LLMs</a></li>
+    <li><a href="https://www.confluent.io/blog/the-future-of-ai-agents-is-event-driven/">Confluent — The Future of AI Agents Is Event-Driven</a></li>
+    <li><a href="https://www.kai-waehner.de/blog/2026/04/06/enterprise-agentic-ai-landscape-2026-trust-flexibility-and-vendor-lock-in/">Kai Waehner — Enterprise Agentic AI Landscape 2026</a></li>
+  </ol>
+
+  <h3>Voice agents</h3>
+  <ol class="refs">
+    <li><a href="https://www.assemblyai.com/blog/the-voice-ai-stack-for-building-agents">AssemblyAI — The voice AI stack for building agents in 2026</a></li>
+    <li><a href="https://softcery.com/lab/ai-voice-agents-real-time-vs-turn-based-tts-stt-architecture">Softcery — Real-Time (S2S) vs Turn-Based (STT/TTS) Voice Agent Architecture</a></li>
+    <li><a href="https://aws.amazon.com/blogs/machine-learning/deploy-voice-agents-with-pipecat-and-amazon-bedrock-agentcore-runtime-part-1/">AWS — Deploy voice agents with Pipecat and Amazon Bedrock AgentCore Runtime</a></li>
+  </ol>
+
+  <h3>RAG &amp; retrieval patterns</h3>
+  <ol class="refs">
+    <li><a href="https://www.digitalapplied.com/blog/agentic-rag-patterns-multi-step-reasoning-guide">Digital Applied — Agentic RAG Patterns 2026</a></li>
+    <li><a href="https://github.com/asinghcsu/AgenticRAG-Survey">GitHub — Agentic-RAG Survey</a></li>
+    <li><a href="https://newsletter.rakeshgohel.com/p/10-types-of-rag-architectures-and-their-use-cases-in-2026">Rakesh Gohel — 10 Types of RAG Architectures in 2026</a></li>
+  </ol>
+
+  <h3>Memory &amp; long-term context</h3>
+  <ol class="refs">
+    <li><a href="https://arxiv.org/abs/2512.13564">arXiv — Memory in the Age of AI Agents (survey)</a></li>
+    <li><a href="https://towardsdatascience.com/a-practical-guide-to-memory-for-autonomous-llm-agents/">Towards Data Science — A Practical Guide to Memory for Autonomous LLM Agents</a></li>
+    <li><a href="https://www.digitalapplied.com/blog/agent-memory-architectures-vector-graph-episodic">Digital Applied — Agent Memory Architectures: Vector vs Graph vs Episodic</a></li>
+  </ol>
+
+  <h3>HITL &amp; durable execution</h3>
+  <ol class="refs">
+    <li><a href="https://docs.langchain.com/oss/python/langchain/human-in-the-loop">LangChain — Human-in-the-loop</a></li>
+    <li><a href="https://docs.temporal.io/ai-cookbook/human-in-the-loop-python">Temporal — Human-in-the-Loop AI Agent</a></li>
+    <li><a href="https://www.stackai.com/insights/human-in-the-loop-ai-agents-how-to-design-approval-workflows-for-safe-and-scalable-automation">StackAI — HITL AI Agents: Designing Approval Workflows</a></li>
+    <li><a href="https://zylos.ai/research/2026-02-17-durable-execution-ai-agents">Zylos — Durable Execution Patterns for AI Agents (2026)</a></li>
+  </ol>
+
+  <h3>Batch &amp; long-running</h3>
+  <ol class="refs">
+    <li><a href="https://arxiv.org/abs/2509.02121">arXiv — Halo: Batch Query Processing and Optimization for Agentic Workflows</a></li>
+    <li><a href="https://zylos.ai/research/2026-03-04-ai-agent-workflow-checkpointing-resumability">Zylos — AI Agent Workflow Checkpointing and Resumability (2026)</a></li>
+  </ol>
+
+  <h3>Healthcare payer use cases</h3>
+  <ol class="refs">
+    <li><a href="https://www.mobihealthnews.com/news/creating-blueprint-agentic-ai-claims-and-prior-authorization">MobiHealthNews — Blueprint for Agentic AI in Claims and Prior Authorization</a></li>
+    <li><a href="https://www.wwt.com/blog/top-20-agentic-ai-use-cases-for-healthcare-in-2026">WWT — Top 20 Agentic AI Use Cases for Healthcare in 2026</a></li>
+    <li><a href="https://phti.org/wp-content/uploads/sites/3/2026/04/PHTI-Administrative-AI-Current-Use-and-Potential-Impact.pdf">PHTI — Administrative AI: Current Use and Potential Impact (April 2026)</a></li>
+    <li><a href="https://www.coherehealth.com/blog/agentic-ai-health-plans-gartner-2026-insights">Cohere Health — Agentic AI for Health Plans: Gartner 2026 Insights</a></li>
+    <li><a href="https://www.healthaffairs.org/doi/10.1377/hlthaff.2025.00897">Health Affairs — The AI Arms Race In Health Insurance Utilization Review</a></li>
+  </ol>
+
+  <h3>Government IT</h3>
+  <ol class="refs">
+    <li><a href="https://www.deloitte.com/us/en/insights/industry/government-public-sector-services/government-trends/2026/agentic-ai-government-customized-service-delivery.html">Deloitte — Agentic AI and Customized Government Services</a></li>
+    <li><a href="https://statetechmagazine.com/article/2026/02/agentic-ai-turns-government-workflows-autonomous-governed-systems-perfcon">StateTech — Agentic AI Turns Government Workflows into Autonomous Governed Systems</a></li>
+  </ol>
+
+  <h3>Browser / computer-use agents</h3>
+  <ol class="refs">
+    <li><a href="https://platform.claude.com/docs/en/agents-and-tools/tool-use/computer-use-tool">Claude API — Computer Use Tool</a></li>
+    <li><a href="https://github.com/browser-use/browser-use">GitHub — browser-use: Make websites accessible for AI agents</a></li>
+    <li><a href="https://github.com/vercel-labs/agent-browser">GitHub — agent-browser: Browser automation CLI for AI agents</a></li>
+  </ol>
+</div>
+
+<div class="footer">
+  Agentic Enterprise Accelerator — Agent Taxonomy &amp; Capability Matrix · Research synthesis as of April 2026.
+</div>
+
+</div>
+</body>
+</html>

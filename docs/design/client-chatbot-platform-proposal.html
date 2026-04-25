@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Enterprise Chatbot Platform — Architecture Proposal</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#f8fafc;color:#0f172a;font-size:14px;line-height:1.6;}
+.page{max-width:1100px;margin:0 auto;padding:40px 48px 80px;}
+.cover{text-align:center;padding:48px 0 32px;border-bottom:3px solid #FF9900;margin-bottom:32px;}
+.cover .eyebrow{font-size:11px;font-weight:800;letter-spacing:3px;text-transform:uppercase;color:#FF9900;margin-bottom:14px;}
+.cover h1{font-size:28px;font-weight:900;letter-spacing:-.3px;line-height:1.2;margin-bottom:8px;color:#0f172a;}
+.cover .tagline{font-size:14px;color:#475569;font-weight:500;}
+.section{margin-bottom:36px;}
+.section-num{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:2px;color:#FF9900;margin-bottom:4px;}
+.section h2{font-size:19px;font-weight:900;color:#0f172a;margin-bottom:12px;padding-bottom:6px;border-bottom:2px solid #e2e8f0;}
+.section h3{font-size:14px;font-weight:800;color:#1e293b;margin:18px 0 8px;}
+p{margin-bottom:10px;color:#334155;}
+ul{margin:6px 0 10px 20px;}
+ul li{color:#334155;margin-bottom:3px;}
+pre{background:#0f172a;color:#e2e8f0;padding:12px 16px;border-radius:6px;font-size:11.5px;line-height:1.55;overflow-x:auto;margin:10px 0;font-family:'SF Mono',Monaco,'Courier New',monospace;}
+code{background:#f1f5f9;color:#334155;padding:1px 5px;border-radius:3px;font-size:12px;font-family:'SF Mono',Monaco,'Courier New',monospace;}
+table{width:100%;border-collapse:collapse;margin:10px 0;font-size:12.5px;}
+th{background:#232f3e;color:#FF9900;padding:8px 10px;text-align:left;font-weight:800;font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;}
+td{padding:7px 10px;border-bottom:1px solid #f1f5f9;color:#334155;vertical-align:top;}
+tr:nth-child(even) td{background:#fafafa;}
+.highlight{background:#fff8e6;border-left:4px solid #FF9900;padding:12px 16px;border-radius:0 8px 8px 0;margin:14px 0;}
+.callout{background:#e8edf8;border-left:4px solid #0277bd;padding:12px 16px;border-radius:0 8px 8px 0;margin:14px 0;}
+.note{background:#f1f5f9;border-left:3px solid #94a3b8;padding:10px 14px;border-radius:0 6px 6px 0;margin:12px 0;font-size:12.5px;color:#475569;font-style:italic;}
+.phase{background:#fff;border:1px solid #e2e8f0;border-left:4px solid #FF9900;border-radius:6px;padding:14px 16px;margin:10px 0;}
+.phase-title{font-weight:800;font-size:13px;color:#0f172a;margin-bottom:6px;}
+.yes{color:#16a34a;font-weight:700;}
+.no{color:#dc2626;font-weight:700;}
+.partial{color:#d97706;font-weight:700;}
+.layer-box{display:inline-block;padding:3px 9px;border-radius:3px;font-size:10.5px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;margin:1px 2px;}
+.layer-run{background:#ffe0b2;color:#e65100;}
+.layer-plat{background:#cfd8dc;color:#0277bd;}
+.layer-tool{background:#c8e6c9;color:#2e7d32;}
+.layer-ctrl{background:#f8bbd0;color:#b71c1c;}
+.layer-ops{background:#e1bee7;color:#6a1b9a;}
+.hr{border:none;border-top:1px dashed #e2e8f0;margin:28px 0;}
+.footer{margin-top:40px;padding-top:18px;border-top:1px solid #e2e8f0;font-size:11px;color:#94a3b8;}
+
+@media print {
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+  @page { size: Letter; margin: 0.6in; }
+  body { font-size: 10pt; background: white; padding: 0; margin: 0; }
+  .page { max-width: none; padding: 0; margin: 0; background: white; }
+  .section { page-break-inside: auto; break-inside: auto; margin-bottom: 18px; }
+  .highlight, .callout, .note, .phase { page-break-inside: avoid; break-inside: avoid; }
+  h1, h2, h3 { page-break-after: avoid; break-after: avoid; }
+  table { page-break-inside: auto; font-size: 9pt; }
+  tr { page-break-inside: avoid; break-inside: avoid; }
+  pre { page-break-inside: avoid; break-inside: avoid; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="cover">
+  <div class="eyebrow">Architecture Proposal</div>
+  <h1>Enterprise Chatbot Platform — Reusable, Context-Aware, Cross-Source</h1>
+  <p class="tagline">One AWS-native platform; many self-serve chatbots. Trained on ServiceNow, Jira, Confluence — extensible to any dataset. Goes beyond generic Copilot.</p>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-num">Section 1</div>
+  <h2>Use case &amp; business context</h2>
+
+  <h3>What Tom's team (Joe's org) wants to build</h3>
+  <ul>
+    <li>A system that pulls <strong>project and delivery status from multiple sources</strong> — ServiceNow (incidents/changes), Jira (tickets/projects), Confluence (docs/runbooks).</li>
+    <li><strong>Reusable, context-aware chatbots</strong> that teams can train on specific data sets without rebuilding each time.</li>
+    <li><strong>Beyond generic Copilot</strong> — domain- and dataset-specific answers with tool invocation and multi-source reasoning.</li>
+    <li>Aligned with their pivot toward <strong>AWS serverless</strong> architecture.</li>
+  </ul>
+
+  <h3>Constraints &amp; context</h3>
+  <ul>
+    <li>Current vendor rolling off ML resources; architectural guidance but limited hands-on execution.</li>
+    <li>Budget-constrained — cannot backfill vendor resources; need a <em>platform</em> approach, not per-bot custom builds.</li>
+    <li>Existing pilots: OCR/IDP, regression testing, data ingestion/sanitization — the platform must integrate, not replace.</li>
+  </ul>
+
+  <div class="highlight">
+    <strong>Core problem:</strong> hand-building one chatbot per use case scales linearly — every bot reinvents auth, RAG, tool plumbing, memory, and governance. The real need is a <strong>reusable platform</strong> where each new bot is a config, not a project.
+  </div>
+</div>
+
+<hr class="hr"/>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-num">Section 2</div>
+  <h2>Proposed architecture (high level)</h2>
+
+  <pre>
+┌──────────────────────────────────────────────────────────────────────┐
+│                      USER / TEAM-FACING LAYER                        │
+│  Chat UI (Slack / Teams / Web)  ·  Agent Factory UI (self-serve)    │
+└──────────┬──────────────────────────────────┬────────────────────────┘
+           │                                  │
+           ▼                                  ▼
+┌──────────────────────────┐      ┌───────────────────────────────────┐
+│  AGENT RUNTIME (C1)      │      │  CONTROL PLANE (C4)               │
+│  AgentCore Runtime       │      │  Agent Factory UI, Prompt Mgmt,   │
+│  Per-bot session + HITL  │      │  Agent Registry, Eval Workbench,  │
+│                          │      │  Governance dashboards            │
+└──────────┬───────────────┘      └───────────────────────────────────┘
+           │
+           ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│        PLATFORM SERVICES (C2) — shared across all bots              │
+│  Reasoning engine (LangGraph)  ·  Memory (4 scopes)  ·  RAG (multi-  │
+│  dim)  ·  Tool governance  ·  Observability                         │
+└──────────┬───────────────────────────────────────────────────────────┘
+           │
+           ▼
+┌──────────────────────────┐      ┌───────────────────────────────────┐
+│  TOOL GOVERNANCE (C3)    │ ──── │  AGENTCORE TOOL GATEWAY (MCP)     │
+│  Per-agent allow/deny,   │      │  Stateful MCP tool serving        │
+│  policy enforcement,     │      │  ServiceNow · Jira · Confluence   │
+│  multi-dim RAG orch.     │      │  (native stateful sessions)       │
+└──────────────────────────┘      └───────────────────────────────────┘
+                                            │
+           ┌────────────────────────────────┼──────────────────────┐
+           ▼                                ▼                      ▼
+┌──────────────────┐          ┌──────────────────┐    ┌────────────────────┐
+│ Step Functions   │          │ EventBridge      │    │ Bedrock KB +       │
+│ Scheduled /      │          │ Event triggers   │    │ OpenSearch         │
+│ long-running     │          │ (project risk,   │    │ (RAG indices       │
+│ multi-agent jobs │          │ ticket changes)  │    │  per dataset)      │
+└──────────────────┘          └──────────────────┘    └────────────────────┘
+  </pre>
+
+  <h3>Layer roles</h3>
+  <ul>
+    <li><span class="layer-box layer-run">Runtime</span> — per-bot agent execution on AgentCore Runtime; thin entry point, handles session + HITL.</li>
+    <li><span class="layer-box layer-plat">Platform</span> — shared C2 services (reasoning, memory, RAG, observability) used by every bot.</li>
+    <li><span class="layer-box layer-tool">Tools</span> — C3 policy layer + AgentCore Tool Gateway for MCP tool serving (ServiceNow, Jira, Confluence connectors).</li>
+    <li><span class="layer-box layer-ctrl">Control Plane</span> — C4 UI for teams to self-serve new bots, manage prompts, view governance.</li>
+    <li><span class="layer-box layer-ops">Orchestration</span> — Step Functions + EventBridge for scheduled / batch / event-triggered workflows.</li>
+  </ul>
+</div>
+
+<hr class="hr"/>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-num">Section 3</div>
+  <h2>AWS service mapping</h2>
+
+  <table>
+    <tr><th>Layer</th><th>AWS service / component</th><th>Role</th></tr>
+    <tr><td>Agent runtime (C1)</td><td>Amazon Bedrock AgentCore Runtime</td><td>Per-bot hosting, per-session state, managed scale.</td></tr>
+    <tr><td>LLM backbone</td><td>Amazon Bedrock (Claude)</td><td>Model inference; supports Haiku/Sonnet/Opus tiering by query complexity.</td></tr>
+    <tr><td>Memory</td><td>AgentCore Memory + DynamoDB</td><td>4-scope memory (short-term, episodic, semantic, summary).</td></tr>
+    <tr><td>Tools &amp; MCP</td><td>AgentCore Tool Gateway (stateful MCP)</td><td>ServiceNow / Jira / Confluence tool servers with stateful sessions (auth once, reuse).</td></tr>
+    <tr><td>RAG indices</td><td>Bedrock Knowledge Bases + OpenSearch Serverless</td><td>Per-dataset vector indices; multi-source query.</td></tr>
+    <tr><td>Shared platform services (C2)</td><td>ECS Fargate</td><td>LangGraph reasoning engine, memory orchestrator, RAG orchestrator — always-on multi-tenant.</td></tr>
+    <tr><td>Control plane (C4)</td><td>CloudFront + S3 (UI) + Fargate/Lambda (API)</td><td>Agent Factory UI, prompt management, agent registry, eval workbench.</td></tr>
+    <tr><td>Scheduled / long-running orch</td><td>AWS Step Functions + EventBridge Scheduler</td><td>Weekly exec reports, batch scans, long-running multi-agent workflows.</td></tr>
+    <tr><td>Event-driven triggers</td><td>Amazon EventBridge</td><td>Project risk changes, ticket escalations — trigger agents reactively.</td></tr>
+    <tr><td>Lightweight adapters</td><td>AWS Lambda</td><td>Tool adapters, data transformations, webhook handlers.</td></tr>
+    <tr><td>Data sanitization pipeline</td><td>Step Functions + Lambda + Bedrock</td><td>PII/secrets scrubbing before indexing (integrates with their existing OCR/IDP work).</td></tr>
+    <tr><td>Identity</td><td>AgentCore Identity + Cognito</td><td>End-user auth + per-bot OAuth for tool access.</td></tr>
+    <tr><td>Observability</td><td>AgentCore Observability + CloudWatch</td><td>Traces, metrics, prompt performance, quality evals.</td></tr>
+    <tr><td>IaC</td><td>AWS CDK (Terraform optional)</td><td>Every bot, every service, every adapter provisioned as code.</td></tr>
+    <tr><td>Secrets</td><td>AWS Secrets Manager + KMS</td><td>Tool credentials, API keys, session tokens.</td></tr>
+  </table>
+</div>
+
+<hr class="hr"/>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-num">Section 4</div>
+  <h2>Reasoning strategies — configurable per bot, per query type</h2>
+
+  <p>Unlike generic Copilot (one fixed reasoning pattern), each bot picks reasoning strategy by use case. Teams can even use multiple strategies inside one bot for different persona.</p>
+
+  <table>
+    <tr><th>Query type</th><th>Strategy</th><th>Example</th><th>Why this strategy (in this context)</th><th>Flow (high-level)</th></tr>
+    <tr>
+      <td>Simple lookup</td>
+      <td><code>simple</code></td>
+      <td>"Status of ticket JIRA-123?"</td>
+      <td>One tool call, one LLM response. No loop, no planning. Fastest and cheapest — use for direct fact retrieval.</td>
+      <td><strong>1 LLM call total.</strong> User query → LLM reasons + optionally calls 1 tool → LLM returns response. Done.</td>
+    </tr>
+    <tr>
+      <td>Multi-source lookup</td>
+      <td><code>ReAct</code></td>
+      <td>"Open tickets and incidents for Project X"</td>
+      <td>2–5 tool calls needed (Jira + ServiceNow). Agent reasons between calls — "got tickets, now fetch incidents, now summarize." Adaptive: if Jira returns zero, agent can skip ServiceNow. No upfront plan required — too light for plan-execute, too heavy for simple.</td>
+      <td><strong>Reason-Act loop.</strong> LLM thinks → picks tool + args → tool runs → LLM observes result → LLM thinks again → picks next tool or ends. Final LLM call synthesizes response. Multiple LLM calls interleaved with tool calls.</td>
+    </tr>
+    <tr>
+      <td>Cross-source correlation</td>
+      <td><code>plan-execute</code></td>
+      <td>"Why is Project X late?" — plan: fetch Jira + ServiceNow + Confluence → correlate</td>
+      <td>Upfront plan with dependencies. Agent decides: "I need ticket history, change windows, and recent decisions, then correlate them." Planning is worth the overhead because later steps depend on earlier findings. Multiple coordinated tool calls with causal reasoning across results.</td>
+      <td><strong>Planner → Executor → Responder (all LLM).</strong> Planner LLM outputs structured plan (ordered steps with dependencies). Executor loop walks the plan — LLM picks tool args per step, tool returns data. Responder LLM synthesizes all step results into final answer. Structure is deterministic (LangGraph); plan content is LLM-generated.</td>
+    </tr>
+    <tr>
+      <td>Quality-sensitive output</td>
+      <td><code>reflection</code></td>
+      <td>Executive weekly status report — draft, self-critique, refine</td>
+      <td>Output is high-stakes (C-level visibility), so quality &gt; speed. Agent drafts, then a critic loop checks for accuracy, tone, completeness. Loops until quality gate passes. Common for generated artifacts that humans will trust at face value.</td>
+      <td><strong>Generator ↔ Critic loop.</strong> Generator LLM drafts output → Critic LLM evaluates (accuracy, tone, completeness). If fails, feedback returns to generator to refine. Iterates until quality gate passes or max loops hit → final response. Both are LLM calls; the loop is deterministic.</td>
+    </tr>
+    <tr>
+      <td>Open-ended investigation</td>
+      <td><code>multi-hop</code></td>
+      <td>"What's blocking delivery across the portfolio?" — evidence chain across sources</td>
+      <td>No pre-defined answer path. Each hop (tool call + reasoning step) builds on the last — "found project X at risk, now look at its dependencies, now check staffing on those, now cross-reference with Confluence decisions." Termination is heuristic (sufficient evidence / confidence reached). Used for exploratory questions where the answer shape isn't known upfront.</td>
+      <td><strong>Evidence-chain hops.</strong> Hop 1: LLM reasons + calls tool → observes. Hop 2: LLM reads hop-1 result, forms new question, calls next tool → observes. Repeat until LLM decides evidence is sufficient. Final LLM synthesizes. Each hop is an LLM call + tool call; termination is LLM-judged.</td>
+    </tr>
+  </table>
+
+  <div class="callout"><strong>Key differentiator:</strong> Reasoning strategy is a <em>config</em>, not code. A team can switch a bot from <code>simple</code> to <code>plan-execute</code> via overlay YAML as requirements evolve. Generic Copilot (and most single-vendor chatbots) don't expose this lever.</div>
+</div>
+
+<hr class="hr"/>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-num">Section 5</div>
+  <h2>Multi-agent — when and how it kicks in</h2>
+
+  <p>Most daily queries run as single-agent. Multi-agent workflows fire for advanced cases — accuracy and depth matter more than raw speed.</p>
+
+  <h3>When multi-agent applies</h3>
+  <ul>
+    <li><strong>Executive weekly status report</strong> — specialist sub-agents per source (Jira agent, ServiceNow agent, Confluence agent) → synthesis agent combines → reflection loop for quality.</li>
+    <li><strong>Delivery risk assessment across portfolio</strong> — sub-agents analyze different dimensions (schedule, budget, staffing, blockers), synthesize into one risk score.</li>
+    <li><strong>Root cause analysis</strong> — investigator sub-agents pull evidence; synthesis agent forms hypothesis; critic agent challenges.</li>
+  </ul>
+
+  <h3>How multi-agent is triggered</h3>
+  <ul>
+    <li><strong>User query</strong> — main <code>chat_agent</code>'s planner decides "this needs multi-source deep analysis" → invokes <code>workflow_agent</code> sub-graph. User-transparent.</li>
+    <li><strong>Scheduled</strong> — EventBridge Scheduler cron (e.g., Monday 9am exec report) → Step Functions → <code>workflow_agent</code>.</li>
+    <li><strong>Event-driven</strong> — project enters "at risk" state in Jira → EventBridge event → <code>workflow_agent</code> runs risk analysis.</li>
+  </ul>
+
+  <h3>Orchestration model — hierarchical, not A2A</h3>
+  <ul>
+    <li>Orchestrator agent calls sub-agents <strong>like tools</strong> (function calls, shared graph state) — hierarchical.</li>
+    <li>Sub-agents don't negotiate with each other; they report to the orchestrator.</li>
+    <li><strong>No A2A protocol needed</strong> — true peer-to-peer Agent-to-Agent is for debate / market / federated patterns, not this use case.</li>
+  </ul>
+
+  <div class="note"><strong>Recommendation for this client.</strong> Phase 1–2: single <code>chat_agent</code> with ReAct + plan-execute. Phase 3+: introduce hierarchical <code>workflow_agent</code> for exec reports and portfolio risk. Same platform, same control plane — multi-agent is a capability layered on as needs grow.</div>
+</div>
+
+<hr class="hr"/>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-num">Section 6</div>
+  <h2>Where Step Functions fits (and doesn't)</h2>
+
+  <h3>Where Step Functions fits</h3>
+  <ul>
+    <li><strong>Scheduled multi-agent jobs</strong> — weekly executive report, monthly portfolio review.</li>
+    <li><strong>Long-running agent workflows</strong> — delivery risk analysis taking 5–30 minutes across many sources. Step Functions holds state, retries, DLQ.</li>
+    <li><strong>Nightly batch jobs</strong> — scan all projects for risk signals, flag changes, push alerts.</li>
+    <li><strong>Durable agent session state</strong> — for long-running workflow_agent instances that pause on HITL.</li>
+    <li><strong>Data sanitization pipelines</strong> — integrates with their existing OCR/IDP work (ingestion → extraction → PII scrubbing → indexing).</li>
+    <li><strong>Error handling + retry</strong> — built-in retry policies, fallback branches, DLQ for orchestrating unreliable external APIs.</li>
+  </ul>
+
+  <h3>Where Step Functions does NOT fit</h3>
+  <ul>
+    <li><strong>Real-time conversational turns</strong> — too heavy, too slow for sub-3-second user replies. Use AgentCore Runtime directly.</li>
+    <li><strong>Per-user chat sessions</strong> — overkill; session state lives in AgentCore Memory.</li>
+    <li><strong>Simple single-agent queries</strong> — overkill; direct agent invocation is faster and cheaper.</li>
+  </ul>
+
+  <div class="callout"><strong>Simple split:</strong> AgentCore Runtime = live conversational. Step Functions + EventBridge = scheduled, batch, long-running, event-driven. They complement each other.</div>
+
+  <h3>6.1 Step Functions concept — DAG vs. state machine</h3>
+  <p><strong>DAG = Directed Acyclic Graph.</strong> Workflow is defined as a set of tasks (nodes) connected by ordered edges (arrows) with no loops back. Step Functions calls this a "state machine," but it behaves as a DAG: Task A → Task B → Task C, with parallel branches (fan-out / fan-in), error handlers, retries. Each task has durable state; if a task fails mid-flow, Step Functions resumes from the last checkpoint.</p>
+
+  <h3>6.2 Concrete flow — Monday 9am weekly executive status report</h3>
+
+  <pre>
+1. EventBridge Scheduler (cron: Monday 9:00 AM)
+       │
+       ▼
+2. Triggers Step Functions workflow: "weekly-exec-report"
+       │
+       ▼
+3. Step Functions DAG runs the following tasks:
+
+   ┌─────────────────────────────────────────────────────────────┐
+   │  Parallel branch (fan-out):                                 │
+   │   ├─ Task A → invoke jira_agent (AgentCore Runtime)         │
+   │   │           returns project summaries                     │
+   │   ├─ Task B → invoke servicenow_agent (AgentCore Runtime)   │
+   │   │           returns incidents + changes                   │
+   │   └─ Task C → invoke confluence_agent (AgentCore Runtime)   │
+   │               returns docs + meeting notes                  │
+   └─────────────────────────────────────────────────────────────┘
+       │ (wait for all 3 to complete — fan-in)
+       ▼
+   Task D → invoke synthesis_agent with combined outputs
+            → Step Functions holds state, retries on failure
+       │
+       ▼
+   Task E → invoke reflection_agent to review draft
+            → if quality gate fails, loop back to Task D
+       │
+       ▼
+   Task F → format + deliver (email / Slack / dashboard)
+       │
+       ▼
+4. Step Functions logs execution, DLQ on failure, full audit trail
+  </pre>
+
+  <h3>6.3 Concrete flow — event-driven (project risk change)</h3>
+
+  <pre>
+1. Jira webhook → EventBridge receives event ("project.risk.changed")
+       │
+       ▼
+2. EventBridge rule matches event → triggers Step Functions: "risk-analysis"
+       │
+       ▼
+3. Step Functions DAG orchestrates risk analysis:
+      ├─ Fetch Jira risk history (parallel with…)
+      ├─ Fetch ServiceNow change window
+      ├─ Fetch Confluence RAID log
+      ▼ (fan-in)
+   Synthesis agent forms hypothesis
+      ▼
+   Reflection agent validates
+      ▼
+4. Results posted to Slack channel + Jira ticket updated + stakeholders notified
+  </pre>
+
+  <h3>6.4 Contrast — live chat flow (NO Step Functions)</h3>
+
+  <pre>
+User types "status of Project X" in Slack
+       │
+       ▼
+C1 (AgentCore Runtime) → C2 reasoning → C3 tools (Jira/SN/Confluence)
+       │
+       ▼
+Response streamed back to user
+
+  Real-time, sub-3-second, direct invocation.
+  Step Functions is NOT in the path — too heavy for conversational.
+  </pre>
+
+  <div class="highlight">
+    <strong>Verified flow summary:</strong>
+    <ul>
+      <li><strong>Step Functions fires when:</strong> scheduled (cron), event-driven (webhooks, EventBridge), multi-agent orchestration needed, long-running analyses, batch scans.</li>
+      <li><strong>Step Functions stays OUT of:</strong> live conversational chat turns — that goes direct through AgentCore Runtime for latency.</li>
+      <li><strong>The DAG gives you:</strong> parallel execution (fan-out), synchronized joining (fan-in), durable state, retries, error branches, audit trail — things a raw Lambda chain cannot do cleanly.</li>
+    </ul>
+  </div>
+</div>
+
+<hr class="hr"/>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-num">Section 7</div>
+  <h2>Context-aware: how each bot gets tuned</h2>
+
+  <p>Every bot is a config overlay (YAML + prompts) on a common template. Teams don't rebuild — they configure.</p>
+
+  <h3>What's configurable per bot</h3>
+  <ul>
+    <li><strong>Prompts</strong> — system prompt, planner prompt, responder prompt. Versioned, A/B-testable.</li>
+    <li><strong>Tool allow-list</strong> — which ServiceNow / Jira / Confluence tools this bot can call.</li>
+    <li><strong>Dataset scope</strong> — which Confluence spaces, Jira projects, ServiceNow CIs are in scope.</li>
+    <li><strong>Reasoning strategy</strong> — simple / ReAct / plan-execute / reflection / multi-hop.</li>
+    <li><strong>Memory scopes</strong> — short-term only vs. persistent episodic/semantic.</li>
+    <li><strong>RAG configuration</strong> — which corpora, extraction strategy, top-k, thresholds.</li>
+    <li><strong>HITL gates</strong> — inline user confirmation before high-impact actions.</li>
+    <li><strong>Access control</strong> — who can use this bot, data isolation rules.</li>
+  </ul>
+
+  <h3>Beyond generic Copilot</h3>
+  <table>
+    <tr><th>Capability</th><th>Generic Copilot</th><th>This platform</th></tr>
+    <tr><td>Per-dataset context tuning</td><td><span class="no">❌ One-size-fits-all</span></td><td><span class="yes">✅ Per-bot prompts + scope</span></td></tr>
+    <tr><td>Cross-source reasoning (Jira + ServiceNow + Confluence)</td><td><span class="partial">⚠ Limited</span></td><td><span class="yes">✅ plan-execute with multi-dim RAG</span></td></tr>
+    <tr><td>Configurable reasoning strategy</td><td><span class="no">❌ Fixed</span></td><td><span class="yes">✅ Strategy matrix per bot</span></td></tr>
+    <tr><td>Stateful tool sessions (Jira/ServiceNow auth)</td><td><span class="no">❌</span></td><td><span class="yes">✅ Stateful MCP via AgentCore</span></td></tr>
+    <tr><td>HITL gates for critical actions</td><td><span class="no">❌</span></td><td><span class="yes">✅ Propose-commit pattern</span></td></tr>
+    <tr><td>Fleet observability + evaluation</td><td><span class="no">❌ Black box</span></td><td><span class="yes">✅ Traces, evals, prompt versioning</span></td></tr>
+    <tr><td>Self-serve new bot creation</td><td><span class="no">❌</span></td><td><span class="yes">✅ Agent Factory UI</span></td></tr>
+    <tr><td>Multi-agent workflows (exec reports, risk analysis)</td><td><span class="no">❌</span></td><td><span class="yes">✅ Hierarchical workflow_agent</span></td></tr>
+  </table>
+</div>
+
+<hr class="hr"/>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-num">Section 8</div>
+  <h2>Phased delivery plan (6 months)</h2>
+
+  <div class="phase">
+    <div class="phase-title">Phase 1 — Platform foundation + first bot (weeks 1–6)</div>
+    <ul>
+      <li>Deploy platform (C1 on AgentCore Runtime, C2 on Fargate, C3 + AgentCore Tool Gateway, C4 control plane).</li>
+      <li>Stand up ServiceNow, Jira, Confluence MCP connectors with stateful sessions.</li>
+      <li>First bot: <strong>project / delivery status chatbot</strong> spanning all 3 sources.</li>
+      <li>Reasoning: ReAct for day-to-day, plan-execute for cross-source correlation.</li>
+      <li>Deploy via IaC (CDK) — reproducible.</li>
+    </ul>
+  </div>
+
+  <div class="phase">
+    <div class="phase-title">Phase 2 — Self-serve &amp; second/third bots (weeks 7–12)</div>
+    <ul>
+      <li>Agent Factory UI live — teams create new bots via config, not code.</li>
+      <li>Second bot: <strong>runbook / operations assistant</strong> (Confluence + ServiceNow knowledge).</li>
+      <li>Third bot: <strong>regression test copilot</strong> (their existing pilot) — bot reads test results, suggests fixes.</li>
+      <li>Prove self-serve works: Tom's team scaffolds bot #3 themselves with minimal external help.</li>
+    </ul>
+  </div>
+
+  <div class="phase">
+    <div class="phase-title">Phase 3 — Multi-agent + scheduled workflows (weeks 13–18)</div>
+    <ul>
+      <li>Introduce <code>workflow_agent</code> (hierarchical multi-agent).</li>
+      <li>Weekly executive status report — sub-agents per source + synthesis + reflection. Scheduled via Step Functions + EventBridge.</li>
+      <li>Portfolio risk assessment — batch scan + event-driven triggers on risk-state changes.</li>
+      <li>Data sanitization agent integrated into their OCR/IDP pipeline.</li>
+    </ul>
+  </div>
+
+  <div class="phase">
+    <div class="phase-title">Phase 4 — Governance, scale, expansion (weeks 19–24)</div>
+    <ul>
+      <li>Governance dashboards: per-bot performance, prompt version tracking, cost per bot, policy compliance.</li>
+      <li>Evaluation workbench — continuous quality evals, A/B prompt tests.</li>
+      <li>Org-wide rollout — finance, HR, engineering ops each get their own context-aware bot.</li>
+      <li>Handoff: Tom's team operates the platform; we stay in advisory mode.</li>
+    </ul>
+  </div>
+</div>
+
+<hr class="hr"/>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-num">Section 9</div>
+  <h2>Why this beats hand-built or generic Copilot</h2>
+
+  <table>
+    <tr><th>Approach</th><th>Per-bot effort</th><th>Reusability</th><th>Cross-source reasoning</th><th>Governance</th><th>Total org cost (10 bots / 2 yrs)</th></tr>
+    <tr><td>Hand-built per bot</td><td>3–6 months each</td><td><span class="no">None</span></td><td>Custom per bot</td><td>Custom per bot</td><td>High — 10× engineering</td></tr>
+    <tr><td>Generic Copilot</td><td>Quick</td><td><span class="partial">Limited</span></td><td><span class="no">Weak</span></td><td><span class="no">Black box</span></td><td>Low-cost, low-value</td></tr>
+    <tr><td><strong>This platform</strong></td><td><strong>Days per bot</strong> (config only)</td><td><span class="yes">Full — all bots share platform</span></td><td><span class="yes">plan-execute + multi-dim RAG</span></td><td><span class="yes">Built-in (registry, evals, prompts)</span></td><td><strong>Platform pays back by bot #2–3</strong></td></tr>
+  </table>
+
+  <div class="highlight">
+    <strong>Economic argument.</strong> Platform foundation is amortized across every bot the org builds. The first bot costs more than Copilot; by the 3rd–4th bot the cost curve crosses over and continues flattening. By bot #10, marginal cost per bot is small — and each bot is richer than Copilot could ever be.
+  </div>
+</div>
+
+<hr class="hr"/>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-num">Section 10</div>
+  <h2>Risk &amp; open questions</h2>
+
+  <h3>Risks</h3>
+  <ul>
+    <li><strong>Data sensitivity</strong> — enterprise project data may include confidential information. Mitigation: per-bot scope + access control + PII/PHI masking.</li>
+    <li><strong>LLM cost at scale</strong> — uncapped conversations can burn budget. Mitigation: resource-aware optimization (Haiku for simple, Sonnet for complex, Opus only for high-stakes).</li>
+    <li><strong>Tool rate limits</strong> — ServiceNow / Jira / Confluence APIs have limits. Mitigation: stateful MCP caches, exception handling with retries, circuit breakers.</li>
+    <li><strong>Vendor pivot gap</strong> — their current vendor is rolling off ML resources. Mitigation: our engagement focuses on knowledge transfer so Tom's team operates the platform post-handoff.</li>
+  </ul>
+
+  <h3>Open questions for the Tom / Joe conversation</h3>
+  <ul>
+    <li>Which dataset sources are Phase 1 priorities (beyond Jira/ServiceNow/Confluence)?</li>
+    <li>Who are the first 3 bot "tenants" — which teams want their own bot first?</li>
+    <li>Compliance / data residency requirements (HIPAA on internal tooling data? SOC2?)</li>
+    <li>AWS account topology — single account or per-team sub-accounts?</li>
+    <li>Preferred chat UI: Slack, Teams, Web, or all?</li>
+    <li>Budget envelope and approval process — do we need to stage the platform work?</li>
+  </ul>
+</div>
+
+<div class="footer">
+  Architecture proposal — for Tom / Joe conversation · April 2026 · Not a commitment; refine after stakeholder meeting.
+</div>
+
+</div>
+</body>
+</html>
