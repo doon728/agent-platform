@@ -7,7 +7,7 @@ RUN pip install --no-cache-dir poetry
 
 # platform-core needed for: HITL approval_store, HITL adapters, auth, context utils
 # Business logic (memory, RAG, tools, strategies) now lives in Container 2 (platform-services)
-COPY platform-core/ /platform-core/
+COPY packages/platform-core/ /platform-core/
 RUN pip install --no-cache-dir -e /platform-core
 
 # install agent-runtime-shell deps (adds httpx for HTTP clients)

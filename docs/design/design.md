@@ -382,3 +382,122 @@ This is Anthropic's **"routing"** pattern — classify input and direct to speci
 - **Not needed:** when the UI already knows which agent to call (e.g., dedicated status bot, no classification required).
 
 Default architecture: router is **optional** — deploy when fleet size and query variety justify it.
+
+---
+
+## 10. Repo Structure — Library / Service Split + Pattern A′ Layout
+
+### Goal
+
+Restructure the monorepo into a clean, idiomatic Python layout with explicit library / runtime separation. This refactor:
+
+- Makes `platform-core` a proper installable Python package (so AgentCore Factory and other consumers can `pip install` it).
+- Cleanly separates code that lives *as a library* from services that *deploy as containers*.
+- Bakes in Pattern A′ (tool serving offloaded to AgentCore Tool Gateway; our gateway becomes policy / governance).
+- Adopts Brij-style internal layout per overlay (`prompts/`, `skills/`, `tools/`, `evals/`).
+- Adds `skills/` convention as a packaging primitive.
+
+### Final structure
+
+```
+agent-platform/
+├── packages/
+│   └── platform-core/                  ← installable Python package (pyproject.toml, versioned)
+│       ├── src/platform_core/
+│       │   ├── memory/
+│       │   ├── rag/
+│       │   ├── hitl/
+│       │   ├── reasoning/
+│       │   ├── tools/
+│       │   ├── auth/
+│       │   ├── prompt/
+│       │   └── observability/
+│       └── tests/
+│
+├── services/                           ← deployable runtime services
+│   ├── platform-services/              ← C2 (reasoning + memory + HITL orchestrators)
+│   ├── rag/                            ← split-out RAG service
+│   ├── tools/                          ← tool implementations
+│   ├── tool-policy-gateway/            ← C3 (renamed; policy/governance only)
+│   ├── agent-factory-ui/               ← C4 (React)
+│   ├── agent-factory-support-api/      ← C4 (FastAPI)
+│   └── prompt-management/              ← C4
+│
+├── templates/
+│   ├── agent-runtime-shell/            ← C1 thin shell
+│   ├── overlay-templates/              ← was agent-runtime-template
+│   ├── agent-ui-template/
+│   └── capability-ui-template/
+│
+├── capabilities/
+│   └── care-management/
+│       ├── ui/                         ← moved from templates/capability-ui-template
+│       └── domain.yaml
+│
+├── agents/                             ← generated instances
+├── infra/                              ← IaC
+├── docs/
+└── platform-store/
+```
+
+### Library vs. service rule
+
+- **Library** (`packages/`) = code-only Python package. No Dockerfile. Imported via `pip install`. Reusable across many services.
+- **Runtime service** (`services/`) = deployable container with Dockerfile, FastAPI app, HTTP endpoints. Imports libraries from `packages/`.
+
+Universal pattern across all functional areas:
+
+| Area | Library code | Runtime service |
+|---|---|---|
+| Memory | `packages/platform-core/memory/` | inside `services/platform-services/` |
+| RAG | `packages/platform-core/rag/` | `services/rag/` |
+| Tools | `packages/platform-core/tools/` | `services/tools/` + `services/tool-policy-gateway/` |
+| HITL | `packages/platform-core/hitl/` | inside `services/platform-services/` |
+| Reasoning | `packages/platform-core/reasoning/` | inside `services/platform-services/` |
+| Prompts | `packages/platform-core/prompt/` | `services/prompt-management/` |
+| Auth | `packages/platform-core/auth/` | (no separate service) |
+| Observability | `packages/platform-core/observability/` | (no separate service) |
+
+### Pattern A′ embedded in the layout
+
+- `services/tools/` — tool implementations (deployable Lambdas / containers). Registered with AgentCore Tool Gateway via IaC.
+- `services/tool-policy-gateway/` — what was C3, minus tool serving. Per-agent allow/deny, PHI masking, HIPAA audit, multi-runtime fallback adapter.
+- `services/rag/` — multi-dim RAG orchestration (stage × source × extraction). Was previously co-located inside the old C3 tool gateway; split out for clean separation.
+
+### Skills convention
+
+Each overlay gets a `skills/` folder for reusable behavior patterns (markdown files):
+
+```
+overlays/chat_agent_simple/
+├── prompts/
+├── skills/                ← NEW
+│   ├── triage_intake.md
+│   └── escalate_to_human.md
+├── tools/
+├── evals/                 ← NEW
+└── overlay.yaml
+```
+
+Aligns with Anthropic Claude Skills + Microsoft Foundry's "skills as markdown" pattern. Loader in `packages/platform-core/prompt/` picks up skill files at agent boot.
+
+### AgentCore Factory integration
+
+With `platform-core` as a proper package:
+
+- AgentCore Factory team can `pip install aea-platform-core==X.Y.Z` (internal PyPI / CodeArtifact / git).
+- Adapter pattern means AEA can also consume Factory's memory / MCP / identity primitives via config flip — no code changes needed.
+- Two-way integration: AEA-as-library inside Factory, *or* AEA-consumes-Factory-primitives.
+
+### Best-practice guarantees
+
+- Type hints throughout, mypy-clean.
+- Lint clean (ruff / pylint).
+- No circular imports between packages.
+- Service boundaries enforced (no service imports another service directly).
+- No secrets in code or configs.
+- Auth modes preserved.
+- Deps pinned in pyproject.toml.
+- `pip-audit` clean.
+- No PHI/PII echo in logs.
+- TLS / encryption invariants intact.

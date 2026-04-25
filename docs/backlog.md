@@ -8,13 +8,62 @@ Status key: ✅ Done | ⚠ Partial / Limitation | 🔲 Not Started
 
 These items came out of the Apr 2026 design reviews (prototype-current-state.html §12 + agent-taxonomy-matrix.html) and must fold into the main backlog prioritization.
 
-### A1. C3 Tool Gateway — Refined Pattern A′ (hybrid)
-🔲 **Decision + implementation.** The C3 vs. AgentCore Tool Gateway integration pattern needs to be locked in as **Pattern A′ (refined hybrid)**:
-- **Tools register natively inside AgentCore Tool Gateway** (MCP server) for stateful MCP support and AWS-native serving.
-- **C3 becomes the policy + domain + RAG + governance layer *above* AgentCore Tool Gateway** — not a competing tool server.
-- C3 owns: per-agent allow/deny, PHI masking rules, HIPAA audit policy, RAG orchestration (multi-dim), healthcare domain pack curation, multi-runtime fallback adapter.
-- AgentCore Tool Gateway owns: tool serving, MCP protocol, stateful sessions, native AWS integration.
-- Document the 4 patterns (A, B, C, A′) with pros/cons in `docs/design/prototype-current-state.html` §12.3. Recommendation: A′ for v1.0.
+### A1. C3 Tool Gateway — Refined Pattern A′ (PDP/PEP separation)
+🔲 **Decision + implementation.** Lock in **Pattern A′ with PDP/PEP separation** (industry-standard, defensible architecture):
+
+**Architecture:**
+- **AgentCore Tool Gateway = Policy Enforcement Point (PEP)** — runtime enforcement on every MCP call. Cedar policies + auth applied at runtime. AWS-managed, fast, auditable. **MCP server lives ONLY here.**
+- **C3 (`tool-policy-gateway`) = Policy Decision Point (PDP) + governance plane** — defines policies, curates domain packs, pushes Cedar policies to AgentCore, consumes audit logs, exposes governance dashboards. **OUT of the MCP request path.**
+- **Tool implementations = separate** — code in `services/tools/`, deployed as Lambda (lightweight tools) or container (heavy/stateful). Registered with AgentCore Tool Gateway via IaC.
+
+**Runtime flow:**
+```
+C2 ──MCP──▶ AgentCore Tool Gateway ──▶ Tool implementation (Lambda/container)
+              (PEP — applies Cedar + auth)
+                     ▲
+                     │ policy push (config-time, not runtime)
+                     │
+                C3 (PDP — defines policies, curates packs,
+                     consumes audit logs, governance UI)
+```
+
+**MCP on the wire = ONCE.** No double-hop. No inline proxy. C3 is not in the request path.
+
+**What C3 actually does in this model:**
+1. Authoring UI / API for ops to define allow/deny rules, curate domain packs.
+2. Compiles policies → pushes to AgentCore (Cedar policy bundle, allow-list, deny-list).
+3. Consumes audit logs from AgentCore → governance dashboards, compliance reports.
+4. Multi-runtime adapter — for non-AgentCore deployments (Mosaic, vanilla), C3 can fall back to running policies itself.
+
+**PHI masking placement:**
+- Pre-response masking → C2 interceptor (existing pattern).
+- OR registered as AgentCore-side custom action → enforced at PEP.
+- NOT in C3 request path.
+
+**Industry pattern alignment (defensible):**
+- OPA + Kubernetes (OPA = PDP, admission controllers = PEPs).
+- AWS Verified Permissions + Cedar (Verified Permissions = PDP, services = PEPs).
+- Service mesh authz (Istio + OPA).
+- API gateways with external authz.
+
+**One-line for architects:**
+> "C3 is a Policy Decision Point and governance UI — not a request-path proxy. Runtime enforcement happens in AgentCore Tool Gateway via Cedar. We follow the industry-standard PDP/PEP separation."
+
+**Implementation tasks:**
+1. Refactor `services/tool-gateway/` → `services/tool-policy-gateway/`. Remove MCP server code.
+2. Move tool implementations out → `services/tools/`. Each tool = Lambda or container.
+3. Add Cedar policy compiler in C3 (authored policies → Cedar bundles → push to AgentCore).
+4. Add audit log consumer in C3 (pulls from AgentCore Observability → governance dashboards).
+5. IaC: register tools with AgentCore Tool Gateway, deploy Cedar policy bundles.
+6. Multi-runtime adapter in C3: for non-AgentCore environments, run policies locally.
+
+**Document updates required (post-refactor):**
+- `docs/design/prototype-current-state.html` §12.3 — replace 3-pattern (A/B/C) discussion with PDP/PEP + Pattern A′.
+- `docs/design/agent-taxonomy-matrix.html` §9 — update C3 description to reflect PDP role.
+- `docs/design/design.md` §10 — already updated; verify alignment.
+- `docs/proposal/offering-proposal-summary.html` — update C3 description.
+- `docs/proposal/accelerator-technical-design.html` — update C3 description + add PDP/PEP framing.
+- All container topology diagrams — show C3 out of MCP request path.
 
 ### A2. LOB (Line of Business) tool namespacing
 🔲 **Multi-LOB tool separation.** Each customer has multiple LOBs (UM, CM, PA, Appeals, Member Services, Claims, Fraud). Tools must be scoped by LOB.
@@ -60,6 +109,155 @@ These items came out of the Apr 2026 design reviews (prototype-current-state.htm
 
 ### A9. Agent embed-inside-customer-workflow posture
 🔲 **Positioning artifact.** Document explicitly that AEA agents are **embedded inside the customer's existing workflow engine** (Camunda, Pega, Step Functions, ServiceNow) as intelligent steps — not standalone workflow replacements. Add as callout in proposal + prototype-current-state.html.
+
+### A12. Documentation update sweep — post-refactor reconciliation
+🔲 **After refactor + testing, update all customer-facing and design docs.** All HTML files reference the old container topology (C3 as MCP server, tools inside C3, etc.). Once the refactor lands and tests pass:
+
+**Files to update:**
+- `docs/design/prototype-current-state.html` — §11 container mapping, §12.3 integration patterns, §13 runtime flow, §14 key files reference. Replace tool-gateway references with tool-policy-gateway. Update MCP topology diagrams. Update §12 to show PDP/PEP architecture as final.
+- `docs/design/agent-taxonomy-matrix.html` — §9 control plane subsections. Update C3 description from tool serving to PDP/governance. Update §9.7 infrastructure applicability table.
+- `docs/design/design.md` — §10 already updated; verify consistency with refactored structure.
+- `docs/design/client-chatbot-platform-proposal.html` — update architecture diagrams (Section 2 ASCII), AWS service mapping (Section 3), where Step Functions fits (Section 6).
+- `docs/proposal/offering-proposal-summary.html` — update C3 description.
+- `docs/proposal/accelerator-technical-design.html` — update C3 to PDP framing; add PDP/PEP diagram.
+- `docs/proposal/offering-architecture-v3.html` and `offering-architecture-v4.html` — update container architecture.
+- `docs/proposal/customer-delivery-playbook.html` — update if it references container topology.
+- `docs/proposal/internal-playbook.html` — update if it references container topology.
+- `docs/proposal/offering-pr-faq.html` — verify customer-facing claims still align.
+
+**Effort:** ~2–4 hours after refactor + tests pass.
+
+**Rule:** docs update last (don't update before refactor lands — risks doc drift if refactor changes mid-flight).
+
+---
+
+### A11. Repo refactor — packages/services split + Brij-style overlays + skills + Pattern A′ rename
+🔲 **Foundational refactor — do BEFORE major new features.** Restructures the repo into a clean, idiomatic Python monorepo with proper library/service separation. One-and-done; will not need to redo.
+
+**Goals:**
+1. Clean, idiomatic Python monorepo (sets up cleanly for future multi-repo split).
+2. Proper installable `platform-core` Python package (enables AgentCore Factory team to `pip install aea-platform-core` and consume our primitives).
+3. Adapter pattern preserved — AEA can flip memory / MCP / identity / observability adapters to consume Factory's primitives or AgentCore-native services.
+4. Add `skills/` convention to overlays.
+5. Adopt clean per-overlay internal layout (Brij-style: `prompts/`, `skills/`, `tools/`, `evals/`).
+6. Move misplaced files to where they belong.
+7. Best practices: type hints, lints clean, no secrets, deps pinned, auth preserved.
+8. Pattern A′ rename: C3 becomes `tool-policy-gateway` (policy + governance), tools and RAG split into separate services.
+
+**Final structure:**
+```
+agent-platform/
+├── packages/
+│   └── platform-core/                  ← installable Python package (pyproject.toml, versioned)
+│       ├── src/platform_core/
+│       │   ├── memory/                 ← library code
+│       │   ├── rag/
+│       │   ├── hitl/
+│       │   ├── reasoning/
+│       │   ├── tools/
+│       │   ├── auth/
+│       │   ├── prompt/
+│       │   └── observability/
+│       └── tests/
+│
+├── services/                           ← deployable runtime services
+│   ├── platform-services/              ← C2 (reasoning + memory orchestrator + HITL)
+│   ├── rag/                            ← split out — retrieval + ingestion + multi-dim orchestration
+│   ├── tools/                          ← tool implementations (deployable Lambdas/containers)
+│   ├── tool-policy-gateway/            ← C3 RENAMED — policy/governance only (no tool serving)
+│   ├── agent-factory-ui/               ← C4
+│   ├── agent-factory-support-api/      ← C4
+│   └── prompt-management/              ← C4
+│
+├── templates/
+│   ├── agent-runtime-shell/            ← C1 thin shell
+│   ├── overlay-templates/              ← RENAMED from agent-runtime-template
+│   │   ├── common/
+│   │   └── overlays/
+│   │       └── chat_agent_simple/
+│   │           ├── prompts/            ← Brij-style
+│   │           ├── skills/             ← NEW
+│   │           ├── tools/
+│   │           ├── evals/              ← NEW
+│   │           └── overlay.yaml
+│   ├── agent-ui-template/
+│   └── capability-ui-template/         ← generic only (no care_management)
+│
+├── capabilities/
+│   └── care-management/
+│       ├── ui/                         ← MOVED from templates/capability-ui-template/care_management
+│       └── domain.yaml
+│
+├── agents/                             ← generated agent instances
+├── infra/                              ← IaC
+├── docs/
+├── platform-store/
+├── docker-compose.yml
+├── pyproject.toml                      ← workspace root
+└── README.md
+```
+
+**Library / runtime split — universal pattern:**
+
+| Area | Library code in `packages/platform-core/` | Runtime service in `services/` |
+|---|---|---|
+| Memory | `memory/` adapters + scope policy | inside `platform-services/` (C2) |
+| RAG | `rag/` retrievers + indexer interfaces | `services/rag/` |
+| Tools | `tools/` registry + adapters | `services/tools/` (impls) + `services/tool-policy-gateway/` (governance) |
+| HITL | `hitl/` approval store + state machine | inside `platform-services/` (C2) |
+| Reasoning | `reasoning/` strategies + planner/executor | inside `platform-services/` (C2) |
+| Prompts | `prompt/` loader + templating | `services/prompt-management/` |
+| Auth | `auth/` adapter interfaces | (no separate service) |
+| Observability | `observability/` tracing primitives | (no separate service) |
+
+**Why packages vs. services:**
+- **Library** = code only, no Dockerfile, importable via `pip install`. Reused across multiple services.
+- **Runtime service** = deployable container with Dockerfile, FastAPI app, HTTP endpoints. Imports libraries from `packages/`.
+
+**Pattern A′ implications baked in:**
+- C3 renamed `tool-policy-gateway` (no tool serving).
+- Tools live in `services/tools/` (deployable) + registered with AgentCore Tool Gateway via IaC.
+- RAG split into `services/rag/` (own retrieval + multi-dim orchestration).
+- Stateful MCP comes from AgentCore Tool Gateway natively (free).
+
+**AgentCore Factory integration win:**
+- `aea-platform-core` becomes a proper installable Python package.
+- Matt's AgentCore Factory team can `pip install aea-platform-core==X.Y.Z` from internal PyPI / CodeArtifact / git.
+- Adapter pattern means AEA can also consume *their* memory / MCP / identity adapters via config flip.
+- Two-way integration: AEA inside Factory, AEA can consume Factory primitives.
+
+**Migration phases (~3–5 hours total with collaboration):**
+
+| # | Phase | Risk |
+|---|---|---|
+| 0 | Pre-flight audit — catalog paths + imports + docker-compose + IaC refs | None |
+| 1 | Create `packages/platform-core/` with pyproject.toml | Low |
+| 2 | Reorganize `shared-infra/*` → `services/*` | Medium |
+| 3 | Move top-level `platform-services/prompt-management` → `services/prompt-management` | Low |
+| 4 | Move `platform-tools/*` → `services/agent-factory-ui` + `services/agent-factory-support-api` | Low |
+| 5 | Rename `templates/agent-runtime-template` → `templates/overlay-templates` | Low |
+| 6 | Move `templates/capability-ui-template/care_management` → `capabilities/care-management/ui` | Low |
+| 7 | Adopt Brij-style overlay layout (per-overlay `prompts/`, `skills/`, `tools/`, `evals/`) | Medium |
+| 8 | Add `skills/` convention + skill loader in platform-core | Low |
+| 9 | Split RAG into `services/rag/`; rename C3 → `tool-policy-gateway/`; move tools to `services/tools/` | Medium |
+| 10 | Update all imports, docker-compose paths, IaC refs, README | Medium |
+| 11 | Run all tests + boot all services + run one agent end-to-end | Verify |
+| 12 | Lint/mypy/security scan, fix findings | Low |
+
+**Best-practice guarantees:**
+- Type hints throughout, mypy-clean.
+- Linting clean (ruff/pylint).
+- No circular imports.
+- No secrets in code or configs.
+- Auth modes preserved (`AUTH_MODE` enforcement intact).
+- Deps pinned (no unpinned `>=`).
+- Run `pip-audit` for known CVEs.
+- No PHI/PII in logs.
+- TLS / encryption assumptions intact.
+
+**Effort:** ~3–5 hours of mechanical refactoring with real-time collaboration. **Do BEFORE workflow_agent and other major feature work** to avoid migration pain.
+
+---
 
 ### A10. Dynamic routing — classifier layer in front of agent fleet
 🔲 **Critical — required for chatbot fleet use cases.** Reasoning strategy is fixed per-agent overlay (not switchable mid-run). So for a fleet of N chatbots (each with different strategy/tools/scope), we need a classifier that picks the right agent per query.

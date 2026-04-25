@@ -6,7 +6,7 @@ ENV PYTHONPATH=/app
 RUN pip install --no-cache-dir poetry
 
 # Install platform-core shared library
-COPY platform-core/ /platform-core/
+COPY packages/platform-core/ /platform-core/
 RUN pip install --no-cache-dir -e /platform-core
 
 # Install platform-services deps
