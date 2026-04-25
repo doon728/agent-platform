@@ -110,6 +110,30 @@ C2 ──MCP──▶ AgentCore Tool Gateway ──▶ Tool implementation (Lamb
 ### A9. Agent embed-inside-customer-workflow posture
 🔲 **Positioning artifact.** Document explicitly that AEA agents are **embedded inside the customer's existing workflow engine** (Camunda, Pega, Step Functions, ServiceNow) as intelligent steps — not standalone workflow replacements. Add as callout in proposal + prototype-current-state.html.
 
+### A13. Test coverage uplift — fill the gap
+🔲 **Critical — current test coverage is very thin.** Today only the SkillLoader (7 cases, added in refactor) has unit tests. Most platform-core modules + services have no tests. Production-ready requires meaningful coverage.
+
+**High-priority targets (highest blast radius first):**
+1. `hitl/approval_store` — durable state machine, propose-commit pattern. Cannot ship to production without tests covering pause/resume, expiry, double-commit, audit trail.
+2. `memory/file_memory`, `memory/scope_resolver`, `memory/write_engine` — read/write correctness across 4 scopes; lock-write rules per agent type.
+3. `reasoning/strategies/{simple,react,plan_execute}` — graph wiring + tool dispatch + responder synthesis. Mock LLM calls.
+4. `rag/patterns/*` (naive, agentic, hyde, multi_hop, self_corrective) — retrieval correctness per pattern.
+5. `tools/registry`, `tools/validation` — schema validation, allow/deny enforcement.
+6. `auth/authorization` — tenant claims handling, AUTH_MODE OPTIONAL vs REQUIRED behavior.
+7. Integration tests — agent runtime end-to-end against mocked C2/C3 endpoints.
+
+**Definition of done:**
+- ≥80% line coverage on platform-core critical paths (hitl, memory, reasoning).
+- Every new feature ships with tests.
+- Every bug fix adds a regression test.
+- CI runs `pytest` on every PR; failures block merge.
+
+**Effort:** 3–4 weeks for the seven targets above, in priority order.
+
+**Tooling already in place** (from refactor Phase 1): pytest, pytest-asyncio, pytest-cov declared in `packages/platform-core[dev]` extras; ruff + mypy + pip-audit configured.
+
+---
+
 ### A12. Documentation update sweep — post-refactor reconciliation
 🔲 **After refactor + testing, update all customer-facing and design docs.** All HTML files reference the old container topology (C3 as MCP server, tools inside C3, etc.). Once the refactor lands and tests pass:
 
