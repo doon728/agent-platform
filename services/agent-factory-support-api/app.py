@@ -61,7 +61,7 @@ PLATFORM_ROOT = Path(
     os.getenv("AGENT_PLATFORM_ROOT", str(Path.home() / "agent-platform"))
 )
 
-SHARED_INFRA_ROOT = PLATFORM_ROOT / "shared-infra" / "industry-tool-gateway-healthcare" / "services" / "tool-gateway"
+TOOL_GATEWAY_ROOT = PLATFORM_ROOT / "services" / "tool-gateway"
 
 _DATA_DIR = Path(__file__).resolve().parent / "data"
 _WORKSPACE_STATE_FILE = _DATA_DIR / "workspace_state.json"
@@ -667,7 +667,7 @@ def infra_status():
     try:
         result = run_cmd(
             [DOCKER_BIN, "compose", "ps", "--format", "json"],
-            cwd=str(SHARED_INFRA_ROOT),
+            cwd=str(TOOL_GATEWAY_ROOT),
         )
 
         lines = [line for line in result.stdout.splitlines() if line.strip()]
@@ -677,14 +677,14 @@ def infra_status():
 
         return {
             "ok": True,
-            "shared_infra_root": str(SHARED_INFRA_ROOT),
+            "tool_gateway_root": str(TOOL_GATEWAY_ROOT),
             "services_found": len(services),
             "services": services,
         }
     except Exception as e:
         return {
             "ok": False,
-            "shared_infra_root": str(SHARED_INFRA_ROOT),
+            "tool_gateway_root": str(TOOL_GATEWAY_ROOT),
             "error": str(e),
         }
 
@@ -860,19 +860,19 @@ def infra_start():
 
         docker_up = run_cmd(
             [DOCKER_BIN, "compose", "up", "-d", "--build", "--force-recreate"],
-            cwd=str(SHARED_INFRA_ROOT),
+            cwd=str(TOOL_GATEWAY_ROOT),
             env=env,
         )
 
         poetry_install = run_cmd(
             ["poetry", "install"],
-            cwd=str(SHARED_INFRA_ROOT),
+            cwd=str(TOOL_GATEWAY_ROOT),
             env=env,
         )
 
         structured_bootstrap = run_cmd(
             ["poetry", "run", "python", "bootstrap_structured.py"],
-            cwd=str(SHARED_INFRA_ROOT),
+            cwd=str(TOOL_GATEWAY_ROOT),
             env=env,
         )
 
@@ -888,7 +888,7 @@ def infra_start():
                 "KB_PG_PASSWORD=postgres "
                 "poetry run python bootstrap_kb.py"
             ],
-            cwd=str(SHARED_INFRA_ROOT),
+            cwd=str(TOOL_GATEWAY_ROOT),
             env=env,
         )
 
@@ -898,7 +898,7 @@ def infra_start():
                 "psql", "-U", "postgres", "-d", "agentdb",
                 "-t", "-c", "select count(*) from kb_documents;"
             ],
-            cwd=str(SHARED_INFRA_ROOT),
+            cwd=str(TOOL_GATEWAY_ROOT),
             env=env,
         )
 
@@ -915,7 +915,7 @@ def infra_start():
 
         return {
             "ok": ok,
-            "shared_infra_root": str(SHARED_INFRA_ROOT),
+            "tool_gateway_root": str(TOOL_GATEWAY_ROOT),
             "steps": {
                 "docker_up": {
                     "returncode": docker_up.returncode,
@@ -948,7 +948,7 @@ def infra_start():
     except Exception as e:
         return {
             "ok": False,
-            "shared_infra_root": str(SHARED_INFRA_ROOT),
+            "tool_gateway_root": str(TOOL_GATEWAY_ROOT),
             "error": str(e),
         }
 
