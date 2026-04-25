@@ -4,7 +4,7 @@ services:
   platform-services:
     build:
       context: ../../../
-      dockerfile: shared-infra/platform-services/Dockerfile
+      dockerfile: services/platform-services/Dockerfile
     image: platform-services:local
     ports:
       - "${PLATFORM_SERVICES_PORT:-8002}:8080"
