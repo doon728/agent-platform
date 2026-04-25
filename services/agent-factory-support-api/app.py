@@ -87,7 +87,7 @@ LAST_WORKSPACE_STATE: dict[str, Any] = _load_workspace_state()
 app = FastAPI(title="Agent Factory Support API", version="v1")
 
 TEMPLATES_ROOT = PLATFORM_ROOT / "templates"
-AGENT_TEMPLATE_ROOT = TEMPLATES_ROOT / "agent-runtime-template"
+AGENT_TEMPLATE_ROOT = TEMPLATES_ROOT / "overlay-templates"
 APP_TEMPLATE_ROOT = TEMPLATES_ROOT / "capability-ui-template"
 
 app.add_middleware(
