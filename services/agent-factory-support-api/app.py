@@ -61,7 +61,7 @@ PLATFORM_ROOT = Path(
     os.getenv("AGENT_PLATFORM_ROOT", str(Path.home() / "agent-platform"))
 )
 
-TOOL_GATEWAY_ROOT = PLATFORM_ROOT / "services" / "tool-gateway"
+TOOL_GATEWAY_ROOT = PLATFORM_ROOT / "services" / "tool-policy-gateway"
 
 _DATA_DIR = Path(__file__).resolve().parent / "data"
 _WORKSPACE_STATE_FILE = _DATA_DIR / "workspace_state.json"
