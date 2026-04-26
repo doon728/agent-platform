@@ -468,103 +468,275 @@ platform-core/src/platform_core/
 <!-- ═══════════════════════════════════════════════════════════════════ -->
 <div class="section" id="sharedinfra">
   <div class="section-num">Section 6</div>
-  <h2>services/ — runtime services (C2, C3, RAG, control-plane backends)</h2>
+  <h2>services/ — runtime services (every deployable container + UI)</h2>
+
+  <p>Top-level <code>services/</code> holds every deployable runtime service. Each subfolder is its own deployment unit (Dockerfile + entry point, or React + Vite app). Spans containers C2, C3, and the C4 control plane. Services communicate over HTTP; container-to-container URLs are env-var driven so the same code runs on docker-compose locally and on AgentCore/Fargate in production.</p>
 
   <pre>
 services/
-├── platform-services/                 ← C2 Platform Services (FastAPI app)
-└── industry-tool-gateway-healthcare/  ← C3 Tool Gateway (FastAPI app + tool-admin-ui)
+├── platform-services/             ← <span class="container-tag c2">C2</span> — Platform Services (FastAPI; reasoning, memory, RAG router, tools router, observability)
+├── tool-policy-gateway/           ← <span class="container-tag c3">C3</span> — Tool Policy Gateway (FastAPI; tool implementations, policy, RAG client)
+├── tool-admin-ui/                 ← <span class="container-tag c3">C3</span> — Tool Admin UI (React + Vite, governance UI for the tool-policy-gateway)
+├── rag/                           ← RAG service (FastAPI; vector retrieval as a standalone service)
+├── prompt-management/             ← <span class="container-tag c4">C4</span> — Prompt Management (FastAPI; prompt versioning + A/B test backend)
+├── agent-factory-support-api/     ← <span class="container-tag c4">C4</span> — Agent Factory Support API (FastAPI; backend for the Factory UI)
+└── agent-factory-ui/              ← <span class="container-tag c4">C4</span> — Agent Factory UI (React + Vite, the operator console)
 </pre>
 
-  <h3><code>services/platform-services/</code> — <span class="container-tag c2">C2</span></h3>
+  <h3>6.1 <code>services/platform-services/</code> — <span class="container-tag c2">C2</span> Platform Services</h3>
+
+  <p>Shared multi-tenant FastAPI service. Hosts the reasoning loop and a set of FastAPI sub-routers for the platform-level concerns every agent needs.</p>
 
   <pre>
 platform-services/
-├── Dockerfile
-├── src/
-│   ├── main.py                  ← FastAPI app; mounts routers
-│   └── services/
-│       ├── config/router.py     ← /config endpoints (agent, memory, domain)
-│       ├── memory/router.py     ← /memory endpoints (read/write 4 scopes)
-│       ├── rag/router.py        ← /rag endpoints (retrieval orchestration)
-│       ├── reasoning/
-│       │   ├── router.py        ← /reasoning endpoints
-│       │   ├── planner.py       ← Planner entrypoint
-│       │   ├── executor.py      ← Executor entrypoint
-│       │   ├── responder.py     ← Responder entrypoint
-│       │   └── strategies/
-│       │       ├── simple.py    ← Simple reasoning strategy
-│       │       └── react.py     ← ReAct reasoning strategy
-│       ├── tools/router.py      ← /tools endpoints (proxies to C3)
-│       ├── observability/router.py  ← /observability endpoints (traces)
-│       └── summarize/router.py  ← /summarize endpoints (summary agents)
+├── Dockerfile                  ← Build: copies platform-core + service src; installs deps via poetry
+├── pyproject.toml              ← Service deps (depends on platform-core via local install)
+└── src/
+    ├── main.py                 ← FastAPI app; mounts every router
+    └── services/               ← FastAPI sub-routers (one per platform concern; folder name overlaps with parent — pre-existing)
+        ├── config/router.py        ← GET /agent/{type}, /domain — serves merged overlay config to C1
+        ├── memory/router.py        ← POST /memory/read, /memory/write — 4-scope memory operations
+        ├── rag/router.py           ← Forwards retrieval requests to services/rag (the standalone service)
+        ├── reasoning/
+        │   ├── router.py           ← POST /reasoning/run — entry point for every reasoning request
+        │   ├── planner.py          ← Planner LLM call: builds prompt, picks tool
+        │   ├── executor.py         ← Executes the chosen tool path (calls C3 over HTTP)
+        │   ├── responder.py        ← Responder LLM call: synthesizes final answer
+        │   └── strategies/
+        │       ├── simple.py       ← Simple strategy (planner → execute → respond)
+        │       └── react.py        ← ReAct strategy (think-act loop)
+        ├── tools/router.py         ← POST /tools/invoke — proxies to C3 tool-policy-gateway
+        ├── observability/router.py ← Trace retrieval endpoints
+        └── summarize/router.py     ← POST /summarize/{scope}/{id} — entry point for summary_agent
 </pre>
 
   <h4>What C2 does</h4>
   <ul>
-    <li><strong>Reasoning (core):</strong> runs the reasoning strategy for every agent. Loads planner / executor / responder per overlay; invokes LLM; handles tool calls via C3 client; returns final response.</li>
-    <li><strong>Memory:</strong> provides read/write endpoints across the 4 scopes. Backend adapter chosen by config (<code>MEMORY_BACKEND=file</code> in local dev).</li>
-    <li><strong>RAG:</strong> handles pre-graph retrieval and planner-tool retrieval. Calls C3's KB endpoints.</li>
-    <li><strong>Config:</strong> serves agent config, memory config, domain.yaml to C1 at invocation time.</li>
-    <li><strong>Tools:</strong> proxies tool invocations from C1 → C2 → C3 Tool Gateway. C2 does per-agent allow/deny enforcement.</li>
-    <li><strong>Observability:</strong> collects trace events from C1 + emits its own spans; exposes trace retrieval endpoint.</li>
-    <li><strong>Summarize:</strong> separate endpoint for summarization agents (batched context → summary output).</li>
+    <li><strong>Reasoning (core):</strong> runs LangGraph for the agent's chosen strategy. Planner LLM → executor (calls tools via C3) → responder LLM. Two LLM calls per turn for chat agents.</li>
+    <li><strong>Memory orchestration:</strong> 4-scope read/write (short_term / episodic / semantic / summary). Backend adapter chosen by env (<code>MEMORY_BACKEND=file</code> in dev → AgentCore Memory or Postgres in prod).</li>
+    <li><strong>Config service:</strong> reads overlay YAMLs, merges them, returns to C1 at invocation time.</li>
+    <li><strong>Tools router:</strong> thin layer; forwards tool calls over HTTP to C3.</li>
+    <li><strong>RAG router:</strong> thin layer; forwards retrieval requests to <code>services/rag</code>.</li>
+    <li><strong>Summarize:</strong> entry point for <code>summarization_agent_simple</code> — different graph topology than chat agents.</li>
+    <li><strong>Observability:</strong> emits spans + collects traces from C1.</li>
   </ul>
 
-  <h3><code>services/</code> — <span class="container-tag c3">C3</span></h3>
+  <h3>6.2 <code>services/tool-policy-gateway/</code> — <span class="container-tag c3">C3</span> Tool Policy Gateway</h3>
+
+  <p>Renamed from <code>tool-gateway</code> in the refactor (Pattern A′ direction: gateway becomes policy + governance, not pure tool serving). FastAPI service that registers tool implementations, applies allow/deny policies, owns the structured payer data, and forwards RAG calls to <code>services/rag</code> over HTTP.</p>
 
   <pre>
-industry-tool-gateway-healthcare/
-├── .github/workflows/ci.yml
-├── services/
-│   ├── tool-admin-ui/            ← React + Vite UI to admin the Tool Gateway
-│   │   └── src/pages/
-│   │       ├── ToolRegistry.tsx  ← View / manage registered tools
-│   │       └── KnowledgeBase.tsx ← View / manage RAG KB content
-│   └── tool-gateway/             ← C3 service (FastAPI)
-│       ├── Dockerfile
-│       ├── docker-compose.yml
-│       ├── openapi.yaml          ← OpenAPI spec for tool invocation
-│       ├── bootstrap_all.sh      ← Load tools + KB on startup
-│       ├── bootstrap_kb.py       ← KB ingestion script
-│       ├── bootstrap_structured.py  ← Structured-data seed script
-│       ├── config/
-│       │   ├── dev.yaml / staging.yaml / settings.py / init.py
-│       └── src/
-│           ├── app.py            ← FastAPI app; mounts tool endpoints
-│           ├── contract.py       ← Invocation envelope contract
-│           ├── contracts/envelope.py  ← Envelope dataclass
-│           ├── tools/
-│           │   ├── registry.py   ← In-memory tool handler registry
-│           │   ├── db_registry.py ← Postgres-backed tool definitions
-│           │   └── (individual tool handlers — search_kb, get_member, get_case_summary, etc.)
-│           ├── rag/
-│           │   ├── ingest.py     ← KB chunking + embedding
-│           │   └── retriever.py  ← KB retrieval
-│           └── data/
-│               ├── pg_store.py   ← Postgres connector
-│               └── synth_store.py  ← Synthetic payer data generator
+tool-policy-gateway/
+├── Dockerfile
+├── docker-compose.yml          ← Brings up postgres + rag + tool-gateway as a stack
+├── pyproject.toml
+├── poetry.lock
+├── openapi.yaml                ← OpenAPI spec for the HTTP tool invocation contract
+├── bootstrap_all.sh            ← Brings up the stack + ingests structured data + KB
+├── bootstrap_structured.py     ← Loads CSV synthetic data into postgres
+├── config/                     ← Environment-specific config (dev.yaml, staging.yaml)
+├── data/
+│   ├── sql/                    ← Schema + seed SQL (members, cases, claims, tools tables)
+│   └── synth/structured/       ← Synthetic CSV data for local dev
+└── src/
+    ├── app.py                  ← FastAPI app — POST /internal/tools/&lt;name&gt;, /kb/ingest, /tools (catalog)
+    ├── contract.py             ← Invocation envelope contract
+    ├── contracts/envelope.py   ← Envelope dataclass
+    ├── rag_client.py           ← HTTP client to services/rag (used by search_kb tool)
+    ├── tools/
+    │   ├── registry.py         ← In-memory tool handler registry; SearchKBInput/Output, GetMember, etc.
+    │   ├── db_registry.py      ← Postgres-backed tool catalog (loaded at startup)
+    │   ├── search_kb.py        ← search_kb tool — calls rag service via rag_client
+    │   └── (other tool handlers via registry.py)
+    ├── data/
+    │   ├── pg_store.py         ← Postgres connector
+    │   └── synth_store.py      ← Synthetic payer data accessor
+    └── policy/                 ← <strong>NEW (Pattern A′ scaffold — stubs)</strong>
+        ├── cedar_compiler.py   ← Compile YAML allow/deny rules → Cedar policy bundles (stub; AgentCore push pending)
+        └── audit_consumer.py   ← Ring-buffer consumer for tool-call audit events (stub; AgentCore Observability tap pending)
 </pre>
 
   <h4>What C3 does</h4>
   <ul>
-    <li><strong>Tool registry:</strong> holds tool definitions (name, input schema, output schema, handler reference). Loaded at startup from <code>db_registry</code> (Postgres) or bootstrap scripts.</li>
-    <li><strong>Tool invocation:</strong> receives invocation envelopes from C2; validates input schema; calls the tool handler; returns envelope response.</li>
-    <li><strong>KB / RAG backend:</strong> ingestion (<code>rag/ingest.py</code>) + retrieval (<code>rag/retriever.py</code>). Serves search_kb tool.</li>
-    <li><strong>Data store:</strong> Postgres for structured data (members, claims, cases) and tool definitions. Synthetic data generator for local dev.</li>
-    <li><strong>Admin UI (separate service):</strong> React app at <code>tool-admin-ui/</code> to view / manage registered tools and KB content.</li>
-    <li><strong>OpenAPI spec:</strong> <code>openapi.yaml</code> documents the tool invocation contract. MCP serving is a planned evolution from today's HTTP invocation.</li>
+    <li><strong>Tool registry + invocation:</strong> hosts the actual tool functions (search_kb, get_member, write_case_note, etc.). Receives <code>POST /internal/tools/&lt;name&gt;</code> from C2; validates input schema; calls handler; returns envelope.</li>
+    <li><strong>Policy enforcement:</strong> per-agent allow/deny against tool list. Today via <code>tools.yaml</code>; future via Cedar policies pushed from <code>policy/cedar_compiler.py</code>.</li>
+    <li><strong>Data layer:</strong> postgres for structured payer data (members, cases, claims, assessments) + tool definitions table. Synthetic CSV loader for local dev.</li>
+    <li><strong>RAG handoff:</strong> <code>search_kb</code> tool calls <code>services/rag</code> over HTTP via <code>rag_client.py</code> — gateway no longer owns vector search.</li>
+    <li><strong>KB ingest endpoint:</strong> <code>POST /kb/ingest</code> proxies document uploads to the rag service.</li>
+    <li><strong>Future PDP role (Pattern A′):</strong> author + push Cedar policy bundles to AgentCore Tool Gateway; consume audit events. Both are stub modules today.</li>
   </ul>
 
   <h4>Representative tool handlers (in <code>src/tools/registry.py</code>)</h4>
   <ul>
-    <li><code>search_kb</code> — KB retrieval with query</li>
-    <li><code>get_member</code> — fetch a member record</li>
-    <li><code>get_member_summary</code> — precomputed member summary</li>
-    <li><code>get_case_summary</code> — case summary</li>
-    <li><code>get_assessment_summary</code>, <code>get_assessment_tasks</code> — assessment data</li>
-    <li><code>write_case_note</code> — write-back to case notes</li>
+    <li><code>search_kb</code> — KB retrieval (delegates to services/rag)</li>
+    <li><code>get_member</code> / <code>get_member_summary</code> — member profile / summary</li>
+    <li><code>get_case_summary</code>, <code>get_assessment_summary</code>, <code>get_assessment_tasks</code></li>
+    <li><code>write_case_note</code> — write-back (high-risk; flagged for HITL)</li>
   </ul>
+
+  <h3>6.3 <code>services/tool-admin-ui/</code> — <span class="container-tag c3">C3</span> Tool Admin UI</h3>
+
+  <p>React + Vite admin console for the tool-policy-gateway. Operator-facing.</p>
+
+  <pre>
+tool-admin-ui/
+├── package.json                ← React + Vite + TypeScript
+├── vite.config.ts              ← Dev server on port 5200
+├── index.html
+└── src/
+    ├── main.tsx                ← Vite entry
+    ├── App.tsx                 ← Top-level layout
+    ├── api/gatewayApi.ts       ← HTTP client → tool-policy-gateway endpoints
+    └── pages/
+        ├── ToolRegistry.tsx    ← View / manage registered tools (list, add, schema view)
+        └── KnowledgeBase.tsx   ← View / manage RAG KB content (ingest docs, browse chunks)
+</pre>
+
+  <h4>How it runs</h4>
+  <p>Dev: <code>cd services/tool-admin-ui && npm run dev</code> → Vite dev server at <code>http://localhost:5200</code>. Backend: tool-policy-gateway at <code>http://localhost:8080</code>. Production: built static assets served via CloudFront + S3 (planned).</p>
+
+  <h3>6.4 <code>services/rag/</code> — RAG Service (split out in Pattern A′)</h3>
+
+  <p>Standalone retrieval service. Lived in-process inside the tool-policy-gateway before the refactor; split out so the gateway can focus on policy + governance and the RAG service can scale independently.</p>
+
+  <pre>
+rag/
+├── Dockerfile                  ← FastAPI service on port 8082
+├── pyproject.toml              ← Service deps (httpx, psycopg, openai, fastapi)
+├── README.md                   ← Service-level docs
+├── bootstrap_kb.py             ← Bootstrap KB schema + ingest seed docs
+├── data/
+│   └── synth/policy_ingest/    ← Seed KB content (text files for local dev)
+├── src/
+│   ├── main.py                 ← FastAPI app — GET /healthz, POST /retrieve, POST /ingest
+│   └── rag_engine/             ← Engine code (was services/tool-policy-gateway/src/rag/)
+│       ├── ingest.py           ← Chunk + embed + upsert into postgres+pgvector
+│       └── retriever.py        ← Vector / keyword / hybrid search; Dim 1 (strategy) implementations
+└── tests/                      ← (placeholder for future)
+</pre>
+
+  <h4>What the RAG service does</h4>
+  <ul>
+    <li><strong>Vector retrieval:</strong> <code>POST /retrieve { query, top_k, threshold, strategy }</code> → embedding generation → pgvector cosine similarity search → top-k results.</li>
+    <li><strong>Ingestion:</strong> <code>POST /ingest { doc_id, title, content }</code> → split + embed + upsert.</li>
+    <li><strong>Retrieval strategies (Dim 1):</strong> semantic (default), keyword, hybrid.</li>
+    <li><strong>KB schema owner:</strong> creates <code>kb_documents</code> table + pgvector extension. <code>bootstrap_kb.py</code> seeds it.</li>
+  </ul>
+
+  <h3>6.5 <code>services/prompt-management/</code> — <span class="container-tag c4">C4</span> Prompt Management</h3>
+
+  <p>Backend service for prompt lifecycle (versioning, A/B tests, evals). Today scaffolded; full lifecycle wiring is on the backlog.</p>
+
+  <pre>
+prompt-management/
+├── seed_prompts.py             ← Seed default prompts into the DB
+├── data/
+│   ├── prompts.json            ← Prompt records
+│   └── evals.json              ← Eval scenario records
+├── sql/
+│   └── prompt_management.sql   ← Schema (prompts, versions, evals tables)
+└── app/
+    ├── main.py                 ← FastAPI app; mounts prompt + eval routes
+    ├── db.py                   ← Database connection / pool
+    ├── models.py               ← SQLAlchemy / Pydantic ORM models
+    ├── schemas.py              ← API request/response Pydantic schemas
+    └── store.py                ← CRUD layer
+</pre>
+
+  <h4>What it does (intended)</h4>
+  <ul>
+    <li><strong>Versioning:</strong> store multiple prompt versions per (capability, agent_type, usecase, prompt_type, environment).</li>
+    <li><strong>Active version resolution:</strong> agent runtime resolves the active prompt for a given context; falls back to overlay's <code>prompts/prompts.yaml</code> if no DB version is active.</li>
+    <li><strong>A/B testing:</strong> two versions can be active concurrently with traffic splits.</li>
+    <li><strong>Evals:</strong> per-version evaluation scenarios + scoring.</li>
+  </ul>
+  <div class="note"><strong>Wiring status:</strong> service exists + has CRUD + Agent Factory UI page (PromptLifecycle.tsx). Runtime resolver is partially wired — falls through to overlay YAML today.</div>
+
+  <h3>6.6 <code>services/agent-factory-support-api/</code> — <span class="container-tag c4">C4</span> Agent Factory Support API</h3>
+
+  <p>FastAPI backend for the Agent Factory UI. Owns scaffolding logic, capability/usecase contracts, agent registry state.</p>
+
+  <pre>
+agent-factory-support-api/
+├── app.py                      ← FastAPI app — endpoints for create-agent, list-agents, register-usecase, edit-config-files
+├── usecase_contract_store.py   ← Use-case contract CRUD
+├── usecase_metadata.py         ← Schema/metadata for use-case contracts
+├── usecase_registry_store.py   ← Registry of capabilities / usecases / agents
+└── data/
+    ├── workspace_state.json    ← Live state (which agents are deployed where, ports, etc.)
+    └── usecase_registry.json   ← Catalog of use-case contracts
+</pre>
+
+  <h4>Key endpoints</h4>
+  <ul>
+    <li><strong>Scaffold a new agent</strong> — copies <code>templates/agent-runtime-shell</code> + <code>templates/overlay-templates/overlays/&lt;type&gt;</code> into <code>agents/&lt;cap&gt;/&lt;name&gt;/</code>; injects domain.yaml from <code>capabilities/&lt;cap&gt;/</code>; produces a deployable repo.</li>
+    <li><strong>Edit overlay config</strong> — writes per-agent YAMLs (overlay.yaml, rag.yaml, hitl.yaml, memory.yaml, tools/tools.yaml, prompts/prompts.yaml). Allow-list controls which files can be edited (<code>_ALLOWED_CONFIG_FILES</code>).</li>
+    <li><strong>Register / list agents</strong> — workspace state with port mappings, build status.</li>
+    <li><strong>Use-case contract management</strong> — CRUD for <code>platform-store/usecase_contracts.json</code> records.</li>
+    <li><strong>Rebuild / restart agents</strong> — orchestrates docker compose for the running stack.</li>
+  </ul>
+
+  <h3>6.7 <code>services/agent-factory-ui/</code> — <span class="container-tag c4">C4</span> Agent Factory UI</h3>
+
+  <p>React + Vite operator console for the Agent Factory. Today the primary UI for scaffolding + governing agents.</p>
+
+  <pre>
+agent-factory-ui/
+├── package.json                ← React 19 + Vite + TypeScript
+├── vite.config.ts              ← Dev server on port 5173
+├── index.html
+└── src/
+    ├── main.tsx                ← Entry point
+    ├── App.tsx                 ← Routing shell
+    ├── api/factoryApi.ts       ← HTTP client → agent-factory-support-api
+    ├── components/
+    │   └── ApplicationForm.tsx ← Form for creating/editing agents
+    ├── pages/
+    │   ├── Workspaces.tsx      ← Capabilities + usecases overview, status
+    │   ├── AgentRegistry.tsx   ← Per-agent edit view (Memory / Tools / RAG / HITL / Prompts tabs)
+    │   ├── ConfigLab.tsx       ← Live config editor / scenario runner
+    │   ├── PipelineBuilder.tsx ← Visual graph of agent flow
+    │   ├── PromptLifecycle.tsx ← Prompt versioning + A/B test view (paired with prompt-management)
+    │   └── TestResults.tsx     ← Eval scorecards + traces
+    └── types/
+        └── application.ts      ← Shared TypeScript types
+</pre>
+
+  <h4>Tabs and what each edits</h4>
+  <ul>
+    <li><strong>Workspaces</strong> — list of capabilities + their agents; deploy/start/stop controls.</li>
+    <li><strong>Agent Registry</strong> — edit per-agent overlay YAMLs (Memory, Tools, RAG, HITL, Prompts). UI writes to <code>agents/&lt;cap&gt;/&lt;agent&gt;/overlays/&lt;type&gt;/&lt;file&gt;.yaml</code> via Support API.</li>
+    <li><strong>Config Lab</strong> — try config changes against scenarios without committing; useful for tuning.</li>
+    <li><strong>Pipeline Builder</strong> — visualizes the agent's reasoning graph (planner → executor → responder + tool nodes).</li>
+    <li><strong>Prompt Lifecycle</strong> — version + activate prompts via prompt-management service.</li>
+    <li><strong>Test Results</strong> — view eval scorecards, traces from past runs.</li>
+  </ul>
+
+  <h3>6.8 Service-to-service call map (recap)</h3>
+
+  <pre>
+Chat UI (capability ui :3000)
+       │ POST /api/invocations
+       ▼
+   C1 agent-runtime (:8001)
+       │ HTTP /reasoning, /memory, /tools
+       ▼
+   C2 platform-services (:8002)
+       │ HTTP /internal/tools/&lt;name&gt;
+       ▼
+   C3 tool-policy-gateway (:8080)
+       │ HTTP /retrieve (only when search_kb fires)
+       ▼
+   services/rag (:8082)
+       │ DB
+       ▼
+   Postgres (5433) — shared store: tool data + KB embeddings
+
+Operator UIs (out of request path):
+   Agent Factory UI (:5173) ↔ Support API
+   Tool Admin UI (:5200)    ↔ tool-policy-gateway endpoints
+   Prompt Lifecycle tab     ↔ prompt-management service
+</pre>
 </div>
 
 <hr class="hr"/>
