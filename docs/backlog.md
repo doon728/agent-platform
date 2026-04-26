@@ -110,6 +110,30 @@ C2 ──MCP──▶ AgentCore Tool Gateway ──▶ Tool implementation (Lamb
 ### A9. Agent embed-inside-customer-workflow posture
 🔲 **Positioning artifact.** Document explicitly that AEA agents are **embedded inside the customer's existing workflow engine** (Camunda, Pega, Step Functions, ServiceNow) as intelligent steps — not standalone workflow replacements. Add as callout in proposal + prototype-current-state.html.
 
+### A15. Flow diagrams for remaining agent types (when built)
+🔲 **Track per-agent-type flow documentation.** `docs/design/agent-flow-diagrams.html` has 3-level diagrams (architecture / lifecycle / config overlay) for the 2 agent types built today — `chat_agent_simple` (C2 Conversational) and `summarization_agent_simple` (C1 Request-Response).
+
+When a new agent type is built, add a section to that file with:
+1. Category placement (which of the 8 categories from agent-taxonomy-matrix).
+2. Level 1 — high-level architecture (containers + call path).
+3. Level 2 — pre-graph / in-graph / post-graph lifecycle.
+4. Level 3 — config overlay (which YAML drives which step).
+
+**Pending agent types (build flow diagrams when each ships):**
+- `chat_agent_react` — C2 Conversational, ReAct strategy.
+- `chat_agent_plan_execute` — C2 / C3 Long-running, plan-execute.
+- `chat_agent_reflection` — C2 Conversational, reflection.
+- `chat_agent_multi_hop` — C3 Long-running, multi-hop.
+- `classifier_agent` — C1 Request-Response (or C4 event-driven), simple classifier.
+- `workflow_agent` — C3 Long-running / C7 Multi-agent, hierarchical orchestrator.
+- `voice_agent` — C6 Voice/Video, streaming turn-taking.
+- `panel_agent` / `debate_agent` — C7 Multi-agent peer.
+- `guardrail_agent` — C7 Multi-agent monitor.
+
+Each section should include category placement explicitly and link back to the agent-taxonomy-matrix.html for category context.
+
+---
+
 ### A14. Merge C3 + C4 into a unified Control Plane service
 🔲 **Architectural simplification.** In Pattern A′, C3 (tool-policy-gateway) is no longer in the agent request path — AgentCore Tool Gateway handles MCP serving. C3 becomes a backend + admin UI for policies + audit, structurally identical to C4 (agent factory backend + UI).
 

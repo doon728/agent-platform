@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Agent Flow Diagrams — Built Agent Types</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#f8fafc;color:#0f172a;font-size:14px;line-height:1.6;}
+.page{max-width:1100px;margin:0 auto;padding:40px 48px 80px;}
+.cover{text-align:center;padding:48px 0 32px;border-bottom:3px solid #FF9900;margin-bottom:32px;}
+.cover .eyebrow{font-size:11px;font-weight:800;letter-spacing:3px;text-transform:uppercase;color:#FF9900;margin-bottom:14px;}
+.cover h1{font-size:28px;font-weight:900;letter-spacing:-.3px;line-height:1.2;margin-bottom:8px;}
+.cover .tagline{font-size:14px;color:#475569;}
+.toc{background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px;padding:16px 20px;margin-bottom:36px;}
+.toc h3{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:10px;}
+.toc ol{padding-left:22px;font-size:13px;line-height:1.7;}
+.toc a{color:#0277bd;text-decoration:none;}
+.section{margin-bottom:48px;}
+.section-num{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:2px;color:#FF9900;margin-bottom:4px;}
+.section h2{font-size:21px;font-weight:900;margin-bottom:12px;padding-bottom:6px;border-bottom:2px solid #e2e8f0;}
+.section h3{font-size:15px;font-weight:800;margin:22px 0 10px;color:#1e293b;}
+.section h4{font-size:13px;font-weight:800;margin:14px 0 6px;color:#334155;}
+p{margin-bottom:10px;color:#334155;}
+ul{margin:6px 0 10px 20px;}
+ul li{color:#334155;margin-bottom:3px;}
+pre{background:#0f172a;color:#e2e8f0;padding:14px 18px;border-radius:6px;font-size:11.5px;line-height:1.55;overflow-x:auto;margin:12px 0;font-family:'SF Mono',Monaco,'Courier New',monospace;}
+code{background:#f1f5f9;color:#334155;padding:1px 5px;border-radius:3px;font-size:12px;font-family:'SF Mono',Monaco,'Courier New',monospace;}
+table{width:100%;border-collapse:collapse;margin:10px 0;font-size:12.5px;}
+th{background:#232f3e;color:#FF9900;padding:8px 10px;text-align:left;font-weight:800;font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;}
+td{padding:7px 10px;border-bottom:1px solid #f1f5f9;color:#334155;vertical-align:top;}
+tr:nth-child(even) td{background:#fafafa;}
+.callout{background:#e8edf8;border-left:4px solid #0277bd;padding:12px 16px;border-radius:0 8px 8px 0;margin:14px 0;}
+.highlight{background:#fff8e6;border-left:4px solid #FF9900;padding:12px 16px;border-radius:0 8px 8px 0;margin:14px 0;}
+.note{background:#f1f5f9;border-left:3px solid #94a3b8;padding:10px 14px;border-radius:0 6px 6px 0;margin:12px 0;font-size:12.5px;color:#475569;font-style:italic;}
+.tag{display:inline-block;font-size:10px;font-weight:800;padding:2px 8px;border-radius:3px;letter-spacing:.4px;text-transform:uppercase;margin:0 2px;}
+.tag-c1{background:#ffe0b2;color:#e65100;}
+.tag-c2{background:#cfd8dc;color:#0277bd;}
+.tag-c3{background:#c8e6c9;color:#2e7d32;}
+.tag-c4{background:#f8bbd0;color:#b71c1c;}
+.tag-rag{background:#dbeafe;color:#1e40af;}
+.tag-cat{background:#ede9fe;color:#5b21b6;}
+.lvl{display:inline-block;background:#FF9900;color:white;padding:3px 10px;border-radius:12px;font-size:10.5px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;margin-bottom:8px;}
+.hr{border:none;border-top:1px dashed #e2e8f0;margin:32px 0;}
+
+@media print {
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  @page { size: Letter; margin: 0.6in; }
+  body { font-size: 9.5pt; background: white; }
+  .page { max-width: none; padding: 0; }
+  .section { page-break-inside: auto; break-inside: auto; }
+  .callout, .highlight, .note { page-break-inside: avoid; }
+  h1, h2, h3, h4 { page-break-after: avoid; }
+  pre { page-break-inside: avoid; font-size: 8.5pt; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="cover">
+  <div class="eyebrow">Agent Flow Diagrams</div>
+  <h1>Built Agent Types — Layered Flow Reference</h1>
+  <p class="tagline">Three diagrams per agent type at different levels — architecture, lifecycle, config overlay. Covers only what's actually in code today: chat_agent_simple and summarization_agent_simple.</p>
+</div>
+
+<div class="toc">
+  <h3>Contents</h3>
+  <ol>
+    <li><a href="#scope">Scope and conventions</a></li>
+    <li><a href="#chat_agent_simple">chat_agent_simple — Conversational, simple reasoning</a>
+      <ol style="padding-left:18px;">
+        <li><a href="#chat-arch">Level 1 — High-level architecture</a></li>
+        <li><a href="#chat-life">Level 2 — Lifecycle flow (pre/in/post)</a></li>
+        <li><a href="#chat-cfg">Level 3 — Config overlay (which YAML drives what)</a></li>
+      </ol>
+    </li>
+    <li><a href="#summary_agent_simple">summarization_agent_simple — Request-response, deterministic</a>
+      <ol style="padding-left:18px;">
+        <li><a href="#sum-arch">Level 1 — High-level architecture</a></li>
+        <li><a href="#sum-life">Level 2 — Lifecycle flow</a></li>
+        <li><a href="#sum-cfg">Level 3 — Config overlay</a></li>
+      </ol>
+    </li>
+  </ol>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="section" id="scope">
+  <div class="section-num">Section 1</div>
+  <h2>Scope and conventions</h2>
+
+  <p>This document covers <strong>only the agent types actually built in code today</strong>:</p>
+  <ul>
+    <li><code>chat_agent_simple</code> — interactive chat agent with simple reasoning strategy. Used by <code>care-management/pre-call-assessment</code>.</li>
+    <li><code>summarization_agent_simple</code> — deterministic single-pass summarizer. Used by <code>care-management/pre-call-assessment</code> for case/member summaries.</li>
+  </ul>
+
+  <p>Other agent types (<code>chat_agent_react</code>, <code>chat_agent_plan_execute</code>, <code>chat_agent_reflection</code>, <code>chat_agent_multi_hop</code>, <code>classifier_agent</code>, <code>workflow_agent</code>) are on the roadmap but not yet implemented and are not covered here.</p>
+
+  <h3>Three levels per agent type</h3>
+
+  <p>Each agent type has three diagrams, each at a different level of detail:</p>
+
+  <table>
+    <tr><th>Level</th><th>Audience</th><th>Shows</th></tr>
+    <tr><td><strong>Level 1 — High-level architecture</strong></td><td>Architects, executives</td><td>Where the agent sits in the 8-category taxonomy + which containers it engages + the call path.</td></tr>
+    <tr><td><strong>Level 2 — Lifecycle flow</strong></td><td>Engineers, operators</td><td>Pre-graph / in-graph / post-graph timeline. What runs at each phase.</td></tr>
+    <tr><td><strong>Level 3 — Config overlay</strong></td><td>Operators, admins</td><td>Same lifecycle, annotated with which YAML files drive each step.</td></tr>
+  </table>
+
+  <h3>Symbols used</h3>
+  <ul>
+    <li><span class="tag tag-c1">C1</span> Agent Runtime — per-agent thin shell (loads overlay config, owns HITL state, forwards to C2).</li>
+    <li><span class="tag tag-c2">C2</span> Platform Services — shared reasoning + memory + tools router.</li>
+    <li><span class="tag tag-c3">C3</span> Tool Policy Gateway — tool serving + policy enforcement.</li>
+    <li><span class="tag tag-rag">RAG</span> services/rag — standalone retrieval service (HTTP).</li>
+    <li><span class="tag tag-cat">Cat</span> = Category (1 of 8 from agent-taxonomy-matrix).</li>
+  </ul>
+</div>
+
+<hr class="hr"/>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="section" id="chat_agent_simple">
+  <div class="section-num">Section 2</div>
+  <h2>chat_agent_simple — Conversational, simple reasoning</h2>
+
+  <p>Built as the reference chat agent. Used today for the care management nurse pre-call-assessment use case. Multi-turn dialog, session-scoped memory, optional pre-graph RAG, planner-tool RAG.</p>
+
+  <table>
+    <tr><th>Property</th><th>Value</th></tr>
+    <tr><td>Category (taxonomy)</td><td><span class="tag tag-cat">C2 Conversational</span></td></tr>
+    <tr><td>Reasoning strategy</td><td><code>simple</code> (single planner call → execute → respond)</td></tr>
+    <tr><td>Memory scopes</td><td>short_term + episodic + semantic-read + summary-read</td></tr>
+    <tr><td>RAG</td><td>Pre-graph + planner-tool both enabled</td></tr>
+    <tr><td>HITL</td><td>Configured but currently disabled (<code>features.hitl: false</code>)</td></tr>
+    <tr><td>Containers engaged</td><td>C1, C2, C3, services/rag, Postgres</td></tr>
+  </table>
+
+  <hr class="hr"/>
+
+  <!-- ───────────────── Level 1: High-level architecture ────────────── -->
+  <h3 id="chat-arch">2.1 Level 1 — High-level architecture</h3>
+  <span class="lvl">Level 1 — Architects</span>
+
+  <p>Where chat_agent_simple sits in the platform and which containers it touches.</p>
+
+  <pre>
+                  ┌───────────────────────────────────────┐
+                  │  USER  (nurse on care-management UI)  │
+                  └────────────────────┬──────────────────┘
+                                       │ HTTP (POST /api/invocations, proxied)
+                                       ▼
+              ┌─────────────────────────────────────────────┐
+              │  Capability UI (capabilities/care-          │
+              │  management/ui) — :3000                     │
+              │  Vite dev server, proxies /api → C1         │
+              └────────────────────┬────────────────────────┘
+                                   │ HTTP /invocations
+                                   ▼
+       ┌──────────────────────────────────────────────────────┐
+       │  [C1] Agent Runtime — :8001                          │
+       │  agents/care-management/pre-call-assessment/         │
+       │  services/agent-runtime/                             │
+       │  • Loads overlay config (overlay.yaml + reasoning + │
+       │    rag + hitl + memory + tools/ + prompts/)          │
+       │  • Owns HITL approval state                          │
+       │  • Forwards to C2 for reasoning                      │
+       └────────────────────┬─────────────────────────────────┘
+                            │ HTTP /reasoning, /memory
+                            ▼
+       ┌──────────────────────────────────────────────────────┐
+       │  [C2] Platform Services — :8002                      │
+       │  services/platform-services/                         │
+       │  Internal sub-routers:                               │
+       │    • reasoning  — LangGraph simple strategy          │
+       │    • memory     — 4-scope read/write                 │
+       │    • tools      — thin router → C3                   │
+       │    • summarize, observability                        │
+       └─────┬───────────────────────────────────┬────────────┘
+             │ HTTP /internal/tools/<name>      │ DB (memory store)
+             ▼                                  ▼
+       ┌──────────────────────┐      ┌──────────────────────┐
+       │  [C3] Tool Policy    │      │  Memory store        │
+       │  Gateway — :8080     │      │  (file / Postgres /  │
+       │  services/tool-      │      │   AgentCore Memory)  │
+       │  policy-gateway/     │      └──────────────────────┘
+       │  • Policy check      │
+       │  • Tool dispatch     │
+       │  • RAG client (for   │
+       │    search_kb tool)   │
+       └─────┬──────────┬─────┘
+             │          │ HTTP /retrieve (only when search_kb fires)
+             ▼          ▼
+       ┌────────────┐ ┌─────────────────────────┐
+       │ Postgres   │ │  RAG Service — :8082    │
+       │ (struct.   │ │  services/rag/          │
+       │  data:     │ │  • POST /retrieve       │
+       │  members,  │ │  • POST /ingest         │
+       │  cases,    │ │  • Vector search        │
+       │  claims)   │ │    over Postgres+       │
+       │            │ │    pgvector             │
+       └────────────┘ └─────────────────────────┘
+
+       [C4] Control Plane (admin, NOT in request path)
+       services/agent-factory-ui          (:5173, React)
+       services/agent-factory-support-api (FastAPI)
+       services/prompt-management         (FastAPI)
+       services/tool-admin-ui             (:5200, React)
+  </pre>
+
+  <div class="callout">
+    <strong>Category placement:</strong> chat_agent_simple sits in <strong>Category C2 Conversational</strong> (multi-turn dialog with session-scoped memory). Reasoning strategy is <strong>simple</strong>. Containers engaged: C1, C2, C3, services/rag, Postgres. Control plane (C4) is admin-only — out of the request path.
+  </div>
+
+  <hr class="hr"/>
+
+  <!-- ───────────────── Level 2: Lifecycle flow ─────────────── -->
+  <h3 id="chat-life">2.2 Level 2 — Lifecycle flow</h3>
+  <span class="lvl">Level 2 — Engineers / Operators</span>
+
+  <p>Single-turn lifecycle for chat_agent_simple. Three phases: pre-graph, in-graph, post-graph.</p>
+
+  <pre>
+USER PROMPT ARRIVES
+        │
+        ▼
+══════════════════════════ PRE-GRAPH PHASE ═════════════════════════════
+  C2 reasoning router builds context for the agent.
+  No LLM calls in this phase.
+
+  ┌──────────────────────────────────────────────────────────────────┐
+  │  1. Memory READ                                                   │
+  │     • Short-term  — last N turns from this session                │
+  │     • Episodic    — past events for this case/assessment          │
+  │     • Semantic    — facts about member/user                       │
+  │     • Summary     — rolling summary of prior conversation         │
+  │     (each scope read only if read_policies allow)                 │
+  └──────────────────────────────────────────────────────────────────┘
+                                │
+                                ▼
+  ┌──────────────────────────────────────────────────────────────────┐
+  │  2. Pre-graph RAG (silent, before planner sees anything)          │
+  │     IF rag.yaml.pre_graph.enabled: true:                          │
+  │       • Call services/rag /retrieve with the user's prompt        │
+  │       • Inject top-k chunks into context                          │
+  │     ELSE: skip                                                    │
+  └──────────────────────────────────────────────────────────────────┘
+        │
+        ▼
+══════════════════════════ IN-GRAPH PHASE ══════════════════════════════
+  LangGraph simple strategy runs.
+
+  ┌──────────────────────────────────────────────────────────────────┐
+  │  3. Hard-route check (deterministic shortcut)                     │
+  │     IF user prompt matches a hard_route trigger:                  │
+  │       • Skip planner. Go directly to step 5 with pre-decided tool │
+  │     ELSE: continue to planner                                     │
+  └──────────────────────────────────────────────────────────────────┘
+                                │
+                                ▼
+  ┌──────────────────────────────────────────────────────────────────┐
+  │  4. PLANNER LLM CALL  (in-graph LLM #1)                          │
+  │     • Builds planner prompt (system prompt + user prompt +       │
+  │       memory context + pre-graph RAG context + domain context)   │
+  │     • Calls Bedrock/OpenAI                                       │
+  │     • LLM picks ONE tool to call (e.g., "search_kb: depression") │
+  │     • Returns: { tool_name, argument }                           │
+  └──────────────────────────────────────────────────────────────────┘
+                                │
+                                ▼
+  ┌──────────────────────────────────────────────────────────────────┐
+  │  5. EXECUTOR — runs the chosen tool                              │
+  │     • C2 calls C3 /internal/tools/<tool_name>                    │
+  │     • C3 enforces policy (allow-list per tools/tools.yaml)       │
+  │     • Tool runs:                                                 │
+  │         search_kb → calls services/rag /retrieve                 │
+  │         get_member, write_case_note, etc. → DB query             │
+  │     • Returns tool result                                        │
+  └──────────────────────────────────────────────────────────────────┘
+                                │
+                                ▼
+  ┌──────────────────────────────────────────────────────────────────┐
+  │  6. RESPONDER LLM CALL  (in-graph LLM #2)                       │
+  │     • Builds responder prompt (system prompt + user prompt +     │
+  │       tool result + memory context)                              │
+  │     • Calls Bedrock/OpenAI                                       │
+  │     • LLM synthesizes the natural-language answer                │
+  │     • Returns: { answer: "..." }                                 │
+  └──────────────────────────────────────────────────────────────────┘
+        │
+        ▼
+══════════════════════════ POST-GRAPH PHASE ════════════════════════════
+  Memory writes + optional extraction. Response already returned to user.
+
+  ┌──────────────────────────────────────────────────────────────────┐
+  │  7. Memory WRITES  (per memory.yaml write_policies)               │
+  │     • short_term    — every_turn → append user msg + answer       │
+  │     • episodic      — on tool_success → append the tool event     │
+  │     • semantic      — if trigger=extractor → run extractor LLM    │
+  │                       to identify facts → write them              │
+  │     • summary       — only when chat_agent_simple is summary      │
+  │                       agent (not here, it's write_locked)         │
+  └──────────────────────────────────────────────────────────────────┘
+                                │
+                                ▼
+  ┌──────────────────────────────────────────────────────────────────┐
+  │  8. Trace / observability                                         │
+  │     • Spans emitted (tool calls, LLM calls, memory ops)           │
+  │     • Audit log appended                                          │
+  └──────────────────────────────────────────────────────────────────┘
+                                │
+                                ▼
+                     RESPONSE STREAMED TO USER
+                          (already shown by responder step;
+                           this last block runs in background)
+  </pre>
+
+  <h4>LLM call count for one turn</h4>
+  <table>
+    <tr><th>Step</th><th>LLM call?</th><th>Where</th></tr>
+    <tr><td>Memory read</td><td>No</td><td>—</td></tr>
+    <tr><td>Pre-graph RAG</td><td>Yes (embedding)</td><td>services/rag (one embedding generation per query)</td></tr>
+    <tr><td>Planner</td><td>Yes (chat completion)</td><td>C2 — Bedrock or OpenAI</td></tr>
+    <tr><td>search_kb tool</td><td>Yes (embedding)</td><td>services/rag (only if search_kb is the chosen tool)</td></tr>
+    <tr><td>Responder</td><td>Yes (chat completion)</td><td>C2 — Bedrock or OpenAI</td></tr>
+    <tr><td>Semantic extraction</td><td>Yes if enabled (chat completion)</td><td>C2 platform-core/memory/semantic_engine.py</td></tr>
+  </table>
+
+  <p><strong>Typical turn:</strong> 2 chat-completion LLM calls (planner + responder) + 1–2 embedding calls. Extractor adds 1 more if enabled.</p>
+
+  <hr class="hr"/>
+
+  <!-- ───────────────── Level 3: Config overlay ─────────────── -->
+  <h3 id="chat-cfg">2.3 Level 3 — Config overlay (which YAML drives what)</h3>
+  <span class="lvl">Level 3 — Operators / Admins</span>
+
+  <p>Same lifecycle, annotated with which YAML file controls each step. All YAMLs except <code>reasoning.yaml</code> are operator-editable via Agent Factory UI.</p>
+
+  <pre>
+══════════════════════════ PRE-GRAPH PHASE ═════════════════════════════
+
+  Memory READ
+  ┌────────────────────────────────────────────────────────────────┐
+  │  ▶ overlays/chat_agent_simple/memory.yaml                       │
+  │      read_policies:                                             │
+  │        short_term: { enabled: true }                            │
+  │        episodic:   { enabled: true }                            │
+  │        semantic:   { enabled: true }                            │
+  │        summary:    { enabled: true }                            │
+  │      retrieval_policies:                                        │
+  │        case.episodic: { include: true, top_k: 5 }              │
+  │        member.semantic: { include: false, top_k: 3 }           │
+  │  ▶ Editable via UI (Agent Registry → Memory tab)                │
+  │  ▶ Hot-reload: yes (via volume mount, no restart)               │
+  └────────────────────────────────────────────────────────────────┘
+
+  Pre-graph RAG
+  ┌────────────────────────────────────────────────────────────────┐
+  │  ▶ overlays/chat_agent_simple/rag.yaml                          │
+  │      pre_graph:                                                 │
+  │        enabled: true                                            │
+  │        tool: search_kb                                          │
+  │        strategy: hybrid                                         │
+  │        pattern: naive                                           │
+  │        top_k: 3                                                 │
+  │        similarity_threshold: 0.5                                │
+  │  ▶ Editable via UI (Agent Registry → RAG tab)                   │
+  └────────────────────────────────────────────────────────────────┘
+
+══════════════════════════ IN-GRAPH PHASE ══════════════════════════════
+
+  Hard route check
+  ┌────────────────────────────────────────────────────────────────┐
+  │  ▶ overlays/chat_agent_simple/overlay.yaml (hard_routes)        │
+  │    OR (in legacy) agent.yaml hard_routes section                │
+  └────────────────────────────────────────────────────────────────┘
+
+  Reasoning strategy (graph topology)
+  ┌────────────────────────────────────────────────────────────────┐
+  │  ▶ overlays/chat_agent_simple/reasoning.yaml                    │
+  │      strategy: simple                                           │
+  │  ▶ FIXED — NOT operator-editable                                │
+  │  ▶ Set at agent creation (Agent Factory picks chat_agent_simple │
+  │    vs chat_agent_react vs chat_agent_plan_execute, etc.)        │
+  │  ▶ Editing this file regenerates orchestration/build_graph.py   │
+  └────────────────────────────────────────────────────────────────┘
+
+  Planner LLM
+  ┌────────────────────────────────────────────────────────────────┐
+  │  ▶ overlays/chat_agent_simple/prompts/prompts.yaml              │
+  │      planner_system_prompt: |                                   │
+  │        You are a care management AI planning agent...           │
+  │        (full instructions for tool selection)                   │
+  │  ▶ Editable via UI (Agent Registry → Prompts tab)               │
+  │  ▶ Future: prompts/*.md files split by role                     │
+  │  ▶ Future override: services/prompt-management DB layer         │
+  └────────────────────────────────────────────────────────────────┘
+
+  Tool dispatch + policy
+  ┌────────────────────────────────────────────────────────────────┐
+  │  ▶ overlays/chat_agent_simple/tools/tools.yaml                  │
+  │      mode: selected                                             │
+  │      allowed: [search_kb, get_member, get_member_summary,       │
+  │                get_case_summary, get_assessment_summary,        │
+  │                get_assessment_tasks, write_case_note]           │
+  │  ▶ Editable via UI (Agent Registry → Tools tab)                 │
+  │  ▶ Tool implementations live in C3                              │
+  │     (services/tool-policy-gateway/src/tools/)                   │
+  └────────────────────────────────────────────────────────────────┘
+
+  search_kb tool internals (when planner picks it)
+  ┌────────────────────────────────────────────────────────────────┐
+  │  ▶ overlays/chat_agent_simple/rag.yaml                          │
+  │      planner_tool:                                              │
+  │        enabled: true                                            │
+  │        top_k: 5, similarity_threshold: 0.35                     │
+  │  ▶ Same RAG file controls both pre_graph and planner_tool       │
+  └────────────────────────────────────────────────────────────────┘
+
+  HITL gating (today disabled, but config-ready)
+  ┌────────────────────────────────────────────────────────────────┐
+  │  ▶ overlays/chat_agent_simple/hitl.yaml                         │
+  │      adapter: internal                                          │
+  │      risk_levels: { write_case_note: high, search_kb: low, ... }│
+  │      routing_rules: [{ risk_level: high, requires_approval: true}│
+  │      sla: { timeout_minutes: 60 }                               │
+  │  ▶ Editable via UI (Agent Registry → HITL tab)                  │
+  │  ▶ State lives in C1 agent-runtime; gating decisions in C2      │
+  └────────────────────────────────────────────────────────────────┘
+
+  Responder LLM
+  ┌────────────────────────────────────────────────────────────────┐
+  │  ▶ overlays/chat_agent_simple/prompts/prompts.yaml              │
+  │      responder_system_prompt: |                                 │
+  │        You are a clinical care management assistant ...         │
+  │        Use ONLY tool output. Bullet points. ...                 │
+  │  ▶ Same prompts file as planner — different keys                │
+  └────────────────────────────────────────────────────────────────┘
+
+══════════════════════════ POST-GRAPH PHASE ════════════════════════════
+
+  Memory WRITE
+  ┌────────────────────────────────────────────────────────────────┐
+  │  ▶ overlays/chat_agent_simple/memory.yaml                       │
+  │      write_policies:                                            │
+  │        short_term:                                              │
+  │          enabled: true,  trigger: every_turn                    │
+  │        episodic:                                                │
+  │          enabled: true,  triggers: [tool_success, ...]          │
+  │          write_on_tool_call.tools: write_only                   │
+  │        semantic:                                                │
+  │          enabled: false  ← turn ON to invoke extractor LLM      │
+  │          trigger: extractor                                     │
+  │          dedup.enabled: true                                    │
+  │        summary:                                                 │
+  │          enabled: true                                          │
+  │          write_locked: true  ← only summary_agent writes summary│
+  │  ▶ Editable via UI (Agent Registry → Memory tab)                │
+  └────────────────────────────────────────────────────────────────┘
+
+  Semantic extractor LLM (only if memory.yaml semantic.enabled = true)
+  ┌────────────────────────────────────────────────────────────────┐
+  │  ▶ Code: packages/platform-core/src/platform_core/memory/       │
+  │            semantic_engine.py                                   │
+  │  ▶ Has its own LLM client. Runs ONLY when memory.yaml turns it  │
+  │    on. Extracts structured facts from the completed turn,       │
+  │    writes them to the semantic store with dedup.                │
+  │  ▶ Operator controls ON/OFF via memory.yaml. Extractor prompt   │
+  │    + algorithm are platform code — not user-editable per agent. │
+  └────────────────────────────────────────────────────────────────┘
+  </pre>
+
+  <div class="highlight">
+    <strong>Net for chat_agent_simple:</strong> 2 chat-completion LLM calls per turn (planner + responder) + 1–2 embedding calls. All driven by per-overlay YAMLs. Reasoning strategy is fixed; everything else is operator-editable. Semantic extractor LLM is platform-provided code that operators turn on/off via memory.yaml.
+  </div>
+</div>
+
+<hr class="hr"/>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="section" id="summary_agent_simple">
+  <div class="section-num">Section 3</div>
+  <h2>summarization_agent_simple — Request-Response, deterministic</h2>
+
+  <p>Built as the reference summary agent. Used by the care-management nurse UI to render assessment summaries, case summaries, member summaries. Single-pass, no planner LLM, no conversation loop, no HITL.</p>
+
+  <table>
+    <tr><th>Property</th><th>Value</th></tr>
+    <tr><td>Category (taxonomy)</td><td><span class="tag tag-cat">C1 Request-Response</span></td></tr>
+    <tr><td>Reasoning strategy</td><td><code>simple</code> (deterministic — no planner)</td></tr>
+    <tr><td>Memory scopes</td><td>Read-only (episodic, semantic). NO writes (write_locked).</td></tr>
+    <tr><td>RAG</td><td>Disabled (<code>features.rag: false</code>) — structured tool lookup only</td></tr>
+    <tr><td>HITL</td><td>None (read-only agent, nothing to approve)</td></tr>
+    <tr><td>Containers engaged</td><td>C1, C2, C3, Postgres (NO RAG service)</td></tr>
+  </table>
+
+  <hr class="hr"/>
+
+  <!-- ───────────────── Level 1: High-level architecture ────────────── -->
+  <h3 id="sum-arch">3.1 Level 1 — High-level architecture</h3>
+  <span class="lvl">Level 1 — Architects</span>
+
+  <pre>
+                  ┌───────────────────────────────────────┐
+                  │  USER  (nurse on care-management UI)  │
+                  │  Clicks "Summarize this assessment"   │
+                  └────────────────────┬──────────────────┘
+                                       │ HTTP POST /api/summarize
+                                       ▼
+              ┌─────────────────────────────────────────────┐
+              │  Capability UI — :3000                      │
+              │  SummaryPanel component                     │
+              └────────────────────┬────────────────────────┘
+                                   │ HTTP /summarize/<scope>/<id>
+                                   ▼
+       ┌──────────────────────────────────────────────────────┐
+       │  [C1] Agent Runtime — :8001                          │
+       │  Mounts summarization_agent_simple overlay            │
+       │  Routes /summarize → C2 summarize router              │
+       └────────────────────┬─────────────────────────────────┘
+                            │ HTTP /summarize/invoke
+                            ▼
+       ┌──────────────────────────────────────────────────────┐
+       │  [C2] Platform Services — :8002                      │
+       │  • summarize router (/summarize/invoke)              │
+       │  • Calls fetch_node tools deterministically          │
+       │  • One LLM call to synthesize JSON summary           │
+       └────────────────────┬─────────────────────────────────┘
+                            │ HTTP /internal/tools/<name>
+                            ▼
+       ┌──────────────────────────────────────────────────────┐
+       │  [C3] Tool Policy Gateway — :8080                    │
+       │  Returns structured tool data:                        │
+       │    get_assessment_summary, get_case_summary,         │
+       │    get_member_summary, get_assessment_tasks          │
+       └────────────────────┬─────────────────────────────────┘
+                            │ DB query
+                            ▼
+                     ┌──────────────┐
+                     │  Postgres    │  (members, cases, assessments)
+                     └──────────────┘
+
+       NOT engaged for summary_agent:
+         × services/rag (no KB search)
+         × HITL approval store (no writes)
+         × Memory writes (read-only agent)
+  </pre>
+
+  <div class="callout">
+    <strong>Category placement:</strong> summarization_agent_simple sits in <strong>Category C1 Request-Response</strong> (synchronous, one-shot, structured output). Reasoning strategy is <strong>simple</strong> with <code>planner_mode: none</code> — fully deterministic. Lighter footprint than chat_agent_simple — no RAG, no HITL, no memory writes.
+  </div>
+
+  <hr class="hr"/>
+
+  <!-- ───────────────── Level 2: Lifecycle flow ─────────────── -->
+  <h3 id="sum-life">3.2 Level 2 — Lifecycle flow</h3>
+  <span class="lvl">Level 2 — Engineers / Operators</span>
+
+  <pre>
+SUMMARIZE REQUEST ARRIVES (e.g., POST /summarize/case/C123)
+        │
+        ▼
+══════════════════════════ PRE-GRAPH PHASE ═════════════════════════════
+  Light setup. No memory loop, no RAG.
+
+  ┌──────────────────────────────────────────────────────────────────┐
+  │  1. Memory READ (optional, off by default)                        │
+  │     • Read episodic for this scope (member, case)                 │
+  │     • Read semantic facts about member                            │
+  │     (only if memory.yaml read_policies say enabled)               │
+  └──────────────────────────────────────────────────────────────────┘
+        │
+        ▼
+══════════════════════════ IN-GRAPH PHASE ══════════════════════════════
+  No planner LLM (planner_mode: none). Deterministic tool fetch + 1 LLM.
+
+  ┌──────────────────────────────────────────────────────────────────┐
+  │  2. fetch_node — calls tools by KNOWN ID, no LLM choice           │
+  │     For "summarize assessment A123":                              │
+  │       • get_assessment_summary(A123)                              │
+  │       • get_member(member_id from assessment)                     │
+  │       • get_assessment_tasks(A123)                                │
+  │     For "summarize case C456":                                    │
+  │       • get_case_summary(C456)                                    │
+  │       • get_assessment_summary(...) for each assessment           │
+  │     All structured tool calls — NO RAG.                           │
+  └──────────────────────────────────────────────────────────────────┘
+                                │
+                                ▼
+  ┌──────────────────────────────────────────────────────────────────┐
+  │  3. SUMMARIZER LLM CALL  (in-graph LLM #1 — the only LLM call)   │
+  │     • Builds prompt: assessment_summary_prompt /                  │
+  │       case_summary_prompt / member_summary_prompt                 │
+  │       (selected by scope)                                         │
+  │     • Includes structured tool data as input                      │
+  │     • Calls Bedrock/OpenAI                                        │
+  │     • Returns JSON: { summary, key_concerns, last_action,         │
+  │                       next_steps }                                │
+  └──────────────────────────────────────────────────────────────────┘
+        │
+        ▼
+══════════════════════════ POST-GRAPH PHASE ════════════════════════════
+  Minimal. NO memory writes (write_locked: true for all scopes).
+
+  ┌──────────────────────────────────────────────────────────────────┐
+  │  4. (No memory writes — summary_agent is read-only by contract)   │
+  │     • Trace/audit emitted                                         │
+  │     • JSON returned to UI                                         │
+  └──────────────────────────────────────────────────────────────────┘
+                                │
+                                ▼
+                     JSON RESPONSE TO USER
+                     (rendered as bullet summary in nurse UI)
+  </pre>
+
+  <h4>LLM call count for one summary</h4>
+  <table>
+    <tr><th>Step</th><th>LLM call?</th></tr>
+    <tr><td>Memory read</td><td>No</td></tr>
+    <tr><td>fetch_node tools</td><td>No (deterministic DB queries)</td></tr>
+    <tr><td>Summarizer</td><td>Yes — one chat completion, structured JSON output</td></tr>
+    <tr><td>Memory writes</td><td>No</td></tr>
+  </table>
+
+  <p><strong>Total: 1 chat-completion LLM call per summary.</strong> Cheaper and faster than chat_agent_simple.</p>
+
+  <hr class="hr"/>
+
+  <!-- ───────────────── Level 3: Config overlay ─────────────── -->
+  <h3 id="sum-cfg">3.3 Level 3 — Config overlay</h3>
+  <span class="lvl">Level 3 — Operators / Admins</span>
+
+  <pre>
+══════════════════════════ PRE-GRAPH PHASE ═════════════════════════════
+
+  Memory READ (optional, default off for summary)
+  ┌────────────────────────────────────────────────────────────────┐
+  │  ▶ overlays/summarization_agent_simple/memory.yaml              │
+  │      read_policies:                                             │
+  │        short_term: { enabled: false }   ← no conversation       │
+  │        episodic:   { enabled: true }    ← optional enrichment   │
+  │        semantic:   { enabled: true }    ← optional enrichment   │
+  │        summary:    { enabled: false }                           │
+  │  ▶ Editable via UI                                              │
+  └────────────────────────────────────────────────────────────────┘
+
+══════════════════════════ IN-GRAPH PHASE ══════════════════════════════
+
+  Reasoning (deterministic, no planner)
+  ┌────────────────────────────────────────────────────────────────┐
+  │  ▶ overlays/summarization_agent_simple/reasoning.yaml           │
+  │      strategy: simple                                           │
+  │  ▶ FIXED. Editing changes the build_graph.py.                   │
+  │  ▶ overlays/summarization_agent_simple/overlay.yaml             │
+  │      planner_mode: none  ← no LLM planner, fetch_node only      │
+  └────────────────────────────────────────────────────────────────┘
+
+  Tools (no allow/deny choice — fetch_node calls them by ID)
+  ┌────────────────────────────────────────────────────────────────┐
+  │  ▶ overlays/summarization_agent_simple/tools/tools.yaml         │
+  │      mode: selected                                             │
+  │      allowed: [get_member, get_member_summary,                  │
+  │                get_assessment_summary, get_assessment_tasks]    │
+  │  ▶ Editable via UI                                              │
+  │  ▶ NOTE: search_kb is NOT in this list — summary agent does NOT │
+  │    use RAG / KB search.                                         │
+  └────────────────────────────────────────────────────────────────┘
+
+  Summarizer LLM (the one and only)
+  ┌────────────────────────────────────────────────────────────────┐
+  │  ▶ overlays/summarization_agent_simple/prompts/prompts.yaml     │
+  │      assessment_summary_prompt: |                               │
+  │        You are a clinical documentation assistant...            │
+  │        Return ONLY valid JSON with keys:                        │
+  │          summary, key_concerns, last_action, next_steps         │
+  │      case_summary_prompt: |                                     │
+  │        ...                                                      │
+  │      member_summary_prompt: |                                   │
+  │        ...                                                      │
+  │  ▶ Editable via UI                                              │
+  │  ▶ Future: prompts/assessment_summary.md, case_summary.md,      │
+  │    member_summary.md (already exist as scaffolding markdown)    │
+  └────────────────────────────────────────────────────────────────┘
+
+══════════════════════════ POST-GRAPH PHASE ════════════════════════════
+
+  Memory WRITE — ALL LOCKED OFF
+  ┌────────────────────────────────────────────────────────────────┐
+  │  ▶ overlays/summarization_agent_simple/memory.yaml              │
+  │      write_policies:                                            │
+  │        short_term:  { enabled: false, write_locked: true }      │
+  │        episodic:    { enabled: false, write_locked: true }      │
+  │        semantic:    { enabled: false, write_locked: true }      │
+  │        summary:     { enabled: true,  write_locked: false }     │
+  │                     ← only summary write is allowed             │
+  │                     ← THIS is what makes it the "summary agent" │
+  │  ▶ summary_agent is the ONLY agent in the platform that writes  │
+  │    summary memory. write_locked guarantees no other agent type  │
+  │    can do it.                                                   │
+  │  ▶ write_locked is platform-enforced; admin UI shows it as a    │
+  │    grayed-out lock icon, not editable.                          │
+  └────────────────────────────────────────────────────────────────┘
+
+  HITL — not applicable
+  ┌────────────────────────────────────────────────────────────────┐
+  │  ▶ No hitl.yaml in this overlay                                 │
+  │  ▶ overlay.yaml features.hitl: false                            │
+  │  ▶ Read-only summarizer — nothing to approve                    │
+  └────────────────────────────────────────────────────────────────┘
+
+  RAG — not applicable
+  ┌────────────────────────────────────────────────────────────────┐
+  │  ▶ No rag.yaml in this overlay                                  │
+  │  ▶ overlay.yaml features.rag: false                             │
+  │  ▶ Structured tool lookup only — no vector search               │
+  └────────────────────────────────────────────────────────────────┘
+  </pre>
+
+  <div class="highlight">
+    <strong>Net for summarization_agent_simple:</strong> 1 LLM call per summary (the summarizer). No RAG, no HITL, no memory writes (except summary by contract). Lighter, deterministic, faster than chat_agent_simple. Config surface is small — mostly memory.yaml + tools/tools.yaml + prompts/prompts.yaml.
+  </div>
+</div>
+
+<hr class="hr"/>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-num">Closing</div>
+  <h2>Comparison summary</h2>
+
+  <table>
+    <tr><th>Aspect</th><th>chat_agent_simple</th><th>summarization_agent_simple</th></tr>
+    <tr><td>Category</td><td>C2 Conversational</td><td>C1 Request-Response</td></tr>
+    <tr><td>Reasoning strategy</td><td>simple (planner-driven)</td><td>simple (deterministic, no planner)</td></tr>
+    <tr><td>LLM calls per turn</td><td>2 (planner + responder)</td><td>1 (summarizer)</td></tr>
+    <tr><td>Embedding calls</td><td>1–2 (RAG)</td><td>0 (no RAG)</td></tr>
+    <tr><td>RAG engaged</td><td>✅ Yes (services/rag)</td><td>❌ No</td></tr>
+    <tr><td>Memory reads</td><td>All 4 scopes</td><td>Episodic + semantic (optional)</td></tr>
+    <tr><td>Memory writes</td><td>short_term + episodic (semantic optional)</td><td>summary only — others write_locked</td></tr>
+    <tr><td>HITL</td><td>Configured (currently off)</td><td>Not applicable</td></tr>
+    <tr><td>Containers engaged</td><td>C1, C2, C3, services/rag, Postgres</td><td>C1, C2, C3, Postgres</td></tr>
+    <tr><td>Operator-editable YAMLs</td><td>memory, rag, hitl, tools, prompts</td><td>memory, tools, prompts</td></tr>
+    <tr><td>Fixed YAML (engineer-only)</td><td>reasoning.yaml + overlay.yaml</td><td>reasoning.yaml + overlay.yaml</td></tr>
+  </table>
+</div>
+
+</div>
+</body>
+</html>
