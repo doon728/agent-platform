@@ -1209,7 +1209,107 @@ retrieval:
     <tr><td><strong>C. C3-only (no AgentCore Gateway)</strong></td><td>C3 serves tools directly to agents; AgentCore Gateway not used.</td><td>Full control. No dependency on AgentCore Gateway.</td><td>Agents don't get AgentCore-native tool surface. Weaker AWS co-sell. We duplicate what AgentCore Gateway already does.</td></tr>
   </table>
 
-  <p><strong>Recommendation:</strong> Pattern A for v1.0. Keeps C3 as policy + abstraction layer, uses AgentCore Gateway as the MCP serving plane. Pattern B is a future simplification once AgentCore Gateway covers all our enforcement needs.</p>
+  <p><strong>Decision (Apr 2026):</strong> Pattern A′ — refined Pattern A with explicit PDP/PEP separation. See §12.3.1 below. Backlog item A1.</p>
+
+  <h3 id="pdp-pep">12.3.1 Pattern A′ — PDP / PEP separation (locked-in architecture)</h3>
+
+  <p>The cleanest framing of Pattern A is the industry-standard <strong>PDP / PEP split</strong>. Every modern authorization system (OPA, AWS Verified Permissions, Istio, AgentCore) follows this pattern. AEA Pattern A′ adopts it explicitly: <strong>C3 is the PDP, AgentCore Tool Gateway is the PEP.</strong></p>
+
+  <h4>What PDP and PEP mean</h4>
+  <table>
+    <tr><th>Aspect</th><th>PDP — Policy Decision Point</th><th>PEP — Policy Enforcement Point</th></tr>
+    <tr><td>Question it answers</td><td>"What are the rules?"</td><td>"Does this specific request pass the rules?"</td></tr>
+    <tr><td>Runs at</td><td>Author / publish time</td><td>Every single request</td></tr>
+    <tr><td>Lives on</td><td>Admin-facing service (AEA: <strong>C3</strong>)</td><td>In-line with the request (AEA: <strong>AgentCore Tool Gateway</strong>)</td></tr>
+    <tr><td>Speed requirement</td><td>Can be slow — rare operation</td><td>Must be fast — millions of calls</td></tr>
+    <tr><td>Who interacts with it</td><td>Compliance officers, ops admins</td><td>Nobody — invisible to users</td></tr>
+    <tr><td>In the request path?</td><td><strong>NO</strong></td><td><strong>YES</strong></td></tr>
+  </table>
+
+  <h4>Concrete example — write_case_note in the chat agent</h4>
+
+  <p><strong>Authoring path (rare, asynchronous to requests):</strong></p>
+  <pre>1. Compliance admin opens C3 Tool Admin UI → Policies tab (PDP)
+2. Authors a rule: "Allow write_case_note for care_managers, deny if risk=high without approval"
+3. C3 saves YAML
+4. C3's Cedar compiler converts YAML → Cedar policy text
+5. C3 pushes Cedar bundle to AgentCore via Verified Permissions API
+6. Done. Bundle now lives in the PEP, ready for evaluation.</pre>
+
+  <p><strong>Runtime path (every chat message):</strong></p>
+  <pre>1. Nurse types message in chat
+2. C2 reasoning picks tool: write_case_note
+3. C2 makes MCP call → AgentCore Tool Gateway
+   ⮕ PEP wakes up:
+     - principal=nurse-001, action=invoke_tool, resource=write_case_note
+     - context={tenant=acme, member.is_active=true, risk=high}
+     - PEP looks at the Cedar bundle
+     - PEP decides: PERMIT or FORBID
+     - If PERMIT → forwards to actual tool implementation (in services/tools/)
+     - If FORBID → returns 403, tool never runs
+4. Tool result flows back to C2 → user
+5. AgentCore Observability emits an audit log of the decision
+6. C3 pulls that audit log into its governance dashboard (out of band)</pre>
+
+  <h4>Why split PDP and PEP</h4>
+  <ol>
+    <li><strong>Different audiences.</strong> Compliance officers author. Servers enforce. Wildly different UX needs.</li>
+    <li><strong>Different failure modes.</strong> PDP being down = can't author new rules (annoying, not fatal). PEP being down = platform can't authorize anything (catastrophic). Different SLOs.</li>
+    <li><strong>Different scale curves.</strong> PDP scales with #policies (hundreds). PEP scales with #requests/sec (millions). Co-locating wastes resources.</li>
+    <li><strong>Different tech stacks.</strong> PDP wants UI, validation, version control. PEP wants raw speed, low memory, embeddable.</li>
+    <li><strong>Auditable separation.</strong> Compliance teams want proof that the people who <em>wrote</em> rules can't <em>bypass</em> them at runtime — the PDP/PEP split makes that structural, not procedural.</li>
+  </ol>
+
+  <h4>Why a custom Cedar compiler (and not "just use the AWS console")</h4>
+  <p>AWS Verified Permissions has a console for authoring Cedar policies directly. In practice no enterprise customer will use it for production policy authoring:</p>
+  <table>
+    <tr><th>Reason</th><th>Detail</th></tr>
+    <tr><td>No git-backed audit / review / rollback</td><td>Console clicks bypass change management. Compliance requires versioned, peer-reviewed changes.</td></tr>
+    <tr><td>Requires AWS account access</td><td>A compliance officer or care-ops admin doesn't have (and shouldn't have) IAM into the customer's AWS account.</td></tr>
+    <tr><td>Speaks raw Cedar syntax</td><td>Even technical users struggle with Cedar grammar. One typo = security regression.</td></tr>
+    <tr><td>No domain awareness</td><td>Console doesn't know what "tool", "LOB", "tenant", "PHI export" mean — every policy starts from zero schema.</td></tr>
+    <tr><td>No bulk operations / templates</td><td>Healthcare needs "apply this PHI policy to all 50 tools tagged phi_writer" — not 50 console clicks.</td></tr>
+    <tr><td>No environment promotion</td><td>Dev → staging → prod policy promotion via CI/CD doesn't exist via console.</td></tr>
+    <tr><td>Multi-tenant ops</td><td>Provider running platform for N customers can't switch AWS console accounts per customer.</td></tr>
+  </table>
+
+  <p>Enterprise customers will require: (1) policies as YAML/JSON in a git repo, (2) a friendly authoring UI that generates the YAML, (3) a CI/CD pipeline that compiles YAML → Cedar → publishes to Verified Permissions API on merge, (4) audit trail in their own systems, not just CloudTrail. That is what C3 PDP + Cedar compiler wrapper provides.</p>
+
+  <h4>Layer ownership — we ride on AgentCore, we don't replace it</h4>
+  <table>
+    <tr><th>Layer</th><th>Owner</th><th>Why</th></tr>
+    <tr><td>Cedar runtime (permit/forbid evaluation)</td><td><strong>AgentCore Tool Gateway</strong> — use as-is</td><td>AWS-managed, fast, audited, free</td></tr>
+    <tr><td>Cedar policy storage</td><td><strong>AgentCore Verified Permissions PolicyStore</strong> — use as-is</td><td>Same</td></tr>
+    <tr><td>Audit log emission</td><td><strong>AgentCore Observability</strong> — use as-is</td><td>Same</td></tr>
+    <tr><td>Raw Cedar authoring (devs)</td><td>AWS console — we don't replicate for devs</td><td>Devs <em>can</em> use the AWS console if they want</td></tr>
+    <tr><td><strong>Business-friendly policy authoring UI</strong></td><td><strong>AEA C3</strong> — build</td><td>AWS console is unusable for ops/compliance</td></tr>
+    <tr><td><strong>Cedar compiler (YAML → Cedar text)</strong></td><td><strong>AEA C3</strong> — build</td><td>So admins write friendly YAML, not raw Cedar</td></tr>
+    <tr><td><strong>Healthcare domain packs / templates</strong></td><td><strong>AEA C3</strong> — build</td><td>LOB-aware, PHI-aware, tenant-aware</td></tr>
+    <tr><td><strong>Audit dashboard correlated to agent runs</strong></td><td><strong>AEA C3</strong> — build</td><td>Pulls AgentCore audit, presents nicely</td></tr>
+    <tr><td>Cedar push wrapper</td><td><strong>AEA C3</strong> — thin wrapper over Verified Permissions API</td><td>Lets CI/CD publish on merge</td></tr>
+  </table>
+  <p>C3 is essentially a <strong>rebuilt-for-enterprise-admins version of AWS Verified Permissions console</strong>, plus healthcare domain awareness and audit correlation. Same pattern as ServiceNow vs raw email/ticketing, Datadog vs raw CloudWatch, Okta vs raw AWS IAM — the underlying AWS primitive is fine for developers in a single account; the wrapper exists because <strong>enterprise admins need a higher-level, domain-aware, multi-tenant front door.</strong></p>
+
+  <h4>Industry pattern alignment (for architects)</h4>
+  <table>
+    <tr><th>System</th><th>PDP</th><th>PEP</th></tr>
+    <tr><td>Kubernetes + OPA</td><td>OPA server</td><td>Admission controllers</td></tr>
+    <tr><td>AWS apps + Verified Permissions</td><td>Verified Permissions PolicyStore</td><td>Service code (<code>avp.IsAuthorized()</code>)</td></tr>
+    <tr><td>Service mesh (Istio + OPA)</td><td>OPA control plane</td><td>Envoy sidecars</td></tr>
+    <tr><td>Old-school RBAC apps</td><td>Admin DB role tables</td><td>Middleware on every request</td></tr>
+    <tr><td><strong>AEA on AgentCore (Pattern A′)</strong></td><td><strong>C3 (<code>tool-policy-gateway</code>)</strong></td><td><strong>AgentCore Tool Gateway</strong></td></tr>
+  </table>
+
+  <div class="highlight">
+    <strong>One-liner for architects:</strong> "C3 is our PDP — where compliance authors policies, where they're versioned, where they're compiled to Cedar. AgentCore Tool Gateway is the PEP — it enforces those compiled policies at runtime on every MCP call. Same pattern as OPA + Kubernetes admission, or Verified Permissions + your service code. Industry-standard authorization architecture."
+  </div>
+
+  <h4>A1 status snapshot (Apr 2026)</h4>
+  <p><strong>Done:</strong> services renamed (<code>tool-gateway</code> → <code>tool-policy-gateway</code>), MCP server code stripped, <code>services/rag/</code> split out, <code>cedar_compiler.py</code> + <code>audit_consumer.py</code> files exist as <strong>stubs</strong>, repo refactored to <code>packages/platform-core/</code> + <code>services/</code> layout, Tool Admin UI exists with Tool Registry + KB pages.</p>
+  <p><strong>Still stub / unbuilt:</strong> Cedar compiler is placeholder text (no real Cedar bindings), audit consumer is placeholder, tools have NOT moved to top-level <code>services/tools/</code>, no PDP authoring UI (no Policies tab), no IaC, no multi-runtime adapter, no AgentCore push.</p>
+  <p><strong>Phase 1 — Local-only, no AgentCore needed (~3–4 weeks):</strong> friendly YAML schema → Policies tab UI → real Cedar compiler → local Cedar enforcement → tool relocation → local audit dashboard. Demoable end-to-end without AWS.</p>
+  <p><strong>Phase 2 — AgentCore integration (~1 week, requires live tenant):</strong> push bundles to Verified Permissions, IaC tool registration, pull audit from AgentCore Observability, multi-runtime adapter wiring. UX unchanged for admins.</p>
+  <p>Full task breakdown in <code>docs/backlog.md</code> §A1.</p>
 
   <h3>12.4 Key tradeoff — why C1/C2 are split (and why it's uncomfortable with AgentCore Runtime)</h3>
 

@@ -65,6 +65,114 @@ C2 ──MCP──▶ AgentCore Tool Gateway ──▶ Tool implementation (Lamb
 - `docs/proposal/accelerator-technical-design.html` — update C3 description + add PDP/PEP framing.
 - All container topology diagrams — show C3 out of MCP request path.
 
+---
+
+#### A1 — Status snapshot (as of 2026-04-26)
+
+What's already done in the recent refactor:
+- ✅ `services/tool-gateway/` renamed to `services/tool-policy-gateway/`. MCP server code stripped (zero `mcp` references in `app.py`).
+- ✅ `services/rag/` split out into its own service.
+- ✅ `services/tool-admin-ui/` exists with Tool Registry + KB pages (no Policies tab yet).
+- ✅ `cedar_compiler.py` and `audit_consumer.py` files exist in `tool-policy-gateway/src/policy/` — **but they are stubs** (file headers literally say "STUB. Real Cedar emission + AgentCore push is gated on backlog A1").
+- ✅ Repo refactored to `packages/platform-core/` + `services/` layout.
+
+What's still stub or unbuilt:
+- 🔲 **Cedar compiler is a stub** — emits placeholder text, no real Cedar bindings.
+- 🔲 **Audit consumer is a stub** — placeholder, no real ingestion.
+- 🔲 **Tools have NOT moved to top-level `services/tools/`** — still inside `tool-policy-gateway/src/tools/registry.py` as internal handlers.
+- 🔲 **No PDP authoring UI** — Tool Admin UI manages tools/KB but has no Policies tab.
+- 🔲 **No IaC** — nothing registers tools with AgentCore Tool Gateway.
+- 🔲 **No multi-runtime adapter** — no "if AgentCore present, push; else, run locally" toggle.
+- 🔲 **No AgentCore push** (Phase 2 — needs live tenant).
+
+#### A1 — Phase split (Phase 1 has no AWS dependency)
+
+**Phase 1 — Local-only, no AgentCore needed (~3–4 weeks).** Delivers a working policy authoring UI + real Cedar compilation + local enforcement + audit dashboard. Demoable end-to-end without AWS.
+
+| # | Task | Effort |
+|---|---|---|
+| 1 | **Define the friendly YAML policy format** — fields, conditions, targets. The contract everything else hangs off. | 2–3 days |
+| 2 | **Policy Authoring UI in `tool-admin-ui`** — new Policies tab with rule-builder form (pick tool, principal group, conditions). Saves YAML to a postgres `policies` table. | ~1 week |
+| 3 | **Make Cedar compiler real** — replace stub with code that takes YAML + emits Cedar text. Wrapper, not a from-scratch engine. Use Cedar Python bindings. | 3–5 days |
+| 4 | **Local Cedar enforcement** — run compiled bundle through a local Cedar engine on every C2 tool call when `agentcore.enabled=false`. Demoable without AWS. | ~1 week |
+| 5 | **Move tools out of `tool-policy-gateway/src/tools/` → top-level `services/tools/<tool_name>/`** — each tool becomes its own deployable. | ~1 week |
+| 6 | **Audit consumer for local mode** — store decisions (permit/forbid/why) in a local DB, surface in Tool Admin UI dashboard. | 3–5 days |
+
+**Phase 2 — AgentCore integration (~1 week, requires live tenant).** Swaps local Cedar engine for AgentCore Tool Gateway as PEP. No UX change for the admin.
+
+| # | Task | Effort |
+|---|---|---|
+| 7 | Push compiled Cedar bundles to AgentCore Verified Permissions PolicyStore via API. | 2–3 days |
+| 8 | Register tools with AgentCore Tool Gateway via IaC (Terraform or CDK). | 2–3 days |
+| 9 | Pull audit logs from AgentCore Observability → existing C3 dashboard. | 2 days |
+| 10 | Multi-runtime adapter wiring: env var or config flag to flip between local Cedar and AgentCore-backed. | 1 day |
+
+#### A1 — Why a custom Cedar compiler? Why not just point customers at the AWS console?
+
+The AWS Verified Permissions console *does* let you author Cedar policies directly — but it's unusable for enterprise customers in practice:
+
+| Reason | Detail |
+|---|---|
+| No git-backed audit / review / rollback | Every console click bypasses change management. Compliance teams require versioned, peer-reviewed policy changes. |
+| Requires AWS account access | A compliance officer or care-ops admin doesn't have (and shouldn't have) IAM into the customer's AWS account. |
+| Speaks raw Cedar syntax | Even technical users struggle with `permit (principal in Group::"care_managers", action == Action::"invoke_tool", ...) when { ... };`. One typo = security regression. |
+| No domain awareness | Console doesn't know what "tool", "LOB", "tenant", "PHI export", "high-risk action" mean — every policy starts from zero schema. |
+| No bulk operations / templates | Healthcare needs "apply this PHI policy to all 50 tools tagged `phi_writer`" — not 50 console clicks. |
+| No environment promotion | Dev → staging → prod policy promotion via CI/CD doesn't exist via console. |
+| Multi-tenant | Provider running platform for N customers can't switch AWS console accounts per customer. |
+
+**So enterprises will require:**
+1. Policies defined as YAML/JSON in a git repo
+2. A friendly authoring UI (the C3 PDP UI) that generates the YAML
+3. A CI/CD pipeline that compiles YAML → Cedar → publishes to Verified Permissions API on merge
+4. Audit trail integrated into their own systems (Linear, ServiceNow, etc.) — not just CloudTrail
+
+That is exactly what C3 + the Cedar compiler wrapper provides. The AgentCore/Verified Permissions runtime stays — it's the **authoring + governance plane** that has to live in our platform, not in the AWS console.
+
+#### A1 — Layer ownership (we ride on AgentCore, we don't replace it)
+
+| Layer | Owner | Why |
+|---|---|---|
+| Cedar runtime (permit/forbid evaluation) | **AgentCore Tool Gateway** ✅ use as-is | AWS-managed, fast, audited, free |
+| Cedar policy storage | **AgentCore Verified Permissions PolicyStore** ✅ use as-is | Same |
+| Audit log emission | **AgentCore Observability** ✅ use as-is | Same |
+| Raw Cedar authoring (developers) | AWS console (we don't replicate for devs) | Devs *can* use the AWS console if they want |
+| **Business-friendly policy authoring UI** | **AEA C3** (build) | AWS console is unusable for ops/compliance |
+| **Cedar compiler (YAML → Cedar text)** | **AEA C3** (build) | So admins write friendly YAML, not raw Cedar |
+| **Healthcare domain packs / templates** | **AEA C3** (build) | LOB-aware, PHI-aware, tenant-aware |
+| **Audit dashboard correlated to agent runs** | **AEA C3** (build) | Pulls AgentCore audit, presents nicely |
+| Cedar push wrapper | **AEA C3** (build, thin) | Wraps Verified Permissions API |
+
+C3 is essentially a **rebuilt-for-enterprise-admins version of AWS Verified Permissions console**, plus healthcare domain awareness and audit correlation. Same pattern as ServiceNow → email/ticketing, Datadog → CloudWatch, Okta → IAM. The underlying AWS primitive is fine for developers in a single account. The wrapper exists because enterprise admins need a higher-level, domain-aware, multi-tenant front door.
+
+#### A1 — Why we haven't shipped Phase 1 yet (honest)
+
+1. **Demo schedule pressure** — visible items (Observability UI, multi_hop strategy, classifier router) win demos in 1–2 weeks each. A1 is invisible to a customer demo until completion.
+2. **Test coverage gap (A13)** — refactoring authorization without integration tests is how you ship a security regression. A13 is a hard precondition for shipping #5 (tool relocation) safely.
+3. **Cedar learning curve** — schema design, bindings, validation, bundle packaging. Real but manageable; ~1 week of ramp-up baked into Phase 1 estimates.
+4. **No live AgentCore tenant** — only blocks Phase 2. Phase 1 is fully unblocked today.
+
+#### A1 — Recommended sequencing
+
+```
+A13 (test coverage on hitl/reasoning/tools) ──┐
+                                              ├──▶ A1 Phase 1 (~3–4 weeks, no AWS)
+                                              │
+Define YAML policy schema (2–3 days)        ──┘
+                                              │
+                                              ▼
+              A1 Phase 2 (~1 week, requires AgentCore tenant)
+```
+
+Without A13, every Phase 1 task carries regression risk we can't catch. With A13 in place, Phase 1 becomes a focused 3–4 week piece of work delivering real demoable value (policy UI + local enforcement + audit dashboard) before AgentCore is even live.
+
+#### A1 — Decision criterion: customer profile
+
+- **If your customers' admins are AWS-savvy dev/SRE teams** → consider skipping Phase 1 UI entirely; hand them the AWS Verified Permissions console + a CI/CD pipeline. Build only the thin compiler wrapper + IaC.
+- **If your customers are healthcare ops with no AWS skills** (the actual ICP) → Phase 1 is non-negotiable. The friendly authoring UI is the entire value-add.
+
+Healthcare payer ICP = Phase 1 is required.
+
 ### A2. LOB (Line of Business) tool namespacing
 🔲 **Multi-LOB tool separation.** Each customer has multiple LOBs (UM, CM, PA, Appeals, Member Services, Claims, Fraud). Tools must be scoped by LOB.
 - **Namespace prefix** in tool ID: `um/get_member`, `cm/get_case`, `pa/submit_form`, `appeals/fetch_history`.
@@ -109,6 +217,72 @@ C2 ──MCP──▶ AgentCore Tool Gateway ──▶ Tool implementation (Lamb
 
 ### A9. Agent embed-inside-customer-workflow posture
 🔲 **Positioning artifact.** Document explicitly that AEA agents are **embedded inside the customer's existing workflow engine** (Camunda, Pega, Step Functions, ServiceNow) as intelligent steps — not standalone workflow replacements. Add as callout in proposal + prototype-current-state.html.
+
+### A18. Prior Authorization (PA) Suite — flagship use case
+🔲 **Flagship multi-agent use case for healthcare payer ICP.** Builds AEA's answer to Microsoft Azure AI Foundry's PA template (Apr 2026). Differentiator: AEA agents embed *inside* the customer's existing PA workflow engine (Pega / Facets / TriZetto / IBM BPM), not as a replacement.
+
+**Architecture (embedded model — A9 posture):**
+```
+Customer's BPM (Pega / Facets / IBM BPM / Camunda)
+   owns: PA intake, phase orchestration, audit, output, integrations
+   │
+   ├── step calls ─▶ AEA Compliance Agent  (rules check)
+   ├── step calls ─▶ AEA Clinical Agent    (clinical assessment)
+   ├── step calls ─▶ AEA Coverage Agent    (benefits + coverage)
+   ├── step calls ─▶ AEA Synthesis Agent   (final recommendation synthesis)
+   └── HITL via AEA hitl.adapter:pega → routes to BPM's approval queue
+```
+
+**What AEA owns:**
+- 4 specialist agent overlays (Compliance, Clinical, Coverage, Synthesis) — `chat_agent_react` template + per-agent prompts/tools/RAG
+- 5 healthcare MCP tools (NPI Registry, ICD-10 codes, CMS Coverage, Clinical Trials, PubMed) — wrapped behind tool-policy-gateway PDP
+- HITL adapter for customer's BPM (one concrete adapter, e.g. `hitl.adapter: pega`)
+
+**What AEA does NOT own:**
+- PA workflow orchestration (P1 → P2 → P3 → P4) — customer BPM
+- Phased UI / decision panel / final PDF — customer BPM
+- Case storage, audit lineage, output integrations — customer system of record
+
+**Comparison vs Microsoft Foundry PA template:**
+
+| Capability | AEA (embedded) | MS Foundry PA template |
+|---|---|---|
+| Per-agent intelligence + tools + HITL | ✅ | ✅ |
+| Multi-agent flow | Customer BPM orchestrates AEA agents | Foundry orchestrator (Next.js + FastAPI) |
+| MCP tool serving | C3 PDP + AgentCore PEP (after A1) | Foundry Tools (remote MCP) |
+| Customer BPM integration | ✅ Native (embedded model) | 🔲 Not the model — replaces BPM |
+| Multi-cloud (AWS + Azure + on-prem) | ✅ Adapter pattern | 🔲 Azure-only |
+| Multi-customer fleet | ✅ Agent Factory + Registry | 🔲 Single template per deployment |
+| Operator-editable config (no redeploy) | ✅ Overlay YAML | 🔲 Code-bound |
+| Multi-dim RAG | ✅ 3 dimensions | 🔲 Single path |
+| 4-scope memory | ✅ short / episodic / semantic / summary | Partial |
+| Top-25 payer fit (BPM stays) | ✅ | 🔲 Targets greenfield / small payers |
+
+**Effort breakdown — ~5 weeks:**
+
+| # | Task | Effort |
+|---|---|---|
+| 1 | 4 specialist agent overlays (Compliance / Clinical / Coverage / Synthesis) — `chat_agent_react` template + prompts + tool allow-lists + RAG config | ~1 week |
+| 2 | 5 healthcare MCP tools in `services/tools/`: NPI Registry, ICD-10, CMS Coverage, Clinical Trials, PubMed | ~2 weeks |
+| 3 | HITL adapter for customer BPM (concrete `pega` or `servicenow` adapter implementing the existing internal-adapter contract) | ~1 week |
+| 4 | Integration testing + customer BPM handshake contracts (request shape, response shape, error semantics, audit hooks) | ~1 week |
+
+**Prerequisites (hard sequencing):**
+
+```
+A13 (test coverage)  ─┐
+                      ├─▶ A18 PA Suite  (~5 weeks)
+A1 Phase 1 (PDP/PEP) ─┘
+```
+
+A13 + A1 Phase 1 run in parallel (~3–4 weeks each). PA Suite drops on top once both land. **A4 (workflow_agent) is NOT a prerequisite — embedded model means customer BPM owns orchestration.**
+
+**Total runway from today: ~8–9 weeks** to ship a Microsoft-Foundry-equivalent PA capability with the embedded posture.
+
+**Strategic positioning vs MS Foundry:**
+> "Microsoft Foundry's PA template owns the whole stack — UI, orchestration, agents, tools — Azure-only, code-bound. AEA is different: we plug *intelligence into the workflow engine the customer already runs*. Pega owns the PA workflow. AEA's specialist agents do compliance assessment, clinical review, coverage check, synthesis — invoked as Pega steps. The customer's BPM stays in control. We add intelligence, not another workflow engine. That matters for the Top-25 payer ICP — they will not replace their BPM."
+
+**Demo asset:** if/when AEA PA suite ships, it becomes the flagship demo replacing the current pre-call-assessment chat agent as the "AEA at full value" showcase.
 
 ### A17. Tenant + thread resolution from ctx not honored
 🔲 **Bug surfaced during functional testing.** When a request includes `tenant_id` and `thread_id` in the ctx body, those values are ignored — memory writes always go to `default-tenant/default-thread`. As a result, multi-turn memory continuity for any non-default tenant is broken (turn 1 writes to default-thread, turn 2 reads from default-thread but doesn't get prior content because the read scoping doesn't match).

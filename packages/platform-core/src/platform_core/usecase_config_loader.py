@@ -73,10 +73,18 @@ def load_agent_config(agent_type: str) -> Dict[str, Any]:
         features = overlay_manifest.get("features") or {}
         usecase_cfg: Dict[str, Any] = {}
         retrieval_cfg = rag_yaml or {}
-        risk_cfg = {"approval_required": False, "risk_levels": (hitl_yaml or {}).get("risk_levels", {})}
+        # approval_required is the master toggle the executor's _requires_approval() reads first.
+        # Derive it from routing_rules: if any rule gates on approval, the system is "on" and
+        # per-tool risk_levels decide actual gating. Hardcoding False here disables HITL entirely.
+        _routing_rules = (hitl_yaml or {}).get("routing_rules", []) or []
+        _approval_required = any(bool(r.get("requires_approval")) for r in _routing_rules)
+        risk_cfg = {
+            "approval_required": _approval_required,
+            "risk_levels": (hitl_yaml or {}).get("risk_levels", {}),
+        }
         hitl_cfg = {
             "adapter": (hitl_yaml or {}).get("adapter"),
-            "routing_rules": (hitl_yaml or {}).get("routing_rules", []),
+            "routing_rules": _routing_rules,
             "sla": (hitl_yaml or {}).get("sla", {}),
         }
         tools_block = tools_yaml or {}

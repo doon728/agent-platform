@@ -101,13 +101,15 @@ def execute(steps: List[str], ctx: Dict[str, Any]) -> Any:
 
     if mode == "direct_tool":
         # Fix compound planner steps (tool: id | note)
+        # Field is named `case_id` for legacy reasons but holds an assessment_id
+        # — see WriteCaseNoteInput in tool-policy-gateway/src/tools/registry.py.
         if ":" in step and "|" in step:
             try:
                 tool_part, rest = step.split(":", 1)
                 assessment_part, note_part = rest.split("|", 1)
                 if "input" not in plan:
                     plan["input"] = {}
-                plan["input"]["assessment_id"] = assessment_part.strip()
+                plan["input"]["case_id"] = assessment_part.strip()
                 plan["input"]["note"] = note_part.strip()
             except Exception as e:
                 print(f"[executor_fix_error] {e}", flush=True)
