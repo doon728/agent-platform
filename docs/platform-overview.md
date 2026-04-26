@@ -66,7 +66,7 @@ Each agent type is a self-contained overlay folder — manifest, config, graph, 
 
 ### Overlay
 The agent-specific code and config. Lives at `overlays/{agent_type}/` in the repo.
-Contains: `agent_manifest.yaml`, `config/agent.yaml`, `agents/`, `graph/`, `orchestration/`.
+Contains: `overlay.yaml`, `overlay.yaml + reasoning.yaml + rag.yaml + hitl.yaml + tools/tools.yaml`, `agents/`, `graph/`, `orchestration/`.
 
 ### Tool Gateway
 A separate FastAPI service that owns all data access. Agent runtime calls it via HTTP.

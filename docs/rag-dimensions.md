@@ -84,7 +84,7 @@ overlays/
   chat_agent_agentic/      ← Agentic RAG    (future)
 ```
 
-### How it is declared (agent_manifest.yaml)
+### How it is declared (overlay.yaml)
 
 Since Dimension 2 cannot be configured, it is declared as **read-only metadata**
 in the agent manifest so it is visible in the Agent Registry:

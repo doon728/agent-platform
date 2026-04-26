@@ -163,7 +163,7 @@ def diagram_template_flow():
     ax.text(0.88, 0.76, "GENERATED REPOS  (do not edit directly)", color=YEL, fontsize=10, fontweight='bold', ha='center')
 
     box(ax, 0.52, 0.56, 0.42, 0.18, "cm-chat-buddy-assess/",
-        "overlays/chat_agent/config/agent.yaml  ← customized\noverlays/chat_agent/  (agents, graph, orchestration)\nservices/agent-runtime/  (platform infra)", "#1a3a1a", fontsize=8)
+        "overlays/chat_agent/overlay.yaml + reasoning.yaml + rag.yaml + hitl.yaml + tools/tools.yaml  ← customized\noverlays/chat_agent/  (agents, graph, orchestration)\nservices/agent-runtime/  (platform infra)", "#1a3a1a", fontsize=8)
 
     box(ax, 0.96, 0.56, 0.42, 0.18, "cm-hero-fl-app/  (UI)",
         "services/ui/src/pages/  (all pages)\nApp.tsx  |  vite.config.ts\ndocker-compose.yml", "#1a3a1a", fontsize=8)
@@ -173,8 +173,8 @@ def diagram_template_flow():
 
     # What's customized
     ax.text(0.74, 0.30, "What's customized per usecase:", color=TXT_DIM, fontsize=8, ha='center')
-    items = ["overlays/{agent_type}/config/agent.yaml — tools, features, risk",
-             "overlays/{agent_type}/config/memory.yaml — memory scopes",
+    items = ["overlays/{agent_type}/overlay.yaml + reasoning.yaml + rag.yaml + hitl.yaml + tools/tools.yaml — tools, features, risk",
+             "overlays/{agent_type}/memory.yaml — memory scopes",
              "services/agent-runtime/config/base.yaml — capability_name, agent_type",
              "docker-compose.yml — ports, env vars"]
     for i, item in enumerate(items):

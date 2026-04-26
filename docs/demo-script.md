@@ -117,7 +117,7 @@ So the pattern is: template defines the foundation, Agent Factory scaffolds a ne
 **Time: ~1.5 min | Screen: Cursor — open files one at a time**
 
 **Files to open (in order):**
-1. `templates/overlay-templates/overlays/chat_agent/config/agent.yaml`
+1. `templates/overlay-templates/overlays/chat_agent/overlay.yaml + reasoning.yaml + rag.yaml + hitl.yaml + tools/tools.yaml`
 2. `templates/overlay-templates/overlays/chat_agent/orchestration/build_graph.py`
 3. `templates/overlay-templates/common/services/agent-runtime/src/platform/langgraph_runner.py`
 

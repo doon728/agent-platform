@@ -31,7 +31,7 @@ This means:
 
 ## Prompt Types
 
-Each agent declares which prompt types it uses in `agent_manifest.yaml`. The platform supports:
+Each agent declares which prompt types it uses in `overlay.yaml`. The platform supports:
 
 | Prompt Type | Used by | Purpose |
 |---|---|---|
@@ -155,7 +155,7 @@ The `template_text` is the full prompt. Model and temperature are stored alongsi
 Every agent overlay has a `prompt-defaults.yaml`. This is the ground truth for prompts in dev and the fallback in production.
 
 ```yaml
-# overlays/chat_agent/config/prompt-defaults.yaml
+# overlays/chat_agent/prompts/prompts.yaml
 
 planner_system_prompt: |
   You are a care management assistant helping nurses during member calls.

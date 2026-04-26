@@ -86,7 +86,7 @@ if active_assessment_id and any(x in lower_p for x in my_tool_phrases):
 
 ```
 templates/overlay-templates/overlays/summary_agent/
-  agent_manifest.yaml
+  overlay.yaml
   config/
     agent.yaml
     memory.yaml
@@ -152,7 +152,7 @@ cp -r templates/overlay-templates/overlays/ \
 
 ```
 generated-repos/care-management/usecases/UC_PostCall_Document/cm-post-call-agent/
-  overlays/chat_agent/config/agent.yaml   ← different tools, different risk config
+  overlays/chat_agent/overlay.yaml + reasoning.yaml + rag.yaml + hitl.yaml + tools/tools.yaml   ← different tools, different risk config
 ```
 
 ### Step 3 — Update base.yaml

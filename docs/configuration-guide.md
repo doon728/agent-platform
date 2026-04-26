@@ -4,7 +4,7 @@ Every aspect of agent behavior is controlled via config files. No code changes n
 
 ---
 
-## 1. agent.yaml (overlays/{agent_type}/config/agent.yaml)
+## 1. agent.yaml (overlays/{agent_type}/overlay.yaml + reasoning.yaml + rag.yaml + hitl.yaml + tools/tools.yaml)
 
 The most important config file. Controls what the agent does.
 
@@ -42,7 +42,7 @@ features:
 
 ---
 
-## 2. memory.yaml (overlays/{agent_type}/config/memory.yaml)
+## 2. memory.yaml (overlays/{agent_type}/memory.yaml)
 
 Controls memory behavior — what gets written, what gets read, at which scopes.
 
@@ -102,7 +102,7 @@ context_assembly:
 
 ---
 
-## 3. prompt-defaults.yaml (overlays/{agent_type}/config/prompt-defaults.yaml)
+## 3. prompt-defaults.yaml (overlays/{agent_type}/prompts/prompts.yaml)
 
 Override the default system prompts for planner and responder.
 Leave empty to use built-in defaults.
@@ -117,7 +117,7 @@ Leave empty to use built-in defaults.
 
 ---
 
-## 4. agent_manifest.yaml (overlays/{agent_type}/agent_manifest.yaml)
+## 4. overlay.yaml (overlays/{agent_type}/overlay.yaml)
 
 Declares what the overlay contains and which graph to load.
 

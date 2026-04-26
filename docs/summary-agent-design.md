@@ -235,7 +235,7 @@ not a vector search. No D1.
 **Dimension 2** (pipeline design — naive, multi-hop, agentic) only applies when there is a
 retrieval pipeline over a KB. Since there is no KB search at all in this agent, there is no D2.
 
-The `agent_manifest.yaml` for `summary_agent` will have no `rag_dimension2` field. As a result,
+The `overlay.yaml` for `summary_agent` will have no `rag_dimension2` field. As a result,
 the RAG section will not appear in the Agent Factory UI when this agent type is selected.
 
 ### Tools Yes — But Hardcoded, Not LLM-Planned

@@ -77,7 +77,7 @@ Now let me open three specific files that show how the platform actually works.
 ---
 
 This first one is agent.yaml and this is what the Admin UI writes to.
-> *[SHOW: open templates/overlay-templates/overlays/chat_agent/config/agent.yaml]*
+> *[SHOW: open templates/overlay-templates/overlays/chat_agent/overlay.yaml + reasoning.yaml + rag.yaml + hitl.yaml + tools/tools.yaml]*
 
 Every platform capability has a config entry here. You can see the features section where memory is on, RAG is on, HITL is off, observability is on. The HITL section has the adapter set to internal with routing rules by risk level. The retrieval section has strategy, similarity threshold, and the pre-graph toggle. And the risk section has each tool tagged with its risk level.
 > *[SHOW: scroll slowly — pause at features, hitl, retrieval, risk sections]*

@@ -217,7 +217,7 @@ _hitl_adapter = PegaAdapter()
 ```
 
 ```yaml
-# File: overlays/chat_agent/config/agent.yaml  ← update for documentation clarity
+# File: overlays/chat_agent/overlay.yaml + reasoning.yaml + rag.yaml + hitl.yaml + tools/tools.yaml  ← update for documentation clarity
 hitl:
   adapter: pega    # documents the intent — not yet wired as auto-selector
 ```

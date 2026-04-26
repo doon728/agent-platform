@@ -49,7 +49,7 @@ Everything from here is inside that generated repo.
 
 ## Step 2 — Set the Agent Identity
 
-**`overlays/chat_agent/agent_manifest.yaml`**
+**`overlays/chat_agent/overlay.yaml`**
 
 This is the agent's identity card. Update the three identity fields to match your usecase:
 ```yaml
@@ -64,7 +64,7 @@ These three values must be identical across every file that references them. Get
 
 ## Step 3 — Configure Tools and Risk
 
-**`overlays/chat_agent/config/agent.yaml`**
+**`overlays/chat_agent/overlay.yaml + reasoning.yaml + rag.yaml + hitl.yaml + tools/tools.yaml`**
 
 Define which tools this agent can use and what risk level each carries:
 ```yaml
@@ -87,7 +87,7 @@ Every tool name here must be registered in the Tool Gateway. If a tool is listed
 
 ## Step 4 — Write the System Prompt
 
-**`overlays/chat_agent/config/prompt-defaults.yaml`**
+**`overlays/chat_agent/prompts/prompts.yaml`**
 
 Replace the default prompt with your domain-specific persona and format rules:
 ```yaml
@@ -176,9 +176,9 @@ These three values must be **identical** across every file that references them:
 
 | Value | Must match in |
 |---|---|
-| `capability_name` | `agent_manifest.yaml`, `base.yaml`, prompt seed records |
-| `usecase_name` | `agent_manifest.yaml`, `base.yaml`, prompt seed records |
-| `agent_type` | `agent_manifest.yaml`, `base.yaml`, prompt seed records |
+| `capability_name` | `overlay.yaml`, `base.yaml`, prompt seed records |
+| `usecase_name` | `overlay.yaml`, `base.yaml`, prompt seed records |
+| `agent_type` | `overlay.yaml`, `base.yaml`, prompt seed records |
 
 And always: tool names in `agent.yaml` must exist in the Tool Gateway.
 
@@ -187,7 +187,7 @@ And always: tool names in `agent.yaml` must exist in the Tool Gateway.
 ## Minimum Change Summary
 
 **Scenario A — New usecase, same capability, same tools:**
-1. `agent_manifest.yaml` — update `usecase_name`
+1. `overlay.yaml` — update `usecase_name`
 2. `base.yaml` — update `usecase_name`
 3. `prompt-defaults.yaml` — update system prompt
 4. `prompts.json` — add seed records, run `seed_prompts.py`

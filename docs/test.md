@@ -27,7 +27,7 @@
 - [ ] Live Flow Diagram renders — Pre-Graph / In-Graph / Post-Graph bands visible
 - [ ] Hover a flow node → help panel updates on the right
 - [ ] Hover reasoning strategy `i` → help panel shows reasoning content
-- [ ] All 5 YAML files expand: `agent.yaml`, `memory.yaml`, `prompts.yaml`, `domain.yaml`, `agent_manifest.yaml`
+- [ ] All 5 YAML files expand: `agent.yaml`, `memory.yaml`, `prompts.yaml`, `domain.yaml`, `overlay.yaml`
 - [ ] Hover a YAML file header → help panel changes to that file's content
 - [ ] YAML content matches what's on disk (spot-check one field)
 
@@ -205,7 +205,7 @@ The container is built from **3 layers**:
 | `auth.py` / `authorization.py` | Auth handling |
 | `context.py` | Request context model |
 | `config.py` | Config loading helpers |
-| `manifest_loader.py` | Reads `agent_manifest.yaml` |
+| `manifest_loader.py` | Reads `overlay.yaml` |
 | `usecase_config_loader.py` | Reads `agent.yaml`, `memory.yaml` |
 | `tool_gateway_client.py` | HTTP client to call Tool Gateway |
 | `schema/` | Shared Pydantic schemas |

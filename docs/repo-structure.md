@@ -53,7 +53,7 @@ templates/overlay-templates/
 │               ├── context.py        ← builds request context dict from HTTP payload
 │               ├── auth.py           ← authentication (OPTIONAL mode for dev)
 │               ├── authorization.py  ← tenant isolation enforcement
-│               ├── manifest_loader.py ← loads agent_manifest.yaml from active overlay
+│               ├── manifest_loader.py ← loads overlay.yaml from active overlay
 │               ├── langgraph_runner.py ← runs the graph, handles memory before/after, traces
 │               ├── usecase_config_loader.py ← loads agent.yaml + memory.yaml from overlay config/
 │               ├── tool_gateway_client.py ← HTTP client for tool gateway /tools/invoke
@@ -85,7 +85,7 @@ templates/overlay-templates/
 │
 └── overlays/                         ← ONE FOLDER PER AGENT TYPE
     └── chat_agent/                   ← chat agent (exists today)
-        ├── agent_manifest.yaml       ← declares agent type, components, entrypoint
+        ├── overlay.yaml       ← declares agent type, components, entrypoint
         ├── config/                   ← agent-specific config
         │   ├── agent.yaml            ← tools allowed, features, risk levels, retrieval
         │   ├── memory.yaml           ← memory scopes, write policies, retrieval policies
@@ -140,7 +140,7 @@ templates/capability-ui-template/
 cm-chat-buddy-assess/                 ← usecase repo (UC_PreCall_Assess)
 ├── overlays/
 │   └── chat_agent/                   ← copied from template + customized config
-│       ├── agent_manifest.yaml
+│       ├── overlay.yaml
 │       ├── config/
 │       │   ├── agent.yaml            ← UC_PreCall_Assess specific: tools, approval, features
 │       │   ├── memory.yaml           ← UC_PreCall_Assess memory config

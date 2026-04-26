@@ -175,7 +175,7 @@ This is why adding a new agent type requires no platform code changes — just a
 
 **Path:** `src/platform/manifest_loader.py`
 
-Reads `overlays/{agent_type}/agent_manifest.yaml` to discover what the overlay declares.
+Reads `overlays/{agent_type}/overlay.yaml` to discover what the overlay declares.
 
 ```yaml
 agent_type: chat_agent

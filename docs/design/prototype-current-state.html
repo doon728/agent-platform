@@ -227,7 +227,7 @@ agent-runtime-shell/
 overlay-templates/
 ├── overlays/
 │   ├── chat_agent_simple/
-│   │   ├── agent_manifest.yaml   ← Declares agent_type, components, features, prompts
+│   │   ├── overlay.yaml   ← Declares agent_type, components, features, prompts
 │   │   ├── config/
 │   │   │   ├── agent.yaml        ← agent.type, reasoning.strategy, tools, RAG dimensions
 │   │   │   ├── memory.yaml       ← memory policies per scope (read/write enabled)
@@ -246,7 +246,7 @@ overlay-templates/
 │   │   └── orchestration/
 │   │       └── build_graph.py    ← LangGraph topology builder for this overlay
 │   └── summarization_agent_simple/
-│       ├── agent_manifest.yaml
+│       ├── overlay.yaml
 │       ├── config/
 │       │   ├── agent.yaml
 │       │   └── prompt-defaults.yaml
@@ -264,10 +264,10 @@ overlay-templates/
 
   <h4>What an overlay carries</h4>
   <ul>
-    <li><strong><code>agent_manifest.yaml</code></strong> — declares agent_type, required components (planner, responder, executor), feature flags (memory, observability, prompt_versioning), required prompts, entrypoint (orchestration_graph path), and metadata about the RAG dimension 2 pattern used.</li>
-    <li><strong><code>config/agent.yaml</code></strong> — the runtime config: agent.type, planner_mode, reasoning.strategy, tools (mode + allowed list), retrieval (pre_graph RAG + planner_tool RAG, each with Dim 1 strategy / Dim 3 pattern / top_k / threshold).</li>
-    <li><strong><code>config/memory.yaml</code></strong> — per-scope read/write policies for the 4 memory scopes (short_term, episodic, summary, semantic).</li>
-    <li><strong><code>config/prompt-defaults.yaml</code></strong> — seed prompts for planner / responder / summarizer, used when Prompt Management has no overriding version.</li>
+    <li><strong><code>overlay.yaml</code></strong> — declares agent_type, required components (planner, responder, executor), feature flags (memory, observability, prompt_versioning), required prompts, entrypoint (orchestration_graph path), and metadata about the RAG dimension 2 pattern used.</li>
+    <li><strong><code>overlay.yaml + reasoning.yaml + rag.yaml + hitl.yaml + tools/tools.yaml</code></strong> — the runtime config: agent.type, planner_mode, reasoning.strategy, tools (mode + allowed list), retrieval (pre_graph RAG + planner_tool RAG, each with Dim 1 strategy / Dim 3 pattern / top_k / threshold).</li>
+    <li><strong><code>memory.yaml</code></strong> — per-scope read/write policies for the 4 memory scopes (short_term, episodic, summary, semantic).</li>
+    <li><strong><code>prompts/prompts.yaml</code></strong> — seed prompts for planner / responder / summarizer, used when Prompt Management has no overriding version.</li>
     <li><strong><code>agents/</code></strong> — Python modules for the overlay's planner, executor, responder (or summarizer), plus reasoning strategy implementations.</li>
     <li><strong><code>graph/state.py</code></strong> — the LangGraph state schema (TypedDict) passed between nodes.</li>
     <li><strong><code>orchestration/build_graph.py</code></strong> — the LangGraph topology builder. Wires together the planner, executor, responder into a StateGraph with the right edges.</li>
@@ -310,7 +310,7 @@ platform-core/src/platform_core/
 ├── authorization.py           ← Tenant isolation enforcement
 ├── config.py                  ← Config loader utilities
 ├── context.py                 ← Per-request context builder
-├── manifest_loader.py         ← Loads agent_manifest.yaml
+├── manifest_loader.py         ← Loads overlay.yaml
 ├── usecase_config_loader.py   ← Loads usecase contracts
 ├── usecase_contract.py        ← Contract dataclass / schema
 ├── langgraph_runner.py        ← Shared graph runner utilities (used by C1)
@@ -342,7 +342,7 @@ platform-core/src/platform_core/
     <tr><td><code>auth.py</code></td><td>Authenticates incoming requests (token validation, user identity extraction)</td><td>C1</td></tr>
     <tr><td><code>authorization.py</code></td><td>Enforces tenant isolation — ensures a request's tenant_id matches the agent's tenant</td><td>C1</td></tr>
     <tr><td><code>context.py</code></td><td>Builds the per-request context dict: user, tenant, scope IDs (member_id, case_id, etc.), thread_id</td><td>C1</td></tr>
-    <tr><td><code>manifest_loader.py</code></td><td>Reads <code>agent_manifest.yaml</code>, resolves component paths, returns manifest object</td><td>C1, C2</td></tr>
+    <tr><td><code>manifest_loader.py</code></td><td>Reads <code>overlay.yaml</code>, resolves component paths, returns manifest object</td><td>C1, C2</td></tr>
     <tr><td><code>usecase_config_loader.py</code></td><td>Loads use-case contracts from <code>platform-store/usecase_contracts.json</code></td><td>C1, C2</td></tr>
     <tr><td><code>hitl/approval_store.py</code></td><td>Durable HITL state in local SQLite — pending approvals, decisions, audit trail</td><td>C1</td></tr>
     <tr><td><code>hitl/memory_writer.py</code></td><td>Writes HITL decisions and tool-executed events to memory</td><td>C1</td></tr>
@@ -652,13 +652,13 @@ agents/care-management/pre-call-assessment/
 ├── rebuild-runtime.sh           ← Rebuild + restart
 ├── overlays/
 │   ├── chat_agent_simple/       ← Overlay copied from template
-│   │   ├── agent_manifest.yaml
+│   │   ├── overlay.yaml
 │   │   └── config/
 │   │       ├── agent.yaml
 │   │       ├── memory.yaml
 │   │       └── prompt-defaults.yaml
 │   └── summarization_agent_simple/
-│       ├── agent_manifest.yaml
+│       ├── overlay.yaml
 │       └── config/
 │           ├── agent.yaml
 │           └── prompt-defaults.yaml
@@ -742,7 +742,7 @@ services:
     <li>Volumes mount config, domain.yaml, overlays into the running container — so config can be edited on the host and picked up without rebuilds.</li>
   </ul>
 
-  <h3>Overlay config — <code>overlays/chat_agent_simple/config/agent.yaml</code></h3>
+  <h3>Overlay config — <code>overlays/chat_agent_simple/overlay.yaml + reasoning.yaml + rag.yaml + hitl.yaml + tools/tools.yaml</code></h3>
   <p>Concrete example of what drives agent behavior at runtime.</p>
   <pre>
 agent:
@@ -1138,10 +1138,10 @@ retrieval:
   <h3>Overlay hot-path files</h3>
   <table>
     <tr><th>File</th><th>Purpose</th></tr>
-    <tr><td><code>overlays/&lt;overlay&gt;/agent_manifest.yaml</code></td><td>Overlay declaration — agent type, components, features, prompts, entrypoint.</td></tr>
-    <tr><td><code>overlays/&lt;overlay&gt;/config/agent.yaml</code></td><td>Runtime config — reasoning strategy, tools, retrieval (RAG 3 dims).</td></tr>
-    <tr><td><code>overlays/&lt;overlay&gt;/config/memory.yaml</code></td><td>Per-scope memory read/write policies.</td></tr>
-    <tr><td><code>overlays/&lt;overlay&gt;/config/prompt-defaults.yaml</code></td><td>Seed prompts (fallback when Prompt Management has nothing active).</td></tr>
+    <tr><td><code>overlays/&lt;overlay&gt;/overlay.yaml</code></td><td>Overlay declaration — agent type, components, features, prompts, entrypoint.</td></tr>
+    <tr><td><code>overlays/&lt;overlay&gt;/overlay.yaml + reasoning.yaml + rag.yaml + hitl.yaml + tools/tools.yaml</code></td><td>Runtime config — reasoning strategy, tools, retrieval (RAG 3 dims).</td></tr>
+    <tr><td><code>overlays/&lt;overlay&gt;/memory.yaml</code></td><td>Per-scope memory read/write policies.</td></tr>
+    <tr><td><code>overlays/&lt;overlay&gt;/prompts/prompts.yaml</code></td><td>Seed prompts (fallback when Prompt Management has nothing active).</td></tr>
     <tr><td><code>overlays/&lt;overlay&gt;/orchestration/build_graph.py</code></td><td>LangGraph StateGraph builder — wires planner/executor/responder nodes.</td></tr>
     <tr><td><code>overlays/&lt;overlay&gt;/graph/state.py</code></td><td>TypedDict state schema.</td></tr>
     <tr><td><code>overlays/&lt;overlay&gt;/agents/planner.py</code> / <code>executor.py</code> / <code>responder.py</code></td><td>Overlay-specific reasoning components.</td></tr>
@@ -1152,7 +1152,7 @@ retrieval:
   <table>
     <tr><th>File</th><th>Drives</th></tr>
     <tr><td><code>domain.yaml</code></td><td>Scopes (member, case, assessment), summary tools per scope, domains list</td></tr>
-    <tr><td><code>agent_manifest.yaml</code></td><td>Agent type, required components, features, prompts, RAG dimension metadata</td></tr>
+    <tr><td><code>overlay.yaml</code></td><td>Agent type, required components, features, prompts, RAG dimension metadata</td></tr>
     <tr><td><code>agent.yaml</code></td><td>Reasoning strategy, tool allow-list, RAG config (pre-graph, planner-tool)</td></tr>
     <tr><td><code>memory.yaml</code></td><td>Per-scope read/write policies</td></tr>
     <tr><td><code>prompt-defaults.yaml</code></td><td>Seed prompts (fallback from Prompt Management)</td></tr>
@@ -1207,7 +1207,7 @@ templates/agent-runtime-shell/src/                   → agents/care-management/
 
 templates/overlay-templates/overlays/            → agents/care-management/pre-call-assessment/overlays/
     chat_agent_simple/                                     chat_agent_simple/
-    ├── agent_manifest.yaml                                ├── agent_manifest.yaml
+    ├── overlay.yaml                                ├── overlay.yaml
     ├── config/…                                           ├── config/…
     ├── agents/…                                           ├── agents/…
     ├── graph/…                                            ├── graph/…

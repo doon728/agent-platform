@@ -419,6 +419,6 @@ The tool schema the LLM uses is built at startup from the live Tool Gateway regi
 | `memory.yaml` — scopes | Which memory types are read before the graph runs |
 | `memory.yaml` — write_policies | Which memory types are written after the graph completes |
 | `prompt-defaults.yaml` — system_prompt | What the planner and responder LLM calls receive as system context |
-| `agent_manifest.yaml` | Which overlay folder the platform loads, capability/usecase identity |
+| `overlay.yaml` | Which overlay folder the platform loads, capability/usecase identity |
 
 No code changes needed to modify any of these behaviors — only config changes.

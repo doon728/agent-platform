@@ -55,7 +55,7 @@ Each agent type gets its own overlay folder. Here is what's inside `overlays/cha
 
 ```
 overlays/chat_agent/
-├── agent_manifest.yaml        ← declares this overlay to the platform
+├── overlay.yaml        ← declares this overlay to the platform
 ├── config/
 │   ├── agent.yaml             ← tools, HITL risk levels, retrieval params, model
 │   ├── memory.yaml            ← memory scopes, write policies, triggers
@@ -110,7 +110,7 @@ The **router** is a fourth concept used in multi-agent setups — it decides whi
 
 | File | Purpose | Edit when |
 |---|---|---|
-| `agent_manifest.yaml` | Declares the overlay — agent type, RAG dimension metadata | Setting up a new agent type |
+| `overlay.yaml` | Declares the overlay — agent type, RAG dimension metadata | Setting up a new agent type |
 | `agent.yaml` | Tool allowlist, risk levels per tool, retrieval strategy, model | Changing which tools the agent can use, adjusting HITL thresholds |
 | `memory.yaml` | Which memory scopes are on, write policies, triggers per scope | Changing what the agent remembers and when |
 | `prompt-defaults.yaml` | System prompt, persona, format rules, tone of responses | Changing how the agent thinks, talks, or formats responses |
@@ -187,7 +187,7 @@ services/agent-runtime/src/
 ├── platform/
 │   ├── app.py                 ← FastAPI server — chat, approval, health endpoints
 │   ├── langgraph_runner.py    ← loads the overlay graph and runs it
-│   ├── manifest_loader.py     ← reads agent_manifest.yaml, resolves overlay path
+│   ├── manifest_loader.py     ← reads overlay.yaml, resolves overlay path
 │   ├── config.py              ← loads base + env config
 │   ├── context.py             ← builds the context object passed to every node
 │   ├── auth.py                ← authentication middleware
