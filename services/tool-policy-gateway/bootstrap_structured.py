@@ -115,6 +115,21 @@ def run() -> None:
             check=True,
         )
 
+    # Backfill assessments.case_id (round-robin per member). The seed CSV doesn't
+    # include case_id; this links each member's assessments to that member's cases
+    # so case-level views show their assessments. Idempotent — safe to re-run.
+    backfill_sql = SQL_DIR / "backfill_assessment_case_links.sql"
+    if backfill_sql.exists():
+        subprocess.run(
+            [
+                "docker", "exec", "-i", postgres_container,
+                "psql", "-U", DB_USER, "-d", DB_NAME,
+            ],
+            input=backfill_sql.read_text(encoding="utf-8"),
+            text=True,
+            check=True,
+        )
+
 
 if __name__ == "__main__":
     run()
