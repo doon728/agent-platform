@@ -110,6 +110,43 @@ C2 ──MCP──▶ AgentCore Tool Gateway ──▶ Tool implementation (Lamb
 ### A9. Agent embed-inside-customer-workflow posture
 🔲 **Positioning artifact.** Document explicitly that AEA agents are **embedded inside the customer's existing workflow engine** (Camunda, Pega, Step Functions, ServiceNow) as intelligent steps — not standalone workflow replacements. Add as callout in proposal + prototype-current-state.html.
 
+### A16. Skills — wire into runtime + shared library + versioning/eval
+🔲 **Today: scaffold only.** `SkillLoader` library exists in `packages/platform-core/src/platform_core/prompt/skill_loader.py` (with 7 unit tests). Sample skill exists at `templates/overlay-templates/overlays/chat_agent_simple/skills/escalate_to_human.md` and mirrored to running agent. **Skills are NOT loaded into prompts at runtime — folder exists, code exists, no consumer.**
+
+**To make skills actually useful, three pieces of work:**
+
+**1. Wire SkillLoader into the planner prompt building**
+- In `services/platform-services/src/services/reasoning/planner.py` (or wherever prompts are assembled): instantiate `SkillLoader` for the active overlay, call `find_by_trigger(user_query)`, append matching skill bodies to the system prompt.
+- Effort: ~2 hours.
+
+**2. Shared skills library (cross-agent reuse)**
+- Today: skills live per-overlay (`overlays/<type>/skills/*.md`). One skill = N copies if used by N agents.
+- Build: `packages/skills-library/` (or `services/skills-library/`) — org-wide skill catalog. Agents reference by name in `overlay.yaml`:
+  ```yaml
+  skills:
+    inherit:
+      - phi_masking
+      - clinical_disclaimer
+    overrides:
+      - escalate_to_human   # local override of the shared one
+  ```
+- Loader merges shared + local, local overrides shared.
+- Effort: ~1 week.
+
+**3. Skills versioning + evaluation**
+- Skills today: just markdown + git history. No formal versioning. No eval harness.
+- Build:
+  - Extend `services/prompt-management/` to store skill versions in DB.
+  - Add eval scenarios per skill version (run agent with skill v1 vs v2 → score outputs).
+  - A/B testing per skill in the admin UI.
+- Effort: ~2 weeks (depends on prompt-management lifecycle being wired first).
+
+**Dependency:** A16 mostly assumes prompts/markdown loader (A11) and prompt-management lifecycle work are done first.
+
+**Why it matters:** without this work, skills are just decorative folders. With it, skills become a first-class operator-editable layer (separate from system prompts and tools) for procedural knowledge / norms / domain expertise.
+
+---
+
 ### A15. Flow diagrams for remaining agent types (when built)
 🔲 **Track per-agent-type flow documentation.** `docs/design/agent-flow-diagrams.html` has 3-level diagrams (architecture / lifecycle / config overlay) for the 2 agent types built today — `chat_agent_simple` (C2 Conversational) and `summarization_agent_simple` (C1 Request-Response).
 
