@@ -95,19 +95,19 @@ Those are the five. Now let me show you what configuring these actually looks li
 "Let me show you how the repo is organized — because the structure itself tells the story.
 > *[Cursor open, file tree visible on left panel — top-level folders collapsed]*
 
-`templates/` — this is the reusable foundation. `agent-runtime-template` is the base agent runtime every new usecase starts from. This is where the LangGraph graph, the memory system, the HITL wiring, all of it lives as a template.
-> *[expand `templates/agent-runtime-template/` — show folder structure, don't drill into files]*
+`templates/` — this is the reusable foundation. `overlay-templates` is the base agent runtime every new usecase starts from. This is where the LangGraph graph, the memory system, the HITL wiring, all of it lives as a template.
+> *[expand `templates/overlay-templates/` — show folder structure, don't drill into files]*
 
 `generated-repos/` — this is where new usecase repos land when you scaffold them from the Agent Factory UI. Right now there's one capability folder here: `care-management`. Inside that is `cm-hero-fl-app` — the healthcare care management agent. That repo was generated from the template in one click, then configured for this usecase.
 > *[expand `generated-repos/care-management/cm-hero-fl-app/` — contrast the structure with the template]*
 
-`shared-infra/` — the Tool Gateway lives here. It's shared infrastructure — one instance, all agents use it. Tools are registered here once and available to any agent.
-> *[expand `shared-infra/industry-tool-gateway-healthcare/` briefly]*
+`services/` — the Tool Gateway lives here. It's shared infrastructure — one instance, all agents use it. Tools are registered here once and available to any agent.
+> *[expand `services/` briefly]*
 
-`platform-tools/` — the Admin UIs. Agent Factory UI and the support API that backs it.
-> *[expand `platform-tools/` — show agent-factory-ui and agent-factory-support-api]*
+`services/` — the Admin UIs. Agent Factory UI and the support API that backs it.
+> *[expand `services/` — show agent-factory-ui and agent-factory-support-api]*
 
-So the pattern is: template defines the foundation, Agent Factory scaffolds a new repo from it, shared-infra provides the tool layer, platform-tools gives you the admin surface to configure everything."
+So the pattern is: template defines the foundation, Agent Factory scaffolds a new repo from it, services provide the tool layer, control-plane services give you the admin surface to configure everything."
 
 **TRANSITION:** "Now let me open three specific files that show how the platform actually works."
 
@@ -117,9 +117,9 @@ So the pattern is: template defines the foundation, Agent Factory scaffolds a ne
 **Time: ~1.5 min | Screen: Cursor — open files one at a time**
 
 **Files to open (in order):**
-1. `templates/agent-runtime-template/overlays/chat_agent/config/agent.yaml`
-2. `templates/agent-runtime-template/overlays/chat_agent/orchestration/build_graph.py`
-3. `templates/agent-runtime-template/common/services/agent-runtime/src/platform/langgraph_runner.py`
+1. `templates/overlay-templates/overlays/chat_agent/config/agent.yaml`
+2. `templates/overlay-templates/overlays/chat_agent/orchestration/build_graph.py`
+3. `templates/overlay-templates/common/services/agent-runtime/src/platform/langgraph_runner.py`
 
 ---
 

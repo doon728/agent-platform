@@ -12,19 +12,19 @@ See: `diagrams/platform-architecture.png`
 |-----------|-------|------|---------------|
 | `ui` | Node 20 Alpine | 3000 | `cm-hero-fl-app/` |
 | `agent-runtime` | Python 3.11 slim | 8081 | `cm-chat-buddy-assess/` |
-| `healthcare-tool-gateway` | Python 3.11 slim | 8080 | `shared-infra/industry-tool-gateway-healthcare/` |
-| `postgres` | postgres:15 + pgvector | 5433 | `shared-infra/industry-tool-gateway-healthcare/` |
+| `healthcare-tool-gateway` | Python 3.11 slim | 8080 | `services/` |
+| `postgres` | postgres:15 + pgvector | 5433 | `services/` |
 
 ---
 
 ## 1. Tool Gateway + PostgreSQL
 
-**Location:** `shared-infra/industry-tool-gateway-healthcare/`
+**Location:** `services/`
 
 Shared across all usecases in the healthcare capability. Run once.
 
 ```bash
-cd shared-infra/industry-tool-gateway-healthcare
+cd services
 
 # First run: start both services
 PATH=$PATH:/Applications/Docker.app/Contents/Resources/bin \
@@ -111,7 +111,7 @@ Run these in order — tool-gateway must be up before agent-runtime starts (it c
 
 ```bash
 # 1. Tool Gateway + DB
-cd shared-infra/industry-tool-gateway-healthcare
+cd services
 PATH=$PATH:/Applications/Docker.app/Contents/Resources/bin docker compose up -d --build
 
 # Wait ~10s for postgres to be ready, then seed (first run only):
@@ -141,7 +141,7 @@ cd cm-chat-buddy-assess && docker compose down
 cd cm-hero-fl-app && docker compose down
 
 # Stop tool-gateway (keep postgres running to preserve data)
-cd shared-infra/industry-tool-gateway-healthcare && docker compose stop healthcare-tool-gateway
+cd services && docker compose stop healthcare-tool-gateway
 
 # Or stop everything including postgres:
 docker compose down
@@ -153,7 +153,7 @@ docker compose down
 
 Each repo has its own `.env` file. Never commit this file.
 
-**Tool Gateway** (`shared-infra/industry-tool-gateway-healthcare/.env`):
+**Tool Gateway** (`services/.env`):
 ```bash
 POSTGRES_USER=healthcare_user
 POSTGRES_PASSWORD=healthcare_pass

@@ -92,7 +92,7 @@ All code lives in templates. Generated repos are copies.
 > Never edit the generated repo directly.
 
 ```
-templates/agent-runtime-template/    ← edit here
+templates/overlay-templates/    ← edit here
 templates/capability-ui-template/    ← edit here
 
 generated-repos/care-management/     ← copy to here

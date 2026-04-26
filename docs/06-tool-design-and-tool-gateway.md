@@ -300,7 +300,7 @@ In production these internal routes don't exist. The URL in the DB points at the
 
 The platform has two separate admin UIs for tools. They serve different purposes and different users.
 
-### Tool Admin UI — `localhost:5200` (shared-infra)
+### Tool Admin UI — `localhost:5200` (services)
 
 Gateway operator's UI. Manages what tools **exist** in the gateway.
 

@@ -75,7 +75,7 @@ tr:nth-child(even) td{background:#fafafa;}
     <li><a href="#toplevel">Top-level repo structure</a></li>
     <li><a href="#templates">Template repo — sources that scaffold agent instances</a></li>
     <li><a href="#platform-core">platform-core — shared Python library</a></li>
-    <li><a href="#sharedinfra">shared-infra — Container 2 and Container 3</a></li>
+    <li><a href="#sharedinfra">services/ — Container 2, Container 3, RAG, prompt-management, agent-factory-*</a></li>
     <li><a href="#platform-services-prompt">platform-services (top-level) — Prompt Management</a></li>
     <li><a href="#platform-tools">platform-tools — Agent Factory UI + Support API (Container 4)</a></li>
     <li><a href="#capabilities">capabilities — capability-level UI</a></li>
@@ -96,17 +96,17 @@ tr:nth-child(even) td{background:#fafafa;}
   <div class="section-num">Section 1</div>
   <h2>Overview — accelerator repo model</h2>
 
-  <p>The accelerator is a single Git repository that contains <strong>both the template sources and the generated agent instances</strong>. The Agent Factory UI reads template sources under <code>templates/</code> and scaffolds instances under <code>agents/&lt;capability&gt;/&lt;agent-name&gt;/</code>. Runtime services live in <code>shared-infra/</code> and <code>platform-services/</code>. A shared Python library lives in <code>platform-core/</code>, imported by both Container 1 (agent runtime shell) and Container 2 (platform services).</p>
+  <p>The accelerator is a single Git repository that contains <strong>both the template sources and the generated agent instances</strong>. The Agent Factory UI reads template sources under <code>templates/</code> and scaffolds instances under <code>agents/&lt;capability&gt;/&lt;agent-name&gt;/</code>. Runtime services live in <code>services/</code> and <code>platform-services/</code>. A shared Python library lives in <code>packages/platform-core/</code>, imported by both Container 1 (agent runtime shell) and Container 2 (platform services).</p>
 
   <p>The mental model is <strong>four logical containers</strong> that map to physical services at runtime:</p>
 
   <table>
     <tr><th>Container</th><th>Purpose</th><th>Lives in (code)</th></tr>
-    <tr><td><span class="container-tag c1">C1</span> Agent Runtime Shell</td><td>Per-agent thin entry point. FastAPI app that owns session state, HITL approval store, graph orchestration. Delegates all reasoning to C2.</td><td><code>templates/agent-runtime-shell/</code> + overlay-specific files from <code>templates/agent-runtime-template/overlays/&lt;overlay&gt;/</code>. Generated into <code>agents/&lt;capability&gt;/&lt;agent&gt;/services/agent-runtime/</code>.</td></tr>
-    <tr><td><span class="container-tag c2">C2</span> Platform Services</td><td>Shared tenant service. All reasoning happens here — planner, executor, responder, memory, RAG, tools, observability, summarize, config.</td><td><code>shared-infra/platform-services/</code> (canonical) and <code>templates/platform-services/</code> (template source).</td></tr>
-    <tr><td><span class="container-tag c3">C3</span> Tool Gateway</td><td>Shared per-tenant tool registry + MCP-style serving. Tools registered with schemas; RAG KB lives here; allow/deny per agent enforced.</td><td><code>shared-infra/industry-tool-gateway-healthcare/services/tool-gateway/</code>.</td></tr>
-    <tr><td><span class="container-tag c4">C4</span> Control Plane (distributed today)</td><td>Currently split across multiple services — Agent Factory UI, Support API, Prompt Management. To be consolidated.</td><td><code>platform-tools/agent-factory-ui/</code>, <code>platform-tools/agent-factory-support-api/</code>, <code>platform-services/prompt-management/</code>, <code>platform-store/usecase_contracts.json</code>.</td></tr>
-    <tr><td><span class="container-tag shared">Shared</span> platform-core library</td><td>Python library consumed by C1 and C2. Contains reasoning building blocks, memory, HITL, RAG, tools, auth, context, prompts.</td><td><code>platform-core/src/platform_core/</code>.</td></tr>
+    <tr><td><span class="container-tag c1">C1</span> Agent Runtime Shell</td><td>Per-agent thin entry point. FastAPI app that owns session state, HITL approval store, graph orchestration. Delegates all reasoning to C2.</td><td><code>templates/agent-runtime-shell/</code> + overlay-specific files from <code>templates/overlay-templates/overlays/&lt;overlay&gt;/</code>. Generated into <code>agents/&lt;capability&gt;/&lt;agent&gt;/services/agent-runtime/</code>.</td></tr>
+    <tr><td><span class="container-tag c2">C2</span> Platform Services</td><td>Shared tenant service. All reasoning happens here — planner, executor, responder, memory, RAG, tools, observability, summarize, config.</td><td><code>services/platform-services/</code> (canonical) and <code>templates/platform-services/</code> (template source).</td></tr>
+    <tr><td><span class="container-tag c3">C3</span> Tool Gateway</td><td>Shared per-tenant tool registry + MCP-style serving. Tools registered with schemas; RAG KB lives here; allow/deny per agent enforced.</td><td><code>services/tool-policy-gateway/</code>.</td></tr>
+    <tr><td><span class="container-tag c4">C4</span> Control Plane (distributed today)</td><td>Currently split across multiple services — Agent Factory UI, Support API, Prompt Management. To be consolidated.</td><td><code>services/agent-factory-ui/</code>, <code>services/agent-factory-support-api/</code>, <code>services/prompt-management/</code>, <code>platform-store/usecase_contracts.json</code>.</td></tr>
+    <tr><td><span class="container-tag shared">Shared</span> platform-core library</td><td>Python library consumed by C1 and C2. Contains reasoning building blocks, memory, HITL, RAG, tools, auth, context, prompts.</td><td><code>packages/platform-core/src/platform_core/</code>.</td></tr>
   </table>
 
   <div class="note"><strong>Current state vs target state.</strong> This document describes the prototype as it runs today — HTTP between containers, file-backed memory, local Docker, no AgentCore managed services integrated. Target state (AgentCore Runtime hosting, AgentCore Memory, AgentCore Gateway, AgentCore Observability) is documented separately and is on the backlog for the v1.0 build.</div>
@@ -127,8 +127,8 @@ agent-platform/
 ├── platform-core/             ← Shared Python library (imported by C1 and C2)
 ├── platform-services/         ← Prompt Management service
 ├── platform-store/            ← usecase_contracts.json (central registry)
-├── platform-tools/            ← Agent Factory UI + Support API
-├── shared-infra/              ← C2 Platform Services + C3 Tool Gateway
+├── services/            ← Agent Factory UI + Support API
+├── services/              ← C2 Platform Services + C3 Tool Gateway
 └── templates/                 ← Template sources that scaffold agent instances
 </pre>
 
@@ -137,11 +137,11 @@ agent-platform/
     <tr><td><code>agents/</code></td><td>Generated agent instances produced by scaffolding. One subfolder per capability; each capability has agent instances inside.</td><td><span class="container-tag c1">C1 output</span></td></tr>
     <tr><td><code>capabilities/</code></td><td>Capability-level UIs (e.g., Care Manager console). Each capability has a domain.yaml and a UI folder.</td><td><span class="container-tag c4">C4-adjacent</span></td></tr>
     <tr><td><code>docs/</code></td><td>Design documents, proposal bundle, backlog, this doc.</td><td>—</td></tr>
-    <tr><td><code>platform-core/</code></td><td>Python library: reasoning, memory, HITL, RAG, tools, auth, prompts, observability, schema, plugins. Installed as a package into C1 and C2.</td><td><span class="container-tag shared">Shared</span></td></tr>
+    <tr><td><code>packages/platform-core/</code></td><td>Python library: reasoning, memory, HITL, RAG, tools, auth, prompts, observability, schema, plugins. Installed as a package into C1 and C2.</td><td><span class="container-tag shared">Shared</span></td></tr>
     <tr><td><code>platform-services/</code></td><td>Prompt Management microservice (versioned prompts, lifecycle: draft → active → retired).</td><td><span class="container-tag c4">C4</span></td></tr>
     <tr><td><code>platform-store/</code></td><td>JSON use-case contracts registry. Central source of truth for known use-case contracts.</td><td><span class="container-tag c4">C4 store</span></td></tr>
-    <tr><td><code>platform-tools/</code></td><td>Agent Factory UI (React + TypeScript) and Support API (FastAPI). Operator console for scaffolding and governing agents.</td><td><span class="container-tag c4">C4</span></td></tr>
-    <tr><td><code>shared-infra/</code></td><td>C2 Platform Services + C3 Tool Gateway. Services shared across all agents within a tenant.</td><td><span class="container-tag c2">C2</span> <span class="container-tag c3">C3</span></td></tr>
+    <tr><td><code>services/</code></td><td>Agent Factory UI (React + TypeScript) and Support API (FastAPI). Operator console for scaffolding and governing agents.</td><td><span class="container-tag c4">C4</span></td></tr>
+    <tr><td><code>services/</code></td><td>C2 Platform Services + C3 Tool Gateway. Services shared across all agents within a tenant.</td><td><span class="container-tag c2">C2</span> <span class="container-tag c3">C3</span></td></tr>
     <tr><td><code>templates/</code></td><td>Template sources. The Agent Factory UI reads these and scaffolds agent instances into <code>agents/</code>.</td><td>Template</td></tr>
   </table>
 </div>
@@ -158,14 +158,14 @@ agent-platform/
   <pre>
 templates/
 ├── agent-runtime-shell/       ← Generic C1 shell code (FastAPI app + LangGraph runner)
-├── agent-runtime-template/    ← Overlay-specific templates (per agent-type × reasoning-strategy)
+├── overlay-templates/      ← Overlay-specific templates (per agent-type × reasoning-strategy)
 │   ├── overlays/
 │   │   ├── chat_agent_simple/       ← Overlay: chat agent with simple reasoning
 │   │   └── summarization_agent_simple/  ← Overlay: summarization with simple reasoning
 │   └── common/                 ← Common files every generated agent gets (Dockerfile, docker-compose, etc.)
 ├── agent-ui-template/         ← Per-agent UI templates (chat, summary)
 ├── capability-ui-template/    ← Capability-level UI template (Care Management)
-└── platform-services/         ← Template source for C2 (mirrors shared-infra/platform-services)
+└── platform-services/         ← Template source for C2 (mirrors services/platform-services)
 </pre>
 
   <h3><code>templates/agent-runtime-shell/</code> — Generic C1 code</h3>
@@ -219,12 +219,12 @@ agent-runtime-shell/
     <li><code>tools_client.py</code> → C2 <code>/tools</code> (C2 proxies to C3 Tool Gateway)</li>
   </ul>
 
-  <h3><code>templates/agent-runtime-template/</code> — Overlay templates</h3>
+  <h3><code>templates/overlay-templates/</code> — Overlay templates</h3>
 
   <p>Each overlay is a specific combination of <strong>agent type × reasoning strategy</strong>. Contains orchestration logic that's specific to that overlay.</p>
 
   <pre>
-agent-runtime-template/
+overlay-templates/
 ├── overlays/
 │   ├── chat_agent_simple/
 │   │   ├── agent_manifest.yaml   ← Declares agent_type, components, features, prompts
@@ -292,7 +292,7 @@ capability-ui-template/
   <p>Scaffolded into <code>capabilities/&lt;cap&gt;/ui/</code>. Gives a capability (e.g., Care Management) its own unified console that spans multiple agents.</p>
 
   <h3><code>templates/platform-services/</code> — C2 template</h3>
-  <p>Mirror of <code>shared-infra/platform-services/</code>. Used when a new tenant or environment needs its own C2 scaffolded. Same FastAPI app with routers for config, memory, RAG, reasoning, tools, observability, summarize.</p>
+  <p>Mirror of <code>services/platform-services/</code>. Used when a new tenant or environment needs its own C2 scaffolded. Same FastAPI app with routers for config, memory, RAG, reasoning, tools, observability, summarize.</p>
 </div>
 
 <hr class="hr"/>
@@ -363,15 +363,15 @@ platform-core/src/platform_core/
 <!-- ═══════════════════════════════════════════════════════════════════ -->
 <div class="section" id="sharedinfra">
   <div class="section-num">Section 5</div>
-  <h2>shared-infra — Container 2 and Container 3</h2>
+  <h2>services/ — runtime services (C2, C3, RAG, control-plane backends)</h2>
 
   <pre>
-shared-infra/
+services/
 ├── platform-services/                 ← C2 Platform Services (FastAPI app)
 └── industry-tool-gateway-healthcare/  ← C3 Tool Gateway (FastAPI app + tool-admin-ui)
 </pre>
 
-  <h3><code>shared-infra/platform-services/</code> — <span class="container-tag c2">C2</span></h3>
+  <h3><code>services/platform-services/</code> — <span class="container-tag c2">C2</span></h3>
 
   <pre>
 platform-services/
@@ -406,7 +406,7 @@ platform-services/
     <li><strong>Summarize:</strong> separate endpoint for summarization agents (batched context → summary output).</li>
   </ul>
 
-  <h3><code>shared-infra/industry-tool-gateway-healthcare/</code> — <span class="container-tag c3">C3</span></h3>
+  <h3><code>services/</code> — <span class="container-tag c3">C3</span></h3>
 
   <pre>
 industry-tool-gateway-healthcare/
@@ -469,7 +469,7 @@ industry-tool-gateway-healthcare/
   <div class="section-num">Section 6</div>
   <h2>platform-services (top-level) — Prompt Management</h2>
 
-  <p>Separate microservice dedicated to prompt lifecycle. Distinct from <code>shared-infra/platform-services/</code> (C2).</p>
+  <p>Separate microservice dedicated to prompt lifecycle. Distinct from <code>services/platform-services/</code> (C2).</p>
 
   <pre>
 platform-services/
@@ -505,7 +505,7 @@ platform-services/
   <h2>platform-tools — Agent Factory UI + Support API <span class="container-tag c4">C4</span></h2>
 
   <pre>
-platform-tools/
+services/
 ├── agent-factory-ui/              ← React + TypeScript operator console
 │   ├── src/
 │   │   ├── App.tsx / main.tsx
@@ -693,7 +693,7 @@ services:
   platform-services:            # C2 — shared reasoning service
     build:
       context: ../../../
-      dockerfile: shared-infra/platform-services/Dockerfile
+      dockerfile: services/platform-services/Dockerfile
     ports: ["${PLATFORM_SERVICES_PORT:-8002}:8080"]
     environment:
       OPENAI_API_KEY: ${OPENAI_API_KEY}
@@ -734,7 +734,7 @@ services:
   <h4>What this tells us about the current state</h4>
   <ul>
     <li>C1 and C2 run as Docker containers on the developer's laptop.</li>
-    <li>C3 Tool Gateway is NOT brought up by this docker-compose — it runs separately under <code>shared-infra/industry-tool-gateway-healthcare/services/tool-gateway/docker-compose.yml</code>. C2 reaches it via <code>host.docker.internal:8080</code>.</li>
+    <li>C3 Tool Gateway is NOT brought up by this docker-compose — it runs separately under <code>services/tool-policy-gateway/docker-compose.yml</code>. C2 reaches it via <code>host.docker.internal:8080</code>.</li>
     <li>Memory backend = <code>file</code> (local filesystem under <code>./state/memory</code>). No AgentCore Memory, no pgvector.</li>
     <li>LLM = OpenAI direct (<code>gpt-4o-mini</code> by default). Not Bedrock yet.</li>
     <li>Auth = <code>OPTIONAL</code> in local dev (production will enforce).</li>
@@ -795,43 +795,43 @@ retrieval:
     <tr><th>Container</th><th>Code location</th><th>Runtime (local)</th><th>Key environment variables</th></tr>
     <tr>
       <td><span class="container-tag c1">C1</span> Agent Runtime Shell</td>
-      <td><code>agents/&lt;cap&gt;/&lt;agent&gt;/services/agent-runtime/</code> (scaffolded from <code>templates/agent-runtime-shell/</code> + overlay bits from <code>templates/agent-runtime-template/overlays/&lt;overlay&gt;/</code>)</td>
+      <td><code>agents/&lt;cap&gt;/&lt;agent&gt;/services/agent-runtime/</code> (scaffolded from <code>templates/agent-runtime-shell/</code> + overlay bits from <code>templates/overlay-templates/overlays/&lt;overlay&gt;/</code>)</td>
       <td>FastAPI on port 8001</td>
       <td><code>PLATFORM_SERVICES_URL</code>, <code>AGENT_TYPE</code>, <code>ACTIVE_USECASE</code>, <code>CAPABILITY_NAME</code>, <code>USECASE_NAME</code>, <code>ENVIRONMENT</code>, <code>AUTH_MODE</code></td>
     </tr>
     <tr>
       <td><span class="container-tag c2">C2</span> Platform Services</td>
-      <td><code>shared-infra/platform-services/</code></td>
+      <td><code>services/platform-services/</code></td>
       <td>FastAPI on port 8002</td>
       <td><code>OPENAI_API_KEY</code>, <code>OPENAI_MODEL</code>, <code>TOOL_GATEWAY_URL</code>, <code>MEMORY_BACKEND</code>, <code>MEMORY_BASE_PATH</code>, agent/capability/usecase identity vars</td>
     </tr>
     <tr>
       <td><span class="container-tag c3">C3</span> Tool Gateway</td>
-      <td><code>shared-infra/industry-tool-gateway-healthcare/services/tool-gateway/</code></td>
+      <td><code>services/tool-policy-gateway/</code></td>
       <td>FastAPI on port 8080 (separate docker-compose)</td>
       <td>Postgres connection, KB paths, synthetic data toggle</td>
     </tr>
     <tr>
       <td><span class="container-tag c3">C3 admin</span></td>
-      <td><code>shared-infra/industry-tool-gateway-healthcare/services/tool-admin-ui/</code></td>
+      <td><code>services/tool-admin-ui/</code></td>
       <td>Vite dev server (port 5173 typically)</td>
       <td>Tool Gateway API URL</td>
     </tr>
     <tr>
       <td><span class="container-tag c4">C4</span> Agent Factory UI</td>
-      <td><code>platform-tools/agent-factory-ui/</code></td>
+      <td><code>services/agent-factory-ui/</code></td>
       <td>Vite dev server</td>
       <td>Support API URL</td>
     </tr>
     <tr>
       <td><span class="container-tag c4">C4</span> Support API</td>
-      <td><code>platform-tools/agent-factory-support-api/</code></td>
+      <td><code>services/agent-factory-support-api/</code></td>
       <td>FastAPI (standalone)</td>
       <td>Path to <code>platform-store</code>, path to <code>agents/</code></td>
     </tr>
     <tr>
       <td><span class="container-tag c4">C4</span> Prompt Management</td>
-      <td><code>platform-services/prompt-management/</code></td>
+      <td><code>services/prompt-management/</code></td>
       <td>FastAPI + database</td>
       <td>DB connection string</td>
     </tr>
@@ -951,7 +951,7 @@ retrieval:
   </table>
 
   <div class="highlight">
-    <strong>The architectural tension named plainly.</strong> C2 contains LangGraph reasoning code (<code>shared-infra/platform-services/src/services/reasoning/strategies/</code>). On the surface this looks like an agent runtime and raises the question: "shouldn't that be on AgentCore Runtime?" It is not — because AgentCore Runtime is <strong>per-agent-session</strong> by design, while C2 is a <strong>shared multi-tenant service</strong> that many agents call concurrently. Same code (LangGraph), different runtime semantics (dedicated per session vs. shared always-on). That's why C2 is Fargate, not AgentCore Runtime.
+    <strong>The architectural tension named plainly.</strong> C2 contains LangGraph reasoning code (<code>services/platform-services/src/services/reasoning/strategies/</code>). On the surface this looks like an agent runtime and raises the question: "shouldn't that be on AgentCore Runtime?" It is not — because AgentCore Runtime is <strong>per-agent-session</strong> by design, while C2 is a <strong>shared multi-tenant service</strong> that many agents call concurrently. Same code (LangGraph), different runtime semantics (dedicated per session vs. shared always-on). That's why C2 is Fargate, not AgentCore Runtime.
   </div>
 
   <p><strong>AEA's deliberate choice:</strong> split C1/C2 to make the platform reusable across many agents. That's what makes this an <em>accelerator</em> — a shared platform N agents plug into — rather than N independent agents. The cost is that C2 doesn't fit AgentCore Runtime's per-agent model; the benefit is that one platform upgrade benefits all agents and keeps prompt/memory/policy management centralized.</p>
@@ -1109,7 +1109,7 @@ retrieval:
   <h3>C2 hot-path files</h3>
   <table>
     <tr><th>File</th><th>Purpose</th></tr>
-    <tr><td><code>shared-infra/platform-services/src/main.py</code></td><td>FastAPI app; mounts config/memory/rag/reasoning/tools/observability/summarize routers.</td></tr>
+    <tr><td><code>services/platform-services/src/main.py</code></td><td>FastAPI app; mounts config/memory/rag/reasoning/tools/observability/summarize routers.</td></tr>
     <tr><td><code>…/services/reasoning/router.py</code></td><td>Reasoning endpoint — dispatches to strategy based on overlay config.</td></tr>
     <tr><td><code>…/services/reasoning/strategies/simple.py</code></td><td>Simple linear reasoning strategy.</td></tr>
     <tr><td><code>…/services/reasoning/strategies/react.py</code></td><td>ReAct reasoning strategy.</td></tr>
@@ -1173,10 +1173,10 @@ retrieval:
   <h3>Scaffolding sequence</h3>
   <ol>
     <li><strong>Pick inputs:</strong> capability (e.g., <code>care-management</code>), agent name (e.g., <code>pre-call-assessment</code>), overlay (e.g., <code>chat_agent_simple</code>), use-case contract (optional).</li>
-    <li><strong>Copy common shell:</strong> <code>templates/agent-runtime-template/common/services/agent-runtime/</code> → <code>agents/&lt;cap&gt;/&lt;agent&gt;/services/agent-runtime/</code>.</li>
+    <li><strong>Copy common shell:</strong> <code>templates/overlay-templates/common/services/agent-runtime/</code> → <code>agents/&lt;cap&gt;/&lt;agent&gt;/services/agent-runtime/</code>.</li>
     <li><strong>Copy runtime-shell source:</strong> files from <code>templates/agent-runtime-shell/src/</code> become the Python source inside the new agent's <code>services/agent-runtime/src/</code>.</li>
-    <li><strong>Copy overlay files:</strong> <code>templates/agent-runtime-template/overlays/&lt;overlay&gt;/</code> → <code>agents/&lt;cap&gt;/&lt;agent&gt;/overlays/&lt;overlay&gt;/</code> (manifest, config, agents, graph, orchestration).</li>
-    <li><strong>Copy docker-compose + infra stubs:</strong> <code>templates/agent-runtime-template/common/docker-compose.yml</code> + <code>infra/</code> → agent root.</li>
+    <li><strong>Copy overlay files:</strong> <code>templates/overlay-templates/overlays/&lt;overlay&gt;/</code> → <code>agents/&lt;cap&gt;/&lt;agent&gt;/overlays/&lt;overlay&gt;/</code> (manifest, config, agents, graph, orchestration).</li>
+    <li><strong>Copy docker-compose + infra stubs:</strong> <code>templates/overlay-templates/common/docker-compose.yml</code> + <code>infra/</code> → agent root.</li>
     <li><strong>Copy domain.yaml:</strong> <code>capabilities/&lt;cap&gt;/domain.yaml</code> → agent root (scoped per-agent).</li>
     <li><strong>Copy per-agent UI (if applicable):</strong> <code>templates/agent-ui-template/&lt;ui-variant&gt;/</code> → <code>services/chat-ui/</code> or <code>services/summary-ui/</code>.</li>
     <li><strong>Register in Agent Registry:</strong> Support API writes registry entry (agent_id, LOB namespace, overlay, paths).</li>
@@ -1194,7 +1194,7 @@ retrieval:
   <pre>
 Inputs: capability=care-management, agent=pre-call-assessment, overlay=chat_agent_simple
 
-templates/agent-runtime-template/common/             → agents/care-management/pre-call-assessment/
+templates/overlay-templates/common/             → agents/care-management/pre-call-assessment/
     ├── docker-compose.yml                               ├── docker-compose.yml (subbed)
     ├── services/agent-runtime/…                         ├── services/agent-runtime/…
     └── infra/…                                          └── infra/…
@@ -1205,7 +1205,7 @@ templates/agent-runtime-shell/src/                   → agents/care-management/
     ├── clients/…                                        ├── clients/…
     └── graph/…                                          └── graph/…
 
-templates/agent-runtime-template/overlays/            → agents/care-management/pre-call-assessment/overlays/
+templates/overlay-templates/overlays/            → agents/care-management/pre-call-assessment/overlays/
     chat_agent_simple/                                     chat_agent_simple/
     ├── agent_manifest.yaml                                ├── agent_manifest.yaml
     ├── config/…                                           ├── config/…
@@ -1238,22 +1238,22 @@ templates/agent-ui-template/summary_agent/           → agents/care-management/
   <table>
     <tr><th>File</th><th>Purpose</th></tr>
     <tr><td><code>agents/&lt;cap&gt;/&lt;agent&gt;/docker-compose.yml</code></td><td>Per-agent local deploy — C1 + C2</td></tr>
-    <tr><td><code>shared-infra/industry-tool-gateway-healthcare/services/tool-gateway/docker-compose.yml</code></td><td>C3 Tool Gateway local deploy</td></tr>
+    <tr><td><code>services/tool-policy-gateway/docker-compose.yml</code></td><td>C3 Tool Gateway local deploy</td></tr>
     <tr><td><code>capabilities/&lt;cap&gt;/ui/docker-compose.yml</code></td><td>Capability UI local deploy</td></tr>
-    <tr><td><code>templates/agent-runtime-template/common/docker-compose.yml</code></td><td>Source template for per-agent compose</td></tr>
+    <tr><td><code>templates/overlay-templates/common/docker-compose.yml</code></td><td>Source template for per-agent compose</td></tr>
     <tr><td><code>templates/capability-ui-template/&lt;cap&gt;/docker-compose.yml</code></td><td>Source template for capability UI compose</td></tr>
   </table>
 
   <h3>IaC stubs</h3>
   <ul>
     <li><code>agents/&lt;cap&gt;/&lt;agent&gt;/infra/envs/dev/README.md</code> and <code>prod/README.md</code> — placeholders for per-env IaC (Terraform, CDK) to be filled in during the v1.0 build.</li>
-    <li><code>templates/agent-runtime-template/common/infra/…</code> — same placeholders at template level.</li>
+    <li><code>templates/overlay-templates/common/infra/…</code> — same placeholders at template level.</li>
     <li>No working IaC today. The build plan's IaC workstream (backlog.md item #15) produces Terraform + CDK + Helm packaging.</li>
   </ul>
 
   <h3>CI/CD stubs</h3>
   <ul>
-    <li><code>shared-infra/industry-tool-gateway-healthcare/.github/workflows/ci.yml</code> — minimal CI for Tool Gateway.</li>
+    <li><code>services/.github/workflows/ci.yml</code> — minimal CI for Tool Gateway.</li>
     <li><code>capabilities/care-management/ui/.github/workflows/ci.yml</code> — minimal CI for capability UI.</li>
     <li><code>templates/capability-ui-template/care_management/.github/workflows/ci.yml</code> — template CI.</li>
     <li>No unified cross-service CI/CD today. Planned as part of the v1.0 build.</li>

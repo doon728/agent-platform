@@ -68,12 +68,12 @@ The Tool Gateway, PostgreSQL, UI, and Agent Factory services never call the LLM 
 - Workspaces — start, stop, restart agent runtime containers
 - Prompt Governance — view and manage prompt versions
 
-**Where it lives:** `/platform-tools/agent-factory-ui/`
+**Where it lives:** `/services/agent-factory-ui/`
 
 **How it runs:** Vite dev server. Not containerized — runs directly on the host.
 
 ```bash
-cd platform-tools/agent-factory-ui
+cd services/agent-factory-ui
 npm run dev   # starts on :5173
 ```
 
@@ -89,12 +89,12 @@ npm run dev   # starts on :5173
 - Serves agent config (agent.yaml, memory.yaml) to the UI tabs
 - Provides `/registry/agent-status` — live container status + locked_features per agent
 
-**Where it lives:** `/platform-tools/agent-factory-support-api/`
+**Where it lives:** `/services/agent-factory-support-api/`
 
 **How it runs:** Python FastAPI. Not containerized — runs directly on the host.
 
 ```bash
-cd platform-tools/agent-factory-support-api
+cd services/agent-factory-support-api
 uvicorn app:app --port 8000 --reload
 ```
 
@@ -110,12 +110,12 @@ uvicorn app:app --port 8000 --reload
 - Routes tool calls to the right adapter: local Python function, REST endpoint, Lambda, vector DB query
 - Serves the full tool schema to agent runtimes on startup (used to build the LLM tool schema)
 
-**Where it lives:** `/shared-infra/industry-tool-gateway-healthcare/services/tool-gateway/`
+**Where it lives:** `/services/tool-policy-gateway/`
 
 **How it runs:** Containerized. One instance per capability, shared by all usecase agents.
 
 ```bash
-cd shared-infra/industry-tool-gateway-healthcare/services/tool-gateway
+cd services/tool-policy-gateway
 docker compose up
 ```
 
@@ -251,7 +251,7 @@ The Agent Runtime talks to the Tool Gateway using `host.docker.internal` — thi
 | HITL approval requests | `./state/approvals.db` in agent repo | SQLite |
 | KB embeddings | PostgreSQL pgvector | Vector DB |
 | Agent config | `overlays/` in agent repo | YAML files (baked into container image) |
-| Usecase registry | `platform-tools/agent-factory-support-api/data/usecase_registry.json` | JSON file |
+| Usecase registry | `services/agent-factory-support-api/data/usecase_registry.json` | JSON file |
 
 The `./data/` and `./state/` directories are mounted as Docker volumes — they persist across container restarts.
 
@@ -263,7 +263,7 @@ Order matters. Start in this sequence:
 
 ```bash
 # 1. Tool Gateway + PostgreSQL (shared infra)
-cd shared-infra/industry-tool-gateway-healthcare/services/tool-gateway
+cd services/tool-policy-gateway
 docker compose up -d
 
 # 2. Agent Runtime (per usecase)
@@ -275,11 +275,11 @@ cd generated-repos/care-management/cm-hero-fl-app
 docker compose up -d
 
 # 4. Agent Factory Support API (platform tools)
-cd platform-tools/agent-factory-support-api
+cd services/agent-factory-support-api
 uvicorn app:app --port 8000 --reload &
 
 # 5. Agent Factory UI (platform tools)
-cd platform-tools/agent-factory-ui
+cd services/agent-factory-ui
 npm run dev
 ```
 

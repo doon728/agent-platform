@@ -59,25 +59,25 @@ Let me start with the repo structure because the structure itself tells the stor
 > *[SHOW: switch to Cursor — file tree visible, top-level folders collapsed]*
 
 There's a templates folder which is the reusable foundation. The agent runtime template is the base every new usecase starts from. That's where the LangGraph graph, the memory system, the HITL wiring, all of that lives as a template.
-> *[SHOW: expand templates/agent-runtime-template/ — show folder structure, don't drill into files]*
+> *[SHOW: expand templates/overlay-templates/ — show folder structure, don't drill into files]*
 
 Then there's generated-repos, which is where new usecase repos land when you scaffold them from the Agent Factory UI. Right now there's one capability folder here, care-management, and inside that is cm-hero-fl-app, the healthcare care management agent. That repo was generated from the template in one click and then configured for this usecase.
 > *[SHOW: expand generated-repos/care-management/cm-hero-fl-app/ — contrast with template]*
 
-shared-infra is where the Tool Gateway lives. It's shared infrastructure, one instance, all agents use it. Tools are registered here once and available to any agent.
-> *[SHOW: expand shared-infra/industry-tool-gateway-healthcare/ briefly]*
+services/ is where the Tool Gateway lives. It's shared infrastructure, one instance, all agents use it. Tools are registered here once and available to any agent.
+> *[SHOW: expand services/ briefly]*
 
 And platform-tools is where the Admin UIs live, the Agent Factory UI and the support API that backs it.
-> *[SHOW: expand platform-tools/ — show agent-factory-ui and agent-factory-support-api]*
+> *[SHOW: expand services/ — show agent-factory-ui and agent-factory-support-api]*
 
-So the pattern is: template defines the foundation, Agent Factory scaffolds a new repo from it, shared-infra provides the tool layer, and platform-tools gives you the admin surface to configure everything.
+So the pattern is: template defines the foundation, Agent Factory scaffolds a new repo from it, services provide the tool layer, and control-plane services give you the admin surface to configure everything.
 
 Now let me open three specific files that show how the platform actually works.
 
 ---
 
 This first one is agent.yaml and this is what the Admin UI writes to.
-> *[SHOW: open templates/agent-runtime-template/overlays/chat_agent/config/agent.yaml]*
+> *[SHOW: open templates/overlay-templates/overlays/chat_agent/config/agent.yaml]*
 
 Every platform capability has a config entry here. You can see the features section where memory is on, RAG is on, HITL is off, observability is on. The HITL section has the adapter set to internal with routing rules by risk level. The retrieval section has strategy, similarity threshold, and the pre-graph toggle. And the risk section has each tool tagged with its risk level.
 > *[SHOW: scroll slowly — pause at features, hitl, retrieval, risk sections]*
@@ -87,7 +87,7 @@ When an admin changes a toggle in the Agent Registry UI, this file is what chang
 ---
 
 This second file is build_graph.py and this is the graph.
-> *[SHOW: open templates/agent-runtime-template/overlays/chat_agent/orchestration/build_graph.py]*
+> *[SHOW: open templates/overlay-templates/overlays/chat_agent/orchestration/build_graph.py]*
 
 The graph has three nodes: a planner, an executor, and a responder. This is the chat agent overlay so the responder is built for conversation, but each agent type has its own version of this file with its own graph logic. A message comes in, the planner decides what to do, the executor calls the tool, and the responder formats the answer.
 > *[SHOW: point at the three add_node lines]*
@@ -102,7 +102,7 @@ The responder is also part of the overlay, so for the chat agent it formats a co
 ---
 
 And this third file is langgraph_runner.py. This is the platform wrapper that owns the full lifecycle — it prepares context before the graph runs, invokes the graph, and handles memory writes after it completes.
-> *[SHOW: open templates/agent-runtime-template/common/services/agent-runtime/src/platform/langgraph_runner.py]*
+> *[SHOW: open templates/overlay-templates/common/services/agent-runtime/src/platform/langgraph_runner.py]*
 
 Pre-graph is where context is assembled and knowledge is injected.
 > *[SHOW: scroll to pre-graph block ~line 146]*

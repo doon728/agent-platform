@@ -156,7 +156,7 @@ code{background:#f1f5f9;padding:1px 5px;border-radius:3px;font-family:'SF Mono',
     <h3>Platform Team Responsibilities</h3>
     <ul>
       <li>Own architecture, design decisions, and runtime-split conventions</li>
-      <li>Approve all changes to <code>platform-core/</code>, <code>platform-services/</code>, <code>shared-infra/</code>, <code>platform-tools/</code>, <code>templates/</code>, and <code>iac/</code></li>
+      <li>Approve all changes to <code>packages/platform-core/</code>, <code>platform-services/</code>, <code>services/</code>, <code>services/</code>, <code>templates/</code>, and <code>iac/</code></li>
       <li>Publish versioned releases (<code>v1.0</code>, <code>v1.1</code>, …) and release notes</li>
       <li>Coordinate security scans, SBOM generation, and penetration tests per release</li>
       <li>Maintain the compliance evidence package (HIPAA controls, architecture security review, HIPAA-eligible service list)</li>
@@ -171,8 +171,8 @@ code{background:#f1f5f9;padding:1px 5px;border-radius:3px;font-family:'SF Mono',
 
 platform-core/       @practice/platform-team
 platform-services/   @practice/platform-team
-shared-infra/        @practice/platform-team
-platform-tools/      @practice/platform-team
+services/        @practice/platform-team
+services/      @practice/platform-team
 templates/           @practice/platform-team
 iac/                 @practice/platform-team @practice/sre
 
@@ -267,7 +267,7 @@ docker-compose up
       <div class="col-box">
         <h4>Locally Modifiable, but PR Back to Master</h4>
         <ul>
-          <li><code>platform-core/</code>, <code>platform-services/</code>, <code>shared-infra/</code>, <code>platform-tools/</code> — if a developer discovers a platform improvement during exploration, they submit it as a PR to the master repo for Platform Team review, not merged directly into their sandbox</li>
+          <li><code>packages/platform-core/</code>, <code>platform-services/</code>, <code>services/</code>, <code>services/</code> — if a developer discovers a platform improvement during exploration, they submit it as a PR to the master repo for Platform Team review, not merged directly into their sandbox</li>
           <li><code>templates/</code> — same pattern; template improvements go through Platform Team</li>
         </ul>
       </div>
@@ -364,27 +364,27 @@ make teardown-playground AGENT_NAME=jane-doe-chat-agent
       </tr>
       <tr>
         <td><strong>New reasoning strategy</strong></td>
-        <td>Add implementation in <code>platform-core/</code> and <code>shared-infra/platform-services/src/services/reasoning/strategies/</code>; create overlay variants under <code>templates/agent-runtime-template/overlays/</code> for each agent-type × strategy combination; update Agent Factory UI to offer the new option</td>
+        <td>Add implementation in <code>packages/platform-core/</code> and <code>services/platform-services/src/services/reasoning/strategies/</code>; create overlay variants under <code>templates/overlay-templates/overlays/</code> for each agent-type × strategy combination; update Agent Factory UI to offer the new option</td>
       </tr>
       <tr>
         <td><strong>New memory backend</strong></td>
-        <td>Implement adapter in <code>platform-core/src/platform_core/memory/</code>; add backend option to <code>memory.yaml</code> schema; update Agent Factory UI</td>
+        <td>Implement adapter in <code>packages/platform-core/src/platform_core/memory/</code>; add backend option to <code>memory.yaml</code> schema; update Agent Factory UI</td>
       </tr>
       <tr>
         <td><strong>New RAG pattern</strong></td>
-        <td>Implement in <code>platform-core/src/platform_core/rag/patterns/</code>; add to Agent Factory UI pattern selector</td>
+        <td>Implement in <code>packages/platform-core/src/platform_core/rag/patterns/</code>; add to Agent Factory UI pattern selector</td>
       </tr>
       <tr>
         <td><strong>New agent-type template</strong></td>
-        <td>Add under <code>templates/agent-runtime-template/overlays/&lt;new-type&gt;_&lt;strategy&gt;/</code>; update Agent Factory UI</td>
+        <td>Add under <code>templates/overlay-templates/overlays/&lt;new-type&gt;_&lt;strategy&gt;/</code>; update Agent Factory UI</td>
       </tr>
       <tr>
         <td><strong>New tool adapter</strong></td>
-        <td>Shared adapter → <code>shared-infra/industry-tool-gateway-healthcare/services/tool-gateway/</code>; document in OpenAPI schema</td>
+        <td>Shared adapter → <code>services/tool-policy-gateway/</code>; document in OpenAPI schema</td>
       </tr>
       <tr>
         <td><strong>New compliance control</strong></td>
-        <td>Add module to <code>platform-core/</code> or relevant service; update HIPAA controls matrix; update security evidence package</td>
+        <td>Add module to <code>packages/platform-core/</code> or relevant service; update HIPAA controls matrix; update security evidence package</td>
       </tr>
     </table>
 

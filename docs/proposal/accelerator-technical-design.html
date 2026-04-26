@@ -672,10 +672,10 @@ tr:nth-child(even) td{background:#fafafa;}
       <div class="col-box">
         <h4>Read-Only by Policy</h4>
         <ul>
-          <li><code>platform-core/</code> — shared library</li>
+          <li><code>packages/platform-core/</code> — shared library</li>
           <li><code>platform-services/</code> — C2 services code</li>
-          <li><code>shared-infra/</code> — C3 tool gateway code</li>
-          <li><code>platform-tools/</code> — C4 Agent Factory UI + API</li>
+          <li><code>services/</code> — C3 tool gateway code</li>
+          <li><code>services/</code> — C4 Agent Factory UI + API</li>
           <li><code>templates/</code> — scaffolding source material</li>
         </ul>
       </div>
@@ -1194,7 +1194,7 @@ Deployed as Container 1 for that specific agent
       <li>Engagement kicks off — PMO requests an engagement repo from Platform Team</li>
       <li>Platform Team forks master into <code>engagements/customer-x-agents</code>, adds the assigned team, enables branch protection, disables personal forks</li>
       <li>All assigned developers clone the <em>same</em> engagement repo — one shared workspace</li>
-      <li>Team tailors <code>platform-core/</code>, <code>shared-infra/</code>, templates; adds customer-specific agents under <code>agents/&lt;domain&gt;/</code></li>
+      <li>Team tailors <code>packages/platform-core/</code>, <code>services/</code>, templates; adds customer-specific agents under <code>agents/&lt;domain&gt;/</code></li>
       <li>CI/CD builds and deploys — dev → staging (practice) → prod (customer AWS account)</li>
       <li>At end of engagement, codebase is handed to customer with full IP transfer</li>
     </ol>

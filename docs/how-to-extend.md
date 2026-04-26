@@ -9,7 +9,7 @@
 ### Step 1 — Tool Gateway: add to registry.py
 
 ```python
-# shared-infra/.../src/tools/registry.py
+# services/.../src/tools/registry.py
 
 class GetMyNewToolInput(BaseModel):
     some_id: str
@@ -56,7 +56,7 @@ tools:
 ### Step 4 — Rebuild tool-gateway + restart agent-runtime
 
 ```bash
-# In shared-infra/industry-tool-gateway-healthcare
+# In services
 docker compose up -d --build
 
 # In usecase repo — restart so it re-discovers tools
@@ -85,7 +85,7 @@ if active_assessment_id and any(x in lower_p for x in my_tool_phrases):
 ### Step 1 — Create overlay in template
 
 ```
-templates/agent-runtime-template/overlays/summary_agent/
+templates/overlay-templates/overlays/summary_agent/
   agent_manifest.yaml
   config/
     agent.yaml
@@ -103,7 +103,7 @@ templates/agent-runtime-template/overlays/summary_agent/
 ### Step 2 — Copy overlay to generated repo
 
 ```bash
-cp -r templates/agent-runtime-template/overlays/summary_agent/ \
+cp -r templates/overlay-templates/overlays/summary_agent/ \
       generated-repos/care-management/usecases/UC_PreCall_Assess/cm-chat-buddy-assess/overlays/
 ```
 
@@ -141,10 +141,10 @@ services:
 
 ```bash
 # Copy template to new usecase location
-cp -r templates/agent-runtime-template/common/ \
+cp -r templates/overlay-templates/common/ \
       generated-repos/care-management/usecases/UC_PostCall_Document/cm-post-call-agent/services/agent-runtime/
 
-cp -r templates/agent-runtime-template/overlays/ \
+cp -r templates/overlay-templates/overlays/ \
       generated-repos/care-management/usecases/UC_PostCall_Document/cm-post-call-agent/overlays/
 ```
 

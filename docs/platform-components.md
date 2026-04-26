@@ -372,7 +372,7 @@ Traces are stored in memory and served at `GET /traces`. The UI renders them as 
 
 ## Tool Gateway Components
 
-**Location:** `shared-infra/industry-tool-gateway-healthcare/services/tool-gateway/src/`
+**Location:** `services/tool-policy-gateway/src/`
 
 | File | What it does |
 |------|-------------|

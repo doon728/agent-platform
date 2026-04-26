@@ -5,7 +5,7 @@
 ```
 agent-platform/
 ├── templates/                        ← SOURCE OF TRUTH — always edit here first
-│   ├── agent-runtime-template/       ← template for any agent runtime service
+│   ├── overlay-templates/       ← template for any agent runtime service
 │   └── capability-ui-template/       ← template for any capability UI
 │
 ├── generated-repos/                  ← scaffolded from templates — DO NOT edit directly
@@ -15,14 +15,14 @@ agent-platform/
 │           └── UC_PreCall_Assess/
 │               └── cm-chat-buddy-assess/   ← generated agent runtime repo
 │
-├── shared-infra/                     ← shared across usecases, not per-agent
+├── services/                     ← shared across usecases, not per-agent
 │   └── industry-tool-gateway-healthcare/
 │       └── services/tool-gateway/    ← healthcare tool gateway service
 │
 ├── platform/                         ← core platform CLI tools
 ├── platform-services/                ← platform microservices
 ├── platform-store/                   ← data store implementations
-├── platform-tools/                   ← scaffolding CLI tools
+├── services/                   ← scaffolding CLI tools
 └── docs/                             ← documentation (this folder)
 ```
 
@@ -31,7 +31,7 @@ agent-platform/
 ## Agent Runtime Template
 
 ```
-templates/agent-runtime-template/
+templates/overlay-templates/
 │
 ├── common/                           ← shared across ALL agent types
 │   ├── docker-compose.yml
@@ -177,7 +177,7 @@ cm-chat-buddy-assess/                 ← usecase repo (UC_PreCall_Assess)
 ## Tool Gateway (Shared Infrastructure)
 
 ```
-shared-infra/industry-tool-gateway-healthcare/services/tool-gateway/
+services/tool-policy-gateway/
 ├── Dockerfile
 ├── docker-compose.yml                ← tool-gateway + postgres services
 ├── pyproject.toml

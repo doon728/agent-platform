@@ -148,7 +148,7 @@ def diagram_template_flow():
 
     # Template boxes
     ax.text(0.18, 0.76, "TEMPLATES  (edit here first)", color=ACC, fontsize=10, fontweight='bold', ha='center')
-    box(ax, 0.01, 0.56, 0.34, 0.18, "agent-runtime-template",
+    box(ax, 0.01, 0.56, 0.34, 0.18, "overlay-templates",
         "common/  (platform infra)\noverlays/chat_agent/  (agent logic)\noverlays/summary_agent/  (future)", BOX_MID, fontsize=8)
     box(ax, 0.01, 0.34, 0.34, 0.18, "capability-ui-template",
         "services/ui/src/pages/\nApp.tsx  |  TraceGraph\nMemoryPanel  |  styles", BOX_MID, fontsize=8)
@@ -168,7 +168,7 @@ def diagram_template_flow():
     box(ax, 0.96, 0.56, 0.42, 0.18, "cm-hero-fl-app/  (UI)",
         "services/ui/src/pages/  (all pages)\nApp.tsx  |  vite.config.ts\ndocker-compose.yml", "#1a3a1a", fontsize=8)
 
-    box(ax, 0.52, 0.34, 0.86, 0.18, "shared-infra/tool-gateway/  (shared — one per capability)",
+    box(ax, 0.52, 0.34, 0.86, 0.18, "services/tool-policy-gateway/  (shared — one per capability)",
         "src/tools/registry.py  (all tools)\nsrc/data/pg_store.py  (data queries)\ndata/sql/  (schema + seed data)          PostgreSQL + pgvector", BOX_DARK, fontsize=8)
 
     # What's customized

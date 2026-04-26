@@ -1,8 +1,8 @@
 # Full Test Checklist — Agent Registry + Runtime
 
 ### 0. Pre-flight
-- [ ] Support API running (`cd platform-tools/agent-factory-support-api && uvicorn app:app`)
-- [ ] Agent Factory UI running (`cd platform-tools/agent-factory-ui && npm run dev`)
+- [ ] Support API running (`cd services/agent-factory-support-api && uvicorn app:app`)
+- [ ] Agent Factory UI running (`cd services/agent-factory-ui && npm run dev`)
 - [ ] Care management UI running (`cd capabilities/care-management/ui/services/ui && npm run dev`)
 - [ ] Tool gateway running (docker)
 - [ ] Go to **Workspaces** → confirm `pre-call-assessment` shows as stopped, stale `test` record visible
@@ -167,7 +167,7 @@ The LLM returns a list of `{ fact_type, value }` pairs. Each is written to the s
 ### Containers (Docker)
 | What | Where defined | Shared or per-agent |
 |---|---|---|
-| **Tool Gateway** (FastAPI — tools API) | `shared-infra/industry-tool-gateway-healthcare/docker-compose.yml` | **Shared** — one instance, all agents use it |
+| **Tool Gateway** (FastAPI — tools API) | `services/tool-policy-gateway/docker-compose.yml` | **Shared** — one instance, all agents use it |
 | **Postgres** (memory store + KB) | same shared docker-compose | **Shared** — one DB, all agents share it |
 | **Agent Runtime** (LangGraph FastAPI) | `agents/care-management/pre-call-assessment/docker-compose.yml` | **Per-agent** — one container per running agent |
 
