@@ -1,0 +1,6 @@
+# Reasoning strategy is FIXED at agent creation time (selected via Agent Factory UI when
+# choosing the agent type, e.g. chat_agent_simple vs chat_agent_react). NOT runtime-editable.
+# Editing this file regenerates orchestration/build_graph.py — structural change.
+
+strategy: simple   # simple | react | plan_execute | multi_hop | reflection
+# max_steps: N     # only applies to react / multi_hop

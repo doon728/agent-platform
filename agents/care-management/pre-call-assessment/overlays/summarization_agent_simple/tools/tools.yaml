@@ -1,0 +1,9 @@
+# Tool allow-list for summary_agent. Read-only — no write operations.
+
+mode: selected
+allowed:
+  - get_member
+  - get_member_summary
+  - get_assessment_summary
+  - get_assessment_tasks
+denied: []

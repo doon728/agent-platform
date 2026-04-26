@@ -1,0 +1,20 @@
+# Top-level manifest for the summarization_agent_simple overlay.
+# Decomposed config in sibling files: reasoning.yaml, memory.yaml, tools/tools.yaml,
+# prompts/, skills/, evals/. No rag.yaml or hitl.yaml — this agent doesn't use them.
+
+agent_type: summarization_agent_simple
+agent_role: summary_agent
+planner_mode: none           # deterministic — no LLM planner
+
+components:
+  - summarizer
+
+features:
+  memory: false
+  rag: false
+  hitl: false
+  observability: true
+  prompt_versioning: false
+
+entrypoint:
+  orchestration_graph: orchestration/build_graph.py

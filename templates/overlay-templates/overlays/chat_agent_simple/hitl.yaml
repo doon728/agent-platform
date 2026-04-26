@@ -1,0 +1,24 @@
+# HITL gating policy. Operator-editable via admin UI after scaffold.
+# State machine + approval store live in C1 agent-runtime.
+
+adapter: internal
+
+risk_levels:
+  write_case_note: high
+  get_member_summary: low
+  get_case_summary: low
+  get_assessment_summary: low
+  get_assessment_tasks: low
+  get_member: low
+  search_kb: low
+
+routing_rules:
+  - risk_level: high
+    requires_approval: true
+  - risk_level: medium
+    requires_approval: true
+  - risk_level: low
+    requires_approval: false
+
+sla:
+  timeout_minutes: 60

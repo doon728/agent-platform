@@ -1,0 +1,4 @@
+# Summary agent uses a deterministic single-pass strategy. No LLM planner.
+# Strategy is FIXED at agent creation time. Editing this file = structural change.
+
+strategy: simple

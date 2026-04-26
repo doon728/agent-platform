@@ -1,0 +1,30 @@
+# RAG (retrieval) configuration for this agent. Operator-editable via admin UI.
+# RAG calls flow through services/rag/ over HTTP at runtime.
+
+enabled: true
+
+# ── Pre-graph RAG (Dim 2 — Stage 1) ───────────────────────────────────────
+# Retrieves KB chunks BEFORE the planner runs and injects them into context.
+# The planner and responder see this silently — no explicit tool call needed.
+# Recommended for: chat_agent, workflow_agent, quality_checker
+# NOT recommended for: react_agent (ReAct loop handles retrieval itself)
+pre_graph:
+  enabled: true
+  tool: search_kb
+  strategy: hybrid          # Dim 1: semantic | keyword | hybrid
+  pattern: naive            # Dim 3: naive | self_corrective | multi_hop | hyde | agentic
+  top_k: 3
+  similarity_threshold: 0.5
+
+# ── Planner tool RAG (Dim 2 — Stage 2) ────────────────────────────────────
+# Exposes search_kb as a tool the planner LLM can call explicitly.
+# The planner decides WHEN to call it based on the user's query.
+planner_tool:
+  enabled: true
+  tool: search_kb
+  strategy: semantic        # Dim 1: semantic | keyword | hybrid
+  pattern: naive            # Dim 3: naive | self_corrective | multi_hop | hyde | agentic
+  top_k: 5
+  similarity_threshold: 0.35
+  fallback:
+    allow_no_results_response: true

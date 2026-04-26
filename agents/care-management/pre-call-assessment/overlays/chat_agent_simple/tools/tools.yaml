@@ -1,0 +1,14 @@
+# Tool allow-list + per-agent overrides. Operator-editable via admin UI.
+# Tool implementations live in services/tool-policy-gateway/ (today) — Pattern A′ moves them to
+# services/tools/ + AgentCore Tool Gateway in the future.
+
+mode: selected               # selected (allow-list) | all
+allowed:
+  - search_kb
+  - get_member
+  - get_member_summary
+  - get_case_summary
+  - get_assessment_summary
+  - get_assessment_tasks
+  - write_case_note
+denied: []                   # explicit deny-list overrides allowed

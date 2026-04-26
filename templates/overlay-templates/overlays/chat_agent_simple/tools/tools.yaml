@@ -1,0 +1,7 @@
+# Default tool allow-list for new chat_agent_simple instances.
+# Operators add/remove tools via Agent Factory UI after scaffold.
+
+mode: selected
+allowed:
+  - search_kb
+denied: []

@@ -1,0 +1,27 @@
+# HITL (Human-in-the-Loop) gating policy. Operator-editable via admin UI.
+# State machine + approval store live in C1 agent-runtime; gating decisions in C2 reasoning loop.
+
+adapter: internal           # internal | external (e.g., ServiceNow, custom queue)
+
+# Risk levels per tool — drives whether approval is required
+risk_levels:
+  write_case_note: high
+  get_member_summary: low
+  get_case_summary: low
+  get_assessment_summary: low
+  get_assessment_tasks: low
+  get_member: low
+  search_kb: low
+
+# Routing rules: which risk levels gate on a human
+routing_rules:
+  - risk_level: high
+    requires_approval: true
+  - risk_level: medium
+    requires_approval: true
+  - risk_level: low
+    requires_approval: false
+
+# SLA — how long the approval can stay pending before timeout
+sla:
+  timeout_minutes: 60

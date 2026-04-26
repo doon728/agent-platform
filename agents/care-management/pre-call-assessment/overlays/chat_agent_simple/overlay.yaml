@@ -1,4 +1,10 @@
+# Top-level manifest for the chat_agent_simple overlay.
+# Decomposed config lives in sibling files: reasoning.yaml, memory.yaml, rag.yaml,
+# hitl.yaml, tools/tools.yaml, prompts/, skills/, evals/.
+
 agent_type: chat_agent_simple
+agent_role: chat_agent
+planner_mode: llm
 
 components:
   - planner
@@ -7,6 +13,8 @@ components:
 
 features:
   memory: true
+  rag: true
+  hitl: false
   observability: true
   prompt_versioning: true
 

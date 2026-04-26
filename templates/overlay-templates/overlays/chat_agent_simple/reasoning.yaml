@@ -1,0 +1,5 @@
+# Reasoning strategy is FIXED at agent creation time. NOT runtime-editable.
+# Editing this file regenerates orchestration/build_graph.py — structural change.
+
+strategy: simple   # simple | react | plan_execute | multi_hop | reflection
+# max_steps: 5     # only applies to react / multi_hop
