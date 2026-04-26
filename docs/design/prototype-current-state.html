@@ -73,6 +73,7 @@ tr:nth-child(even) td{background:#fafafa;}
   <ol>
     <li><a href="#overview">Overview — accelerator repo model</a></li>
     <li><a href="#toplevel">Top-level repo structure</a></li>
+    <li><a href="#folder-naming">Folder naming reference — same word, multiple layers</a></li>
     <li><a href="#templates">Template repo — sources that scaffold agent instances</a></li>
     <li><a href="#platform-core">platform-core — shared Python library</a></li>
     <li><a href="#sharedinfra">services/ — Container 2, Container 3, RAG, prompt-management, agent-factory-*</a></li>
@@ -149,8 +150,112 @@ agent-platform/
 <hr class="hr"/>
 
 <!-- ═══════════════════════════════════════════════════════════════════ -->
-<div class="section" id="templates">
+<div class="section" id="folder-naming">
   <div class="section-num">Section 3</div>
+  <h2>Folder naming reference — same word, multiple layers</h2>
+
+  <p>Several domain words (<code>memory</code>, <code>rag</code>, <code>tools</code>, <code>hitl</code>, <code>prompt</code>, <code>services</code>) appear at multiple places in the repo. Each instance is a different layer of the architecture. This is a deliberate, idiomatic Python/agent-platform pattern — the same domain concept appears at every layer that participates in it. The PATH tells you which layer.</p>
+
+  <div class="callout">
+    <strong>The convention.</strong> Same domain name = same domain. The folder PATH tells you the layer:
+    <ul>
+      <li><code>packages/platform-core/.../&lt;domain&gt;/</code> = library code (importable Python).</li>
+      <li><code>services/&lt;domain&gt;/</code> = a top-level deployable runtime service.</li>
+      <li><code>services/&lt;svc&gt;/src/services/&lt;domain&gt;/</code> = FastAPI sub-router inside a service.</li>
+      <li><code>agents/&lt;cap&gt;/&lt;agent&gt;/overlays/&lt;type&gt;/&lt;domain&gt;.yaml</code> = per-agent config.</li>
+      <li><code>agents/&lt;cap&gt;/&lt;agent&gt;/state/&lt;domain&gt;/</code> = runtime data store.</li>
+    </ul>
+  </div>
+
+  <h3>3.1 The reference table — every overloaded name</h3>
+
+  <h4><code>memory</code> — appears 4× across the repo</h4>
+  <table>
+    <tr><th>#</th><th>Path</th><th>Layer</th><th>Purpose</th></tr>
+    <tr><td>1</td><td><code>packages/platform-core/src/platform_core/memory/</code></td><td>Library</td><td>Python module — adapters (file, Postgres, AgentCore Memory), scope policy, write engine, read context builder. Imported via <code>from platform_core.memory import …</code>.</td></tr>
+    <tr><td>2</td><td><code>services/platform-services/src/services/memory/</code></td><td>FastAPI sub-router (in C2)</td><td>HTTP endpoints — <code>/memory/read</code>, <code>/memory/write</code>. Calls into the library from #1.</td></tr>
+    <tr><td>3</td><td><code>agents/&lt;cap&gt;/&lt;agent&gt;/overlays/&lt;type&gt;/memory.yaml</code></td><td>Config</td><td>Per-agent memory R/W policies (which scopes to read, write triggers, retention rules). Operator-editable via admin UI.</td></tr>
+    <tr><td>4</td><td><code>agents/&lt;cap&gt;/&lt;agent&gt;/state/memory/&lt;tenant&gt;/&lt;scope&gt;/...</code></td><td>Runtime data</td><td>Actual stored memory contents — file-backed JSON in dev. Replaced by Postgres / AgentCore Memory in prod via adapter.</td></tr>
+  </table>
+
+  <h4><code>rag</code> — appears 5× across the repo</h4>
+  <table>
+    <tr><th>#</th><th>Path</th><th>Layer</th><th>Purpose</th></tr>
+    <tr><td>1</td><td><code>packages/platform-core/src/platform_core/rag/</code></td><td>Library</td><td>Retrieval patterns — naive, agentic, multi-hop, hyde, self-corrective. Used inside C2 to orchestrate retrieval.</td></tr>
+    <tr><td>2</td><td><code>services/platform-services/src/services/rag/</code></td><td>FastAPI sub-router (in C2)</td><td>Routing layer — receives RAG requests from agents, forwards to <code>services/rag</code> (the standalone service).</td></tr>
+    <tr><td>3</td><td><code>services/rag/</code></td><td>Standalone deployable service</td><td>The actual RAG engine — runs as its own container, exposes <code>/retrieve</code> + <code>/ingest</code>, owns the KB (Postgres + pgvector). Split out as part of Pattern A′.</td></tr>
+    <tr><td>4</td><td><code>services/rag/src/rag_engine/</code></td><td>Internal engine code (inside #3)</td><td>Vector search code, embedding generation, chunking. Used only by the rag service.</td></tr>
+    <tr><td>5</td><td><code>agents/&lt;cap&gt;/&lt;agent&gt;/overlays/&lt;type&gt;/rag.yaml</code></td><td>Config</td><td>Per-agent RAG policy — pre-graph vs planner-tool stages, top_k, similarity_threshold, strategy, pattern. Operator-editable.</td></tr>
+  </table>
+
+  <h4><code>tools</code> — appears 5× across the repo</h4>
+  <table>
+    <tr><th>#</th><th>Path</th><th>Layer</th><th>Purpose</th></tr>
+    <tr><td>1</td><td><code>packages/platform-core/src/platform_core/tools/</code></td><td>Library</td><td>Tool registry interface, MCP client adapters, allow/deny logic, validation primitives.</td></tr>
+    <tr><td>2</td><td><code>services/platform-services/src/services/tools/</code></td><td>FastAPI sub-router (in C2)</td><td>Thin tool router — receives tool-call requests, forwards to C3 tool-policy-gateway over HTTP.</td></tr>
+    <tr><td>3</td><td><code>services/tool-policy-gateway/src/tools/</code></td><td>Tool implementations (in C3)</td><td>Actual tool functions — <code>get_member</code>, <code>get_assessment_summary</code>, <code>write_case_note</code>, etc. Each registered with a schema in postgres.</td></tr>
+    <tr><td>4</td><td><code>agents/&lt;cap&gt;/&lt;agent&gt;/overlays/&lt;type&gt;/tools/tools.yaml</code></td><td>Config</td><td>Per-agent tool allow-list. Operator-editable.</td></tr>
+    <tr><td>5</td><td><code>agents/&lt;cap&gt;/&lt;agent&gt;/overlays/&lt;type&gt;/tools/&lt;tool&gt;/...</code></td><td>Per-tool overlay extras (future)</td><td>Per-tool prompts, evals, schema overrides. Convention scaffolded; not yet populated.</td></tr>
+  </table>
+
+  <h4><code>hitl</code> — appears 4× across the repo</h4>
+  <table>
+    <tr><th>#</th><th>Path</th><th>Layer</th><th>Purpose</th></tr>
+    <tr><td>1</td><td><code>packages/platform-core/src/platform_core/hitl/</code></td><td>Library</td><td>State machine, approval store interface, memory writer for HITL events. Used by both C1 and C2.</td></tr>
+    <tr><td>2</td><td>(in C1 agent runtime — endpoints + approval store)</td><td>Service endpoints (in C1)</td><td>HTTP API the human reviewer hits: <code>/hitl/decide</code>, <code>/hitl/pending</code>, <code>/hitl/history</code>, <code>/hitl/status/{id}</code>. Owns the durable approval state.</td></tr>
+    <tr><td>3</td><td><code>agents/&lt;cap&gt;/&lt;agent&gt;/overlays/&lt;type&gt;/hitl.yaml</code></td><td>Config</td><td>Per-agent HITL gating — risk levels per tool, routing rules, SLA. Operator-editable.</td></tr>
+    <tr><td>4</td><td><code>agents/&lt;cap&gt;/&lt;agent&gt;/state/hitl/...</code></td><td>Runtime data</td><td>Pending + completed approval records. Persisted across agent restarts.</td></tr>
+  </table>
+
+  <h4><code>prompt</code> — appears 4× across the repo</h4>
+  <table>
+    <tr><th>#</th><th>Path</th><th>Layer</th><th>Purpose</th></tr>
+    <tr><td>1</td><td><code>packages/platform-core/src/platform_core/prompt/</code></td><td>Library</td><td>Prompt loader, skill loader, templating utilities.</td></tr>
+    <tr><td>2</td><td><code>services/prompt-management/</code></td><td>Standalone deployable service</td><td>Prompt versioning + A/B test backend (DB-backed). Part of C4.</td></tr>
+    <tr><td>3</td><td><code>agents/&lt;cap&gt;/&lt;agent&gt;/overlays/&lt;type&gt;/prompts/prompts.yaml</code></td><td>Config (legacy YAML)</td><td>Active per-agent prompts. Operator-editable. Read by the runtime today.</td></tr>
+    <tr><td>4</td><td><code>agents/&lt;cap&gt;/&lt;agent&gt;/overlays/&lt;type&gt;/prompts/*.md</code></td><td>Config (markdown — future)</td><td>Per-role markdown prompts (planner_system.md, responder_system.md). Industry-standard format. Scaffolded; loader migration to read these is pending.</td></tr>
+  </table>
+
+  <h4><code>services</code> — appears 2× (one is misleading — pre-existing, not introduced in refactor)</h4>
+  <table>
+    <tr><th>#</th><th>Path</th><th>Layer</th><th>Purpose</th></tr>
+    <tr><td>1</td><td><code>services/</code> (top-level)</td><td>Deployable services dir</td><td>Each subfolder is a deployable runtime service with its own Dockerfile (platform-services, tool-policy-gateway, rag, prompt-management, agent-factory-*, tool-admin-ui).</td></tr>
+    <tr><td>2</td><td><code>services/platform-services/src/services/</code></td><td>FastAPI sub-routers (inside C2)</td><td>FastAPI sub-routers — memory, rag, reasoning, summarize, tools, observability, config. Naming overlap with #1 is awkward; should be renamed to <code>routers/</code>. Tracked as small cleanup.</td></tr>
+  </table>
+
+  <h3>3.2 Mental shortcut — what to look at when</h3>
+
+  <table>
+    <tr><th>Question</th><th>Where to look</th></tr>
+    <tr><td>"How does memory work in code?"</td><td><code>packages/platform-core/src/platform_core/memory/</code></td></tr>
+    <tr><td>"How is memory exposed at runtime?"</td><td><code>services/platform-services/src/services/memory/</code></td></tr>
+    <tr><td>"How is memory configured for THIS agent?"</td><td><code>agents/&lt;agent&gt;/overlays/&lt;type&gt;/memory.yaml</code></td></tr>
+    <tr><td>"What memory does this agent actually have right now?"</td><td><code>agents/&lt;agent&gt;/state/memory/...</code></td></tr>
+    <tr><td>"What does the RAG service actually do?"</td><td><code>services/rag/src/main.py</code> + <code>src/rag_engine/</code></td></tr>
+    <tr><td>"What tools can this agent call?"</td><td><code>agents/&lt;agent&gt;/overlays/&lt;type&gt;/tools/tools.yaml</code></td></tr>
+    <tr><td>"How is search_kb implemented?"</td><td><code>services/tool-policy-gateway/src/tools/search_kb.py</code></td></tr>
+    <tr><td>"What prompts is this agent using?"</td><td><code>agents/&lt;agent&gt;/overlays/&lt;type&gt;/prompts/prompts.yaml</code> (today) → <code>prompts/*.md</code> (future)</td></tr>
+    <tr><td>"Where do new agents get scaffolded from?"</td><td><code>templates/overlay-templates/overlays/&lt;type&gt;/</code></td></tr>
+  </table>
+
+  <h3>3.3 Why this is correct — industry pattern</h3>
+
+  <p>Same name across layers is the standard Python / agent-platform pattern. Examples:</p>
+  <ul>
+    <li><strong>Django</strong> — app name (e.g., <code>polls/</code>) appears in <code>polls/models.py</code>, <code>polls/views.py</code>, <code>polls/templates/polls/</code>, <code>polls/static/polls/</code> — same name nested 4× deep.</li>
+    <li><strong>Linux kernel</strong> — <code>drivers/usb/</code>, <code>fs/usb/</code>, <code>include/linux/usb.h</code>, <code>Documentation/usb/</code>.</li>
+    <li><strong>LangChain</strong> — <code>langchain/memory/</code>, <code>langchain/agents/</code>, <code>langchain/chains/</code> repeated in <code>tests/</code>, <code>examples/</code>, <code>docs/</code>.</li>
+    <li><strong>Spring (Java)</strong> — <code>service/MemoryService.java</code>, <code>repository/MemoryRepository.java</code>, <code>controller/MemoryController.java</code>.</li>
+  </ul>
+
+  <p><strong>Principle:</strong> the same domain concept appears at every layer that participates in it. The layer is encoded by the <em>folder PATH</em>, not by renaming the domain. Renaming (e.g. <code>memory_lib/</code>, <code>memory_router/</code>, <code>memory_config/</code>) would be less idiomatic and harder to navigate.</p>
+</div>
+
+<hr class="hr"/>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="section" id="templates">
+  <div class="section-num">Section 4</div>
   <h2>Template repo — sources that scaffold agent instances</h2>
 
   <p>Templates are the <strong>source material</strong>. Scaffolding composes pieces from here into a new folder under <code>agents/&lt;capability&gt;/&lt;agent-name&gt;/</code>.</p>
@@ -299,7 +404,7 @@ capability-ui-template/
 
 <!-- ═══════════════════════════════════════════════════════════════════ -->
 <div class="section" id="platform-core">
-  <div class="section-num">Section 4</div>
+  <div class="section-num">Section 5</div>
   <h2>platform-core — shared Python library</h2>
 
   <p>Installed into both C1 and C2 as <code>pip install -e platform-core</code>. The library that both containers share.</p>
@@ -362,7 +467,7 @@ platform-core/src/platform_core/
 
 <!-- ═══════════════════════════════════════════════════════════════════ -->
 <div class="section" id="sharedinfra">
-  <div class="section-num">Section 5</div>
+  <div class="section-num">Section 6</div>
   <h2>services/ — runtime services (C2, C3, RAG, control-plane backends)</h2>
 
   <pre>
@@ -466,7 +571,7 @@ industry-tool-gateway-healthcare/
 
 <!-- ═══════════════════════════════════════════════════════════════════ -->
 <div class="section" id="platform-services-prompt">
-  <div class="section-num">Section 6</div>
+  <div class="section-num">Section 7</div>
   <h2>platform-services (top-level) — Prompt Management</h2>
 
   <p>Separate microservice dedicated to prompt lifecycle. Distinct from <code>services/platform-services/</code> (C2).</p>
@@ -501,7 +606,7 @@ platform-services/
 
 <!-- ═══════════════════════════════════════════════════════════════════ -->
 <div class="section" id="platform-tools">
-  <div class="section-num">Section 7</div>
+  <div class="section-num">Section 8</div>
   <h2>platform-tools — Agent Factory UI + Support API <span class="container-tag c4">C4</span></h2>
 
   <pre>
@@ -551,7 +656,7 @@ services/
 
 <!-- ═══════════════════════════════════════════════════════════════════ -->
 <div class="section" id="capabilities">
-  <div class="section-num">Section 8</div>
+  <div class="section-num">Section 9</div>
   <h2>capabilities — capability-level UI</h2>
 
   <pre>
@@ -617,7 +722,7 @@ scopes:
 
 <!-- ═══════════════════════════════════════════════════════════════════ -->
 <div class="section" id="platform-store">
-  <div class="section-num">Section 9</div>
+  <div class="section-num">Section 10</div>
   <h2>platform-store — use-case contracts</h2>
 
   <pre>
@@ -639,7 +744,7 @@ platform-store/
 
 <!-- ═══════════════════════════════════════════════════════════════════ -->
 <div class="section" id="generated">
-  <div class="section-num">Section 10</div>
+  <div class="section-num">Section 11</div>
   <h2>Generated agent instance — pre-call-assessment</h2>
 
   <p>Concrete example of a scaffolded agent. Lives at <code>agents/care-management/pre-call-assessment/</code>.</p>
@@ -788,7 +893,7 @@ retrieval:
 
 <!-- ═══════════════════════════════════════════════════════════════════ -->
 <div class="section" id="containers">
-  <div class="section-num">Section 11</div>
+  <div class="section-num">Section 12</div>
   <h2>Container mapping — what runs where</h2>
 
   <table>
@@ -858,7 +963,7 @@ retrieval:
 
 <!-- ═══════════════════════════════════════════════════════════════════ -->
 <div class="section" id="tradeoffs">
-  <div class="section-num">Section 12</div>
+  <div class="section-num">Section 13</div>
   <h2>Architecture considerations &amp; tradeoffs</h2>
 
   <p>This section documents the design intent behind the four-container split, the production runtime options per container, and the key tradeoffs. It also calls out a terminology collision with AgentCore that can confuse readers.</p>
@@ -987,7 +1092,7 @@ retrieval:
 
 <!-- ═══════════════════════════════════════════════════════════════════ -->
 <div class="section" id="flow">
-  <div class="section-num">Section 13</div>
+  <div class="section-num">Section 14</div>
   <h2>Runtime flow — request lifecycle</h2>
 
   <h3>End-to-end request flow (chat agent)</h3>
@@ -1090,7 +1195,7 @@ retrieval:
 
 <!-- ═══════════════════════════════════════════════════════════════════ -->
 <div class="section" id="keyfiles">
-  <div class="section-num">Section 14</div>
+  <div class="section-num">Section 15</div>
   <h2>Key files reference</h2>
 
   <h3>C1 hot-path files</h3>
@@ -1165,7 +1270,7 @@ retrieval:
 
 <!-- ═══════════════════════════════════════════════════════════════════ -->
 <div class="section" id="scaffolding">
-  <div class="section-num">Section 15</div>
+  <div class="section-num">Section 16</div>
   <h2>How templates generate an instance</h2>
 
   <p>When an operator / developer creates a new agent via Agent Factory UI (or the Support API), the scaffolding process composes files from template sources into <code>agents/&lt;capability&gt;/&lt;agent-name&gt;/</code>.</p>
@@ -1224,7 +1329,7 @@ templates/agent-ui-template/summary_agent/           → agents/care-management/
 
 <!-- ═══════════════════════════════════════════════════════════════════ -->
 <div class="section" id="supporting">
-  <div class="section-num">Section 16</div>
+  <div class="section-num">Section 17</div>
   <h2>Supporting infra — scripts, docker-compose, CI/CD stubs</h2>
 
   <h3>Scripts (in a generated agent instance)</h3>
@@ -1264,7 +1369,7 @@ templates/agent-ui-template/summary_agent/           → agents/care-management/
 
 <!-- ═══════════════════════════════════════════════════════════════════ -->
 <div class="section" id="gaps">
-  <div class="section-num">Section 17</div>
+  <div class="section-num">Section 18</div>
   <h2>Known gaps and current-state notes</h2>
 
   <h3>What works today</h3>
