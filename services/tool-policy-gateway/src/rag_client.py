@@ -21,10 +21,15 @@ def retrieve(
     query: str,
     top_k: int | None = None,
     threshold: float | None = None,
-    strategy: str = "semantic",
+    strategy: str | None = "semantic",
 ) -> list[dict[str, Any]]:
-    """Call POST /retrieve on the RAG service. Returns list of result dicts."""
-    payload: dict[str, Any] = {"query": query, "strategy": strategy}
+    """Call POST /retrieve on the RAG service. Returns list of result dicts.
+
+    ``strategy=None`` is treated as ``semantic`` (the service-side default) so
+    callers passing pydantic-validated configs with optional fields don't trip
+    422 validation errors.
+    """
+    payload: dict[str, Any] = {"query": query, "strategy": strategy or "semantic"}
     if top_k is not None:
         payload["top_k"] = top_k
     if threshold is not None:

@@ -12,7 +12,7 @@ RUN poetry config virtualenvs.create false \
 COPY src/ /app/src
 COPY config/ /app/config
 COPY data/ /app/data
-COPY bootstrap_kb.py /app/bootstrap_kb.py
+# bootstrap_kb.py moved to services/rag/ in Pattern A′ refactor — KB owned by rag service.
 COPY bootstrap_structured.py /app/bootstrap_structured.py
 
 # FastAPI default
