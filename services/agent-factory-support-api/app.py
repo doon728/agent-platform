@@ -1623,16 +1623,114 @@ def get_registry_app_by_capability(capability_name: str):
 # =========================================================
 # AGENT CONFIG READ / WRITE
 # =========================================================
+#
+# After Phase 7-real refactor (Apr 2026), overlay config is decomposed:
+#   <overlay>/overlay.yaml         (was agent_manifest.yaml)
+#   <overlay>/reasoning.yaml       (was agent.yaml reasoning block)
+#   <overlay>/rag.yaml             (was agent.yaml retrieval block)
+#   <overlay>/hitl.yaml            (was agent.yaml hitl + risk blocks)
+#   <overlay>/memory.yaml          (was config/memory.yaml)
+#   <overlay>/tools/tools.yaml     (was agent.yaml tools block)
+#   <overlay>/prompts/prompts.yaml (was config/prompt-defaults.yaml)
+#
+# Helpers below read from new locations with fallback to legacy. Endpoints continue
+# to expose the same response shape (sections: agent / memory / prompts) so the UI
+# doesn't need to change — synthetic 'agent' is rebuilt from the per-concern files.
 
-def _get_agent_config_dir(capability_name: str, usecase_name: str, agent_type: str, agent_repo_name: str) -> Path:
+def _get_agent_overlay_dir(capability_name: str, usecase_name: str, agent_type: str, agent_repo_name: str) -> Path:
     return (
         AGENTS_ROOT
         / capability_name
         / agent_repo_name
         / "overlays"
         / agent_type
-        / "config"
     )
+
+
+def _get_agent_config_dir(capability_name: str, usecase_name: str, agent_type: str, agent_repo_name: str) -> Path:
+    """Legacy helper — kept for Config Lab compatibility. Returns overlay/config/ path."""
+    return _get_agent_overlay_dir(capability_name, usecase_name, agent_type, agent_repo_name) / "config"
+
+
+def _read_yaml(path: Path) -> dict:
+    if not path.exists():
+        return {}
+    try:
+        return yaml.safe_load(path.read_text()) or {}
+    except yaml.YAMLError:
+        return {}
+
+
+def _read_overlay_config(overlay_dir: Path) -> dict:
+    """Read the new decomposed overlay structure into the same shape the UI expects.
+
+    Returns dict with keys:
+        agent    — synthesized merged config (reasoning + tools + retrieval + hitl + risk + features)
+        memory   — memory.yaml contents
+        prompts  — prompts.yaml contents
+        manifest — overlay.yaml contents
+        rag      — rag.yaml contents (raw, for new UI views)
+        hitl     — hitl.yaml contents (raw)
+        tools    — tools/tools.yaml contents (raw)
+        reasoning — reasoning.yaml contents (raw)
+
+    Falls back to legacy locations (config/agent.yaml etc.) if the new files are absent.
+    """
+    new_overlay = _read_yaml(overlay_dir / "overlay.yaml")
+    new_reasoning = _read_yaml(overlay_dir / "reasoning.yaml")
+    new_rag = _read_yaml(overlay_dir / "rag.yaml")
+    new_hitl = _read_yaml(overlay_dir / "hitl.yaml")
+    new_memory = _read_yaml(overlay_dir / "memory.yaml")
+    new_tools = _read_yaml(overlay_dir / "tools" / "tools.yaml")
+    new_prompts = _read_yaml(overlay_dir / "prompts" / "prompts.yaml")
+
+    using_new = bool(new_overlay)
+
+    legacy_agent = _read_yaml(overlay_dir / "config" / "agent.yaml")
+    legacy_memory = _read_yaml(overlay_dir / "config" / "memory.yaml")
+    legacy_prompts = _read_yaml(overlay_dir / "config" / "prompt-defaults.yaml")
+    legacy_manifest = _read_yaml(overlay_dir / "agent_manifest.yaml")
+
+    if using_new:
+        # Synthesize the legacy 'agent.yaml' shape for UI components that still expect it.
+        agent_block: dict = {
+            "agent": {
+                "type": new_overlay.get("agent_role") or new_overlay.get("agent_type"),
+                "planner_mode": new_overlay.get("planner_mode"),
+            },
+            "reasoning": new_reasoning or {"strategy": "simple"},
+            "tools": new_tools or {},
+            "retrieval": new_rag or {},
+            "risk": {"risk_levels": (new_hitl or {}).get("risk_levels", {})},
+            "hitl": {
+                "adapter": (new_hitl or {}).get("adapter"),
+                "routing_rules": (new_hitl or {}).get("routing_rules", []),
+                "sla": (new_hitl or {}).get("sla", {}),
+            },
+            "features": new_overlay.get("features") or {},
+        }
+        return {
+            "agent": agent_block,
+            "memory": new_memory,
+            "prompts": new_prompts,
+            "manifest": new_overlay,
+            "rag": new_rag,
+            "hitl": new_hitl,
+            "tools": new_tools,
+            "reasoning": new_reasoning,
+        }
+
+    # Legacy fallback shape
+    return {
+        "agent": legacy_agent,
+        "memory": legacy_memory,
+        "prompts": legacy_prompts,
+        "manifest": legacy_manifest,
+        "rag": (legacy_agent.get("retrieval") or {}),
+        "hitl": (legacy_agent.get("hitl") or {}),
+        "tools": (legacy_agent.get("tools") or {}),
+        "reasoning": (legacy_agent.get("reasoning") or {}),
+    }
 
 
 def _deep_merge(base: dict, override: dict):
@@ -1651,25 +1749,13 @@ def get_agent_config(capability_name: str, usecase_name: str, agent_type: str):
         return {"ok": False, "error": "Agent not found in registry"}
 
     agent_repo_name = agent_record.get("agent_repo_name", "")
-    config_dir = _get_agent_config_dir(capability_name, usecase_name, agent_type, agent_repo_name)
+    overlay_dir = _get_agent_overlay_dir(capability_name, usecase_name, agent_type, agent_repo_name)
 
-    result = {}
-    file_keys = {
-        "agent.yaml": "agent",
-        "memory.yaml": "memory",
-        "prompt-defaults.yaml": "prompts",
-    }
-    for filename, key in file_keys.items():
-        filepath = config_dir / filename
-        result[key] = yaml.safe_load(filepath.read_text()) or {} if filepath.exists() else {}
+    result = _read_overlay_config(overlay_dir)
 
     # domain.yaml lives at agent root (capability-level, copied at scaffold)
     domain_path = AGENTS_ROOT / capability_name / agent_repo_name / "domain.yaml"
-    result["domain"] = yaml.safe_load(domain_path.read_text()) or {} if domain_path.exists() else {}
-
-    # agent_manifest.yaml lives at overlay root
-    manifest_path = AGENTS_ROOT / capability_name / agent_repo_name / "overlays" / agent_type / "agent_manifest.yaml"
-    result["manifest"] = yaml.safe_load(manifest_path.read_text()) or {} if manifest_path.exists() else {}
+    result["domain"] = _read_yaml(domain_path)
 
     return {
         "ok": True,
@@ -1678,7 +1764,7 @@ def get_agent_config(capability_name: str, usecase_name: str, agent_type: str):
         "agent_type": agent_type,
         "agent_repo_name": agent_repo_name,
         "config": result,
-        "config_dir": str(config_dir),
+        "config_dir": str(overlay_dir),
     }
 
 
@@ -1690,6 +1776,17 @@ class PatchAgentConfigRequest(BaseModel):
     changes: dict
 
 
+def _read_overlay_manifest(overlay_dir: Path) -> dict:
+    """Read overlay.yaml (new) or fall back to agent_manifest.yaml (legacy)."""
+    new_path = overlay_dir / "overlay.yaml"
+    if new_path.exists():
+        return yaml.safe_load(new_path.read_text()) or {}
+    legacy_path = overlay_dir / "agent_manifest.yaml"
+    if legacy_path.exists():
+        return yaml.safe_load(legacy_path.read_text()) or {}
+    return {}
+
+
 @app.get("/registry/agent-manifest")
 def get_agent_manifest(capability_name: str, usecase_name: str, agent_type: str):
     agents = list_agents(capability_name, usecase_name)
@@ -1698,29 +1795,23 @@ def get_agent_manifest(capability_name: str, usecase_name: str, agent_type: str)
         return {"ok": False, "error": "Agent not found in registry"}
 
     agent_repo_name = agent_record.get("agent_repo_name", "")
-    manifest_path = (
-        AGENTS_ROOT
-        / capability_name
-        / agent_repo_name
-        / "overlays"
-        / agent_type
-        / "agent_manifest.yaml"
+    overlay_dir = (
+        AGENTS_ROOT / capability_name / agent_repo_name / "overlays" / agent_type
     )
+    manifest = _read_overlay_manifest(overlay_dir)
+    if not manifest:
+        return {"ok": False, "error": f"Manifest (overlay.yaml or agent_manifest.yaml) not found in {overlay_dir}"}
 
-    if not manifest_path.exists():
-        return {"ok": False, "error": f"Manifest not found: {manifest_path}"}
-
-    manifest = yaml.safe_load(manifest_path.read_text()) or {}
     return {"ok": True, "manifest": manifest}
 
 
 @app.get("/registry/template-manifest")
 def get_template_manifest(agent_type: str):
-    """Read agent_manifest.yaml from the template overlay (before any repo is created)."""
-    manifest_path = AGENT_TEMPLATE_ROOT / "overlays" / agent_type / "agent_manifest.yaml"
-    if not manifest_path.exists():
+    """Read overlay.yaml (new) or agent_manifest.yaml (legacy) from the template overlay."""
+    overlay_dir = AGENT_TEMPLATE_ROOT / "overlays" / agent_type
+    manifest = _read_overlay_manifest(overlay_dir)
+    if not manifest:
         return {"ok": False, "error": f"No template manifest for agent_type '{agent_type}'"}
-    manifest = yaml.safe_load(manifest_path.read_text()) or {}
     return {"ok": True, "manifest": manifest}
 
 
@@ -1732,28 +1823,101 @@ def patch_agent_config(payload: PatchAgentConfigRequest):
         return {"ok": False, "error": "Agent not found in registry"}
 
     agent_repo_name = agent_record.get("agent_repo_name", "")
-    config_dir = _get_agent_config_dir(
+    overlay_dir = _get_agent_overlay_dir(
         payload.capability_name, payload.usecase_name, payload.agent_type, agent_repo_name
     )
+    config_dir = overlay_dir / "config"  # legacy fallback
 
-    file_map = {"agent": "agent.yaml", "memory": "memory.yaml", "prompts": "prompt-defaults.yaml"}
-    filename = file_map.get(payload.section)
-    if not filename:
-        return {"ok": False, "error": f"Unknown section '{payload.section}'. Must be one of: {list(file_map.keys())}"}
+    # Map UI section name → list of (filename relative to overlay_dir, key-extractor)
+    # Each section may write to ONE or MULTIPLE files in the new layout.
+    # When writing 'agent', we route per-key into the right per-concern file.
+    use_new = (overlay_dir / "overlay.yaml").exists()
 
-    filepath = config_dir / filename
-    if not filepath.exists():
-        return {"ok": False, "error": f"Config file not found: {filepath}"}
+    written_files: list[Path] = []
 
-    existing = yaml.safe_load(filepath.read_text()) or {}
-    _deep_merge(existing, payload.changes)
-    filepath.write_text(yaml.safe_dump(existing, sort_keys=False))
+    if not use_new:
+        # Legacy path — same behavior as before
+        legacy_map = {"agent": "agent.yaml", "memory": "memory.yaml", "prompts": "prompt-defaults.yaml"}
+        filename = legacy_map.get(payload.section)
+        if not filename:
+            return {"ok": False, "error": f"Unknown section '{payload.section}'. Must be one of: {list(legacy_map.keys())}"}
+        filepath = config_dir / filename
+        if not filepath.exists():
+            return {"ok": False, "error": f"Config file not found: {filepath}"}
+        existing = yaml.safe_load(filepath.read_text()) or {}
+        _deep_merge(existing, payload.changes)
+        filepath.write_text(yaml.safe_dump(existing, sort_keys=False))
+        written_files.append(filepath)
+        return {
+            "ok": True,
+            "section": payload.section,
+            "files": [str(p) for p in written_files],
+            "config_dir": str(config_dir),
+        }
+
+    # NEW layout — route by section name (or by keys for legacy 'agent' section)
+    def _write_yaml(rel_path: str, changes: dict):
+        path = overlay_dir / rel_path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        existing = _read_yaml(path)
+        _deep_merge(existing, changes)
+        path.write_text(yaml.safe_dump(existing, sort_keys=False))
+        written_files.append(path)
+
+    section = payload.section
+    changes = payload.changes or {}
+
+    if section == "memory":
+        _write_yaml("memory.yaml", changes)
+    elif section == "prompts":
+        _write_yaml("prompts/prompts.yaml", changes)
+    elif section == "rag":
+        _write_yaml("rag.yaml", changes)
+    elif section == "hitl":
+        _write_yaml("hitl.yaml", changes)
+    elif section == "tools":
+        _write_yaml("tools/tools.yaml", changes)
+    elif section == "reasoning":
+        _write_yaml("reasoning.yaml", changes)
+    elif section == "overlay":
+        _write_yaml("overlay.yaml", changes)
+    elif section == "agent":
+        # Legacy section — split into per-concern files based on which keys are present.
+        # The UI may still send {reasoning: ..., tools: ..., retrieval: ..., hitl: ..., risk: ..., features: ...}.
+        if "reasoning" in changes:
+            _write_yaml("reasoning.yaml", changes["reasoning"])
+        if "tools" in changes:
+            _write_yaml("tools/tools.yaml", changes["tools"])
+        if "retrieval" in changes:
+            _write_yaml("rag.yaml", changes["retrieval"])
+        if "hitl" in changes or "risk" in changes:
+            hitl_changes = dict(changes.get("hitl") or {})
+            if "risk" in changes and changes["risk"].get("risk_levels"):
+                hitl_changes["risk_levels"] = changes["risk"]["risk_levels"]
+            if hitl_changes:
+                _write_yaml("hitl.yaml", hitl_changes)
+        if "features" in changes or "agent" in changes:
+            overlay_changes: dict = {}
+            if "features" in changes:
+                overlay_changes["features"] = changes["features"]
+            if "agent" in changes:
+                a = changes["agent"]
+                if a.get("type"):
+                    overlay_changes["agent_role"] = a["type"]
+                if a.get("planner_mode"):
+                    overlay_changes["planner_mode"] = a["planner_mode"]
+            if overlay_changes:
+                _write_yaml("overlay.yaml", overlay_changes)
+        if not written_files:
+            return {"ok": False, "error": f"section='agent' with no recognized keys; payload.changes={list(changes.keys())}"}
+    else:
+        return {"ok": False, "error": f"Unknown section '{section}'. Must be one of: agent, memory, prompts, rag, hitl, tools, reasoning, overlay"}
 
     return {
         "ok": True,
         "section": payload.section,
-        "file": filename,
-        "config_dir": str(config_dir),
+        "files": [str(p) for p in written_files],
+        "overlay_dir": str(overlay_dir),
     }
 
 
@@ -1830,27 +1994,52 @@ def filesystem_agents(capability_name: str):
 # CONFIG LAB — read/write overlay YAML files for the test harness
 # ================================================================
 
-_ALLOWED_CONFIG_FILES = {"agent.yaml", "prompt-defaults.yaml", "memory.yaml"}
+# File path → relative path under the overlay dir. Both legacy and new layouts supported.
+_ALLOWED_CONFIG_FILES = {
+    # New decomposed layout (Apr 2026 refactor)
+    "overlay.yaml":         "overlay.yaml",
+    "reasoning.yaml":       "reasoning.yaml",
+    "rag.yaml":             "rag.yaml",
+    "hitl.yaml":            "hitl.yaml",
+    "memory.yaml":          "memory.yaml",
+    "tools/tools.yaml":     "tools/tools.yaml",
+    "prompts/prompts.yaml": "prompts/prompts.yaml",
+    # Legacy aliases (still resolve to the new locations when filename is sent without subdir)
+    "tools.yaml":           "tools/tools.yaml",
+    "prompts.yaml":         "prompts/prompts.yaml",
+    # Legacy layout (kept so old workflows still function during transition)
+    "agent.yaml":           "config/agent.yaml",
+    "prompt-defaults.yaml": "config/prompt-defaults.yaml",
+    "agent_manifest.yaml":  "agent_manifest.yaml",
+}
 
 
 class WriteConfigFileRequest(BaseModel):
     capability_name: str
     usecase_name: str
     agent_type: str
-    filename: str   # agent.yaml | prompt-defaults.yaml | memory.yaml
+    filename: str   # one of the keys in _ALLOWED_CONFIG_FILES (relative path under overlay)
     content: str    # raw YAML text
+
+
+def _resolve_overlay_filepath(capability_name: str, usecase_name: str, agent_type: str, agent_record: dict, filename: str) -> Path:
+    if filename not in _ALLOWED_CONFIG_FILES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"filename must be one of {sorted(_ALLOWED_CONFIG_FILES.keys())}",
+        )
+    overlay_dir = _get_agent_overlay_dir(capability_name, usecase_name, agent_type, agent_record["agent_repo_name"])
+    rel_path = _ALLOWED_CONFIG_FILES[filename]
+    return overlay_dir / rel_path
 
 
 @app.get("/config-lab/file")
 def config_lab_read_file(capability_name: str, usecase_name: str, agent_type: str, filename: str):
-    if filename not in _ALLOWED_CONFIG_FILES:
-        raise HTTPException(status_code=400, detail=f"filename must be one of {_ALLOWED_CONFIG_FILES}")
     agents = list_agents(capability_name, usecase_name)
     agent_record = next((a for a in agents if a.get("agent_type") == agent_type), None)
     if not agent_record:
         raise HTTPException(status_code=404, detail="Agent not found")
-    config_dir = _get_agent_config_dir(capability_name, usecase_name, agent_type, agent_record["agent_repo_name"])
-    filepath = config_dir / filename
+    filepath = _resolve_overlay_filepath(capability_name, usecase_name, agent_type, agent_record, filename)
     if not filepath.exists():
         raise HTTPException(status_code=404, detail=f"{filename} not found at {filepath}")
     return {"ok": True, "filename": filename, "content": filepath.read_text()}
@@ -1858,8 +2047,6 @@ def config_lab_read_file(capability_name: str, usecase_name: str, agent_type: st
 
 @app.post("/config-lab/file")
 def config_lab_write_file(payload: WriteConfigFileRequest):
-    if payload.filename not in _ALLOWED_CONFIG_FILES:
-        raise HTTPException(status_code=400, detail=f"filename must be one of {_ALLOWED_CONFIG_FILES}")
     # Validate YAML before writing
     try:
         yaml.safe_load(payload.content)
@@ -1869,11 +2056,10 @@ def config_lab_write_file(payload: WriteConfigFileRequest):
     agent_record = next((a for a in agents if a.get("agent_type") == payload.agent_type), None)
     if not agent_record:
         raise HTTPException(status_code=404, detail="Agent not found")
-    config_dir = _get_agent_config_dir(
-        payload.capability_name, payload.usecase_name,
-        payload.agent_type, agent_record["agent_repo_name"]
+    filepath = _resolve_overlay_filepath(
+        payload.capability_name, payload.usecase_name, payload.agent_type, agent_record, payload.filename
     )
-    filepath = config_dir / payload.filename
+    filepath.parent.mkdir(parents=True, exist_ok=True)
     filepath.write_text(payload.content)
 
     # Restart platform-services so new config is picked up
