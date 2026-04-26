@@ -66,6 +66,9 @@ class GetMemberOutput(BaseModel):
 
 
 class WriteCaseNoteInput(BaseModel):
+    # NOTE: parameter is named `case_id` for legacy reasons but functionally MUST be an
+    # assessment_id (notes are linked to assessments in the schema, not directly to cases).
+    # Pre-existing naming wart; renaming would break the tool contract for callers.
     case_id: str
     note: str
 
@@ -73,6 +76,7 @@ class WriteCaseNoteInput(BaseModel):
 class WriteCaseNoteOutput(BaseModel):
     written: bool
     note_id: str | None
+    error: str | None = None
 
 
 # -----------------------
@@ -184,40 +188,67 @@ def get_member_handler(inp: GetMemberInput) -> GetMemberOutput:
 
 
 def write_case_note_handler(inp: WriteCaseNoteInput) -> WriteCaseNoteOutput:
-    case_id = (inp.case_id or "").strip()
+    # NOTE: inp.case_id MUST be an assessment_id — see WriteCaseNoteInput docstring.
+    assessment_id = (inp.case_id or "").strip()
     note = (inp.note or "").strip()
 
-    if not case_id or not note:
-        return WriteCaseNoteOutput(written=False, note_id=None)
+    # Explicit validation — fail loudly rather than silently returning written=False.
+    if not assessment_id:
+        return WriteCaseNoteOutput(
+            written=False,
+            note_id=None,
+            error="assessment_id is required (sent as 'case_id' field). "
+                  "Notes are scoped to assessments — agents at member-only or case-only "
+                  "scope cannot write notes; pick a specific assessment first.",
+        )
+    if not note:
+        return WriteCaseNoteOutput(
+            written=False,
+            note_id=None,
+            error="note text is required and cannot be empty.",
+        )
 
-    member_id = store().get_assessment_member_id(case_id)
+    member_id = store().get_assessment_member_id(assessment_id)
+    if not member_id:
+        return WriteCaseNoteOutput(
+            written=False,
+            note_id=None,
+            error=f"assessment_id '{assessment_id}' does not exist or is not linked to a member. "
+                  "Refusing to write a dangling note.",
+        )
 
     from src.data.pg_store import _conn
     from datetime import datetime, timezone
 
     note_id = f"note-{int(datetime.now(timezone.utc).timestamp())}"
-
     created_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    with _conn() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                INSERT INTO case_notes
-                (note_id, member_id, assessment_id, author, created_at, note_text)
-                VALUES (%s, %s, %s, %s, %s, %s)
-                """,
-                (
-                    note_id,
-                    member_id,
-                    case_id,
-                    "nurse-001",
-                    created_at,
-                    note,
-                ),
-            )
+    try:
+        with _conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO case_notes
+                    (note_id, member_id, assessment_id, author, created_at, note_text)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    """,
+                    (
+                        note_id,
+                        member_id,
+                        assessment_id,
+                        "nurse-001",
+                        created_at,
+                        note,
+                    ),
+                )
+    except Exception as e:
+        return WriteCaseNoteOutput(
+            written=False,
+            note_id=None,
+            error=f"db insert failed: {type(e).__name__}: {e}",
+        )
 
-    return WriteCaseNoteOutput(written=True, note_id=note_id)
+    return WriteCaseNoteOutput(written=True, note_id=note_id, error=None)
 
 
 class GetCaseSummaryInput(BaseModel):
