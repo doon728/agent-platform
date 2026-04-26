@@ -110,6 +110,25 @@ C2 ──MCP──▶ AgentCore Tool Gateway ──▶ Tool implementation (Lamb
 ### A9. Agent embed-inside-customer-workflow posture
 🔲 **Positioning artifact.** Document explicitly that AEA agents are **embedded inside the customer's existing workflow engine** (Camunda, Pega, Step Functions, ServiceNow) as intelligent steps — not standalone workflow replacements. Add as callout in proposal + prototype-current-state.html.
 
+### A17. Tenant + thread resolution from ctx not honored
+🔲 **Bug surfaced during functional testing.** When a request includes `tenant_id` and `thread_id` in the ctx body, those values are ignored — memory writes always go to `default-tenant/default-thread`. As a result, multi-turn memory continuity for any non-default tenant is broken (turn 1 writes to default-thread, turn 2 reads from default-thread but doesn't get prior content because the read scoping doesn't match).
+
+**Reproduction:**
+1. POST /invocations with `{"prompt":"remember name X","ctx":{"tenant_id":"abc","thread_id":"t1",...}}`.
+2. Turn 1 writes to `state/memory/default-tenant/conversation/default-thread.json` (NOT abc/t1).
+3. Turn 2 with same tenant/thread fails to recall name.
+
+**Root cause to investigate:**
+- `LangGraphRunner.run()` in `agents/.../services/agent-runtime/src/platform/langgraph_runner.py` does `tenant_id = ctx.get("tenant_id") or "default-tenant"` — should work.
+- Likely something downstream (auth interceptor, build_context, memory_writer) is overriding tenant_id from the auth/session context.
+- Probably the multi-tenancy layer is enforcing tenant_id derived from auth token (or AUTH_MODE=OPTIONAL default), not request body.
+
+**Pre-existing — not a refactor regression.** Same behavior would have existed before the refactor; refactor didn't touch this path.
+
+**Effort:** ~1 day to trace the override + decide policy (auth-derived vs body-derived vs whichever wins).
+
+---
+
 ### A16. Skills — wire into runtime + shared library + versioning/eval
 🔲 **Today: scaffold only.** `SkillLoader` library exists in `packages/platform-core/src/platform_core/prompt/skill_loader.py` (with 7 unit tests). Sample skill exists at `templates/overlay-templates/overlays/chat_agent_simple/skills/escalate_to_human.md` and mirrored to running agent. **Skills are NOT loaded into prompts at runtime — folder exists, code exists, no consumer.**
 
