@@ -110,6 +110,38 @@ C2 ──MCP──▶ AgentCore Tool Gateway ──▶ Tool implementation (Lamb
 ### A9. Agent embed-inside-customer-workflow posture
 🔲 **Positioning artifact.** Document explicitly that AEA agents are **embedded inside the customer's existing workflow engine** (Camunda, Pega, Step Functions, ServiceNow) as intelligent steps — not standalone workflow replacements. Add as callout in proposal + prototype-current-state.html.
 
+### A14. Merge C3 + C4 into a unified Control Plane service
+🔲 **Architectural simplification.** In Pattern A′, C3 (tool-policy-gateway) is no longer in the agent request path — AgentCore Tool Gateway handles MCP serving. C3 becomes a backend + admin UI for policies + audit, structurally identical to C4 (agent factory backend + UI).
+
+**Current shape (after refactor):**
+| | C3 | C4 |
+|---|---|---|
+| Backend | tool-policy-gateway (FastAPI) | agent-factory-support-api (FastAPI) |
+| UI | tool-admin-ui (React) | agent-factory-ui (React) |
+| Scope | tools, policies, audit | agents, templates, prompts |
+
+**Proposed merged shape — single Control Plane:**
+```
+control-plane/
+├── backend (one FastAPI app)
+│   ├── /agents/*        ← agent factory
+│   ├── /prompts/*       ← prompt mgmt
+│   ├── /policies/*      ← Cedar compiler + push
+│   ├── /audit/*         ← audit consumer + dashboards
+│   └── /domain-packs/*  ← curation
+└── ui (one React app, multi-tab)
+```
+
+**Tradeoffs:**
+- **Merged:** simpler deployment + ops, one auth boundary, cleaner mental model. Single team owns governance end-to-end.
+- **Separate:** independent scaling per concern, separate teams could own. But scaling concerns are minimal for admin services.
+
+**Recommendation:** merge after AgentCore Tool Gateway integration ships (A1) — at that point C3 has no runtime responsibility, and the separation cost outweighs the benefit.
+
+**Effort:** ~1 week — combine FastAPI apps, add tabs to one React UI, update IaC.
+
+---
+
 ### A13. Test coverage uplift — fill the gap
 🔲 **Critical — current test coverage is very thin.** Today only the SkillLoader (7 cases, added in refactor) has unit tests. Most platform-core modules + services have no tests. Production-ready requires meaningful coverage.
 
