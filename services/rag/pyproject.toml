@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "aea-rag-service"
+version = "0.1.0"
+description = "RAG service — vector retrieval over indexed knowledge bases. Called by tools (e.g., search_kb) over HTTP."
+authors = ["AEA Platform Team"]
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "^0.129.0"
+uvicorn = { extras = ["standard"], version = "^0.30.0" }
+pydantic = "^2.0"
+psycopg = { extras = ["binary"], version = "^3.2.0" }
+openai = "^1.0.0"
+pgvector = "^0.3.0"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

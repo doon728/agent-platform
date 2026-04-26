@@ -421,7 +421,8 @@ def kb_stats():
 
 @app.post("/kb/ingest")
 async def ingest_document(file: UploadFile = File(...)):
-    from src.rag.ingest import split_text, upsert_chunk
+    """Accept a document upload, extract text, forward to the RAG service for indexing."""
+    from src.rag_client import RagServiceError, ingest_document as rag_ingest
     import os
 
     filename = file.filename or "uploaded_doc"
@@ -438,18 +439,18 @@ async def ingest_document(file: UploadFile = File(...)):
     else:
         text = raw.decode("utf-8", errors="replace")
 
-    doc_id = os.path.splitext(filename)[0]
-    title = doc_id.replace("_", " ").replace("-", " ").title()
-    chunks = split_text(text)
-
-    if not chunks:
+    if not text.strip():
         return {"ok": False, "error": "No text content found in file"}
 
-    for i, chunk in enumerate(chunks):
-        row_id = f"{doc_id}::chunk::{i}"
-        upsert_chunk(row_id, doc_id, title, chunk, i)
+    doc_id = os.path.splitext(filename)[0]
+    title = doc_id.replace("_", " ").replace("-", " ").title()
 
-    return {"ok": True, "doc_id": doc_id, "title": title, "chunks_ingested": len(chunks)}
+    try:
+        chunks_ingested = rag_ingest(doc_id=doc_id, title=title, content=text)
+    except RagServiceError as e:
+        return {"ok": False, "error": str(e)}
+
+    return {"ok": True, "doc_id": doc_id, "title": title, "chunks_ingested": chunks_ingested}
 
 
 @app.delete("/kb/documents/{doc_id}")

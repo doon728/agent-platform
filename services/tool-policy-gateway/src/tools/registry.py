@@ -4,7 +4,7 @@ from typing import Callable, Dict, Type, Any, Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 from src.data.pg_store import store
-from src.rag.retriever import retrieve
+from src.rag_client import RagServiceError, retrieve
 
 import os
 import json
@@ -142,7 +142,11 @@ def search_kb_handler(inp: SearchKBInput) -> SearchKBOutput:
     if not q:
         return SearchKBOutput(results=[])
 
-    results = retrieve(q, top_k=inp.top_k, threshold=inp.threshold, strategy=inp.strategy)
+    try:
+        results = retrieve(q, top_k=inp.top_k, threshold=inp.threshold, strategy=inp.strategy)
+    except RagServiceError:
+        # Surface empty result rather than crashing — caller can decide to retry or escalate.
+        return SearchKBOutput(results=[])
 
     return SearchKBOutput(
         results=[

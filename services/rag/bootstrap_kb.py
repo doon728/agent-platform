@@ -1,12 +1,29 @@
+"""Bootstrap script for the RAG knowledge base.
+
+Creates the kb_documents table (with pgvector extension) and ingests
+seed documents from KB_SOURCE_DIR. Run once at deploy time or whenever
+the KB needs to be reset.
+
+Lives in services/rag/ because the RAG service owns the KB schema and
+content (Pattern A′ — gateway no longer touches kb_documents directly).
+"""
+
+import sys
 from pathlib import Path
+
 from dotenv import load_dotenv
 
 env_path = Path(__file__).resolve().parent / ".env"
 load_dotenv(env_path, override=True)
 
+# Make rag_engine importable when running this script directly.
+sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
+
 import os
+
 import psycopg
-from src.rag.ingest import ingest_folder
+
+from rag_engine.ingest import ingest_folder
 
 DB_HOST = os.getenv("KB_PG_HOST", "localhost")
 DB_PORT = int(os.getenv("KB_PG_PORT", "5432"))
