@@ -219,70 +219,187 @@ Healthcare payer ICP = Phase 1 is required.
 🔲 **Positioning artifact.** Document explicitly that AEA agents are **embedded inside the customer's existing workflow engine** (Camunda, Pega, Step Functions, ServiceNow) as intelligent steps — not standalone workflow replacements. Add as callout in proposal + prototype-current-state.html.
 
 ### A18. Prior Authorization (PA) Suite — flagship use case
-🔲 **Flagship multi-agent use case for healthcare payer ICP.** Builds AEA's answer to Microsoft Azure AI Foundry's PA template (Apr 2026). Differentiator: AEA agents embed *inside* the customer's existing PA workflow engine (Pega / Facets / TriZetto / IBM BPM), not as a replacement.
+🔲 **Flagship multi-agent use case for healthcare payer ICP.** AEA's answer to Microsoft Azure AI Foundry's PA template (Apr 2026). Differentiator: AEA agents target the **10–20% PA fall-out slice** (cases that escape rules-based STP) and ship as a **single Pega-step integration** that returns the verdict + assigned-nurse routing in one call.
 
-**Architecture (embedded model — A9 posture):**
+**Today's reality (without AI):** ~80–90% of PA requests auto-approve via deterministic rules in the BPM (Pega/Facets) — straight-through processing, sub-second, no human. The remaining **10–20% fall out to manual nurse/MD review** — that's where 5–14 day delays, $35B annual cost, inconsistent decisions, and CMS-0057-F regulatory risk live. PA Suite agents target this slice.
+
+**Architecture — Shape B (one Pega step → one AEA call → one final response):**
 ```
-Customer's BPM (Pega / Facets / IBM BPM / Camunda)
-   owns: PA intake, phase orchestration, audit, output, integrations
-   │
-   ├── step calls ─▶ AEA Compliance Agent  (rules check)
-   ├── step calls ─▶ AEA Clinical Agent    (clinical assessment)
-   ├── step calls ─▶ AEA Coverage Agent    (benefits + coverage)
-   ├── step calls ─▶ AEA Synthesis Agent   (final recommendation synthesis)
-   └── HITL via AEA hitl.adapter:pega → routes to BPM's approval queue
+Pega step → POST /agents/pa-review (one call, all logic inside AEA)
+              ↓
+              AEA workflow_agent (deterministic, asyncio):
+                ├── Compliance + Clinical (parallel via asyncio.gather)
+                ├── Coverage (sequential, uses Clinical output)
+                ├── Synthesis → APPROVE / PEND verdict + 3-gate rubric
+                └── If PEND → Routing Specialist → assigned_nurse_id
+              ↓
+              return {decision, confidence, rationale, evidence,
+                      assigned_nurse_id, routing_reason, audit_pdf_url}
+              ↓
+Pega: takes single response, assigns to nurse, owns case lifecycle
 ```
 
-**What AEA owns:**
-- 4 specialist agent overlays (Compliance, Clinical, Coverage, Synthesis) — `chat_agent_react` template + per-agent prompts/tools/RAG
-- 5 healthcare MCP tools (NPI Registry, ICD-10 codes, CMS Coverage, Clinical Trials, PubMed) — wrapped behind tool-policy-gateway PDP
-- HITL adapter for customer's BPM (one concrete adapter, e.g. `hitl.adapter: pega`)
+This is **Shape B**, not Shape A (Pega-makes-4-separate-calls). Top-25 payer BPMs prefer one external call per intelligent step — minimizes BPM state management, fewer failure modes, cleaner contract.
+
+**Two orchestration shapes considered, Shape B chosen:**
+
+| Shape | Description | Chosen? |
+|---|---|---|
+| **A — Pega makes 4 separate calls** | Pega calls compliance, clinical, coverage, synthesis as 4 independent steps. AEA needs no orchestration. | ❌ Too much BPM state mgmt; not how BPMs prefer to integrate |
+| **B — Pega makes 1 call, AEA orchestrates internally** | Pega calls AEA once. AEA's deterministic workflow_agent runs all 5 specialists internally and returns a single response. | ✅ |
+
+**Critical distinction — workflow_agent is deterministic, NOT an LLM supervisor:**
+
+| Term | What it means | PA Suite needs it? |
+|---|---|---|
+| **Supervisor LLM agent** | LLM decides at runtime which sub-agents to call (dynamic routing) | ❌ NO — PA flow is fixed (same 4–5 specialists every case) |
+| **Deterministic workflow_agent** | Hardcoded asyncio pipeline (parallel + sequential) wrapped as an agent so it appears in the registry with standard governance hooks | ✅ YES — A4 with deterministic flavor |
+
+**A4 is back as a hard prereq** — but as deterministic workflow_agent, not LLM supervisor.
+
+**The 5 agents (revised — Routing Specialist added):**
+
+| # | Agent | Type (C1 specialist) | Tools called | Output |
+|---|---|---|---|---|
+| 1 | Compliance | C1 specialist + ReAct | NPI Registry, ICD-10 | `{compliant, checklist (10-item), issues, evidence}` |
+| 2 | Clinical | C1 specialist + ReAct | ICD-10, PubMed, ClinicalTrials.gov | `{clinical_assessment, risk, citations}` |
+| 3 | Coverage | C1 specialist + ReAct | CMS NCD/LCD lookup | `{covered, criteria_met/not_met, policy_refs}` |
+| 4 | Synthesis | C1 specialist + simple/ReAct | (no MCP tools) | `{decision: APPROVE/PEND, confidence, rationale, gates}` |
+| 5 | **Routing Specialist** (NEW) | C1 specialist + simple | nurse_directory, shift_calendar, queue_depth | `{assigned_nurse_id, routing_reason, fallback_options}` |
+
+**Each agent has its own full overlay:**
+```
+overlays/<agent_name>/
+  prompts/prompts.yaml      ← system + planner + responder prompts (per agent)
+  skills/*.md               ← procedural rules / domain expertise (per agent)
+  tools/tools.yaml          ← per-agent tool allow-list
+  rag.yaml                  ← per-agent KB retrieval config
+  hitl.yaml                 ← per-agent HITL gating
+  reasoning.yaml            ← strategy (simple/ReAct)
+```
+
+5 agents × full overlay = 5 distinct prompt sets + skill markdowns + tool allow-lists. Routing Specialist's `skills/` folder is where Excel-equivalent if/then/else routing rules live.
+
+**Routing Specialist — high-value, under-shipped agent:**
+
+Today's payer ops pain: HITL nurse routing relies on Excel sheets with hundreds of rows of skill + schedule + capacity rules — too messy for BPM decision tables, too change-prone for engineering tickets. LLMs read and reason over messy markdown rules natively.
+
+```markdown
+# Skill-based routing rules (skills/routing_rules.md)
+
+## Default specialty routing
+- Oncology PA → oncology-trained RN (skill: ONC-CERT)
+- Behavioral health → LCSW or BH-RN
+- Specialty drug ($>10K) → pharmacist consultant
+
+## Exceptions
+- Florida Medicaid SNP → Tampa team regardless of specialty
+- Novel procedure (no NCD/LCD match) → escalate to medical director, not RN
+- Urgent (CMS 72-hr clock) → next-available RN with matching skill, ignore territory
+
+## Capacity + schedule rules
+- Don't assign if RN's queue depth > 15
+- Primary nurse on PTO → fall back to backup nurse
+- After 6pm ET → West Coast team unless urgent
+```
+
+LLM reads this + calls `nurse_directory()` + `shift_calendar()` + `queue_depth()` tools → returns assignment with rationale logged for audit.
+
+**Why agent fits better than rules engine:**
+
+| Traditional (BPM/rules engine) | Agent approach |
+|---|---|
+| Translate Excel → Pega decision tables → 6-week eng cycle | Drop Excel into markdown skill file → live in minutes |
+| Edge cases multiply → unmaintainable | LLM handles "kind of like" / "usually" / "unless X" naturally |
+| Skill + schedule + capacity = giant rule tree | LLM reasons over current state at runtime |
+| Excel changes = engineering ticket | Ops admin edits markdown → no PR |
+
+**What AEA owns (revised):**
+- 5 specialist agent overlays (Compliance, Clinical, Coverage, Synthesis, Routing Specialist) — each with own prompts + skills + tools + RAG + HITL config
+- 1 deterministic workflow_agent (A4) wrapping the asyncio pipeline as an AEA-registered agent
+- 5 healthcare MCP tools (NPI Registry, ICD-10, CMS Coverage, ClinicalTrials.gov, PubMed)
+- 3 routing utility tools (nurse_directory, shift_calendar, queue_depth)
+- HITL adapter for customer BPM (e.g., `hitl.adapter: pega`) — LENIENT mode (APPROVE/PEND only, mandatory clinician Accept/Override)
+- Audit PDF generation + notification letters
 
 **What AEA does NOT own:**
-- PA workflow orchestration (P1 → P2 → P3 → P4) — customer BPM
-- Phased UI / decision panel / final PDF — customer BPM
-- Case storage, audit lineage, output integrations — customer system of record
+- PA case lifecycle / state — customer BPM
+- Case management UI — customer BPM
+- 80–90% STP rules-based auto-approval — customer BPM (already exists)
+- System of record (claims, member, EHR) — customer systems
 
 **Comparison vs Microsoft Foundry PA template:**
 
-| Capability | AEA (embedded) | MS Foundry PA template |
+| Capability | AEA (Shape B, embedded) | MS Foundry PA template |
 |---|---|---|
-| Per-agent intelligence + tools + HITL | ✅ | ✅ |
-| Multi-agent flow | Customer BPM orchestrates AEA agents | Foundry orchestrator (Next.js + FastAPI) |
+| Per-agent intelligence + tools | ✅ | ✅ |
+| Single-call orchestration | ✅ deterministic workflow_agent | ✅ FastAPI + asyncio |
 | MCP tool serving | C3 PDP + AgentCore PEP (after A1) | Foundry Tools (remote MCP) |
-| Customer BPM integration | ✅ Native (embedded model) | 🔲 Not the model — replaces BPM |
+| Customer BPM integration | ✅ Native — one Pega step | 🔲 Not the model — replaces BPM |
+| **AI-driven HITL nurse routing** | ✅ **Routing Specialist agent** | 🔲 Not in MS template |
 | Multi-cloud (AWS + Azure + on-prem) | ✅ Adapter pattern | 🔲 Azure-only |
 | Multi-customer fleet | ✅ Agent Factory + Registry | 🔲 Single template per deployment |
-| Operator-editable config (no redeploy) | ✅ Overlay YAML | 🔲 Code-bound |
-| Multi-dim RAG | ✅ 3 dimensions | 🔲 Single path |
-| 4-scope memory | ✅ short / episodic / semantic / summary | Partial |
-| Top-25 payer fit (BPM stays) | ✅ | 🔲 Targets greenfield / small payers |
+| Operator-editable config (no redeploy) | ✅ Overlay YAML + skills markdown | ✅ Skills markdown |
+| HealthLake / FHIR-native clinical data | ✅ Hybrid (HealthLake + Postgres) | 🔲 Custom synthetic |
+| Top-25 payer fit (BPM stays) | ✅ | 🔲 Greenfield / small payers |
 
-**Effort breakdown — ~5 weeks:**
+**Effort breakdown — ~8–9 weeks:**
 
 | # | Task | Effort |
 |---|---|---|
-| 1 | 4 specialist agent overlays (Compliance / Clinical / Coverage / Synthesis) — `chat_agent_react` template + prompts + tool allow-lists + RAG config | ~1 week |
-| 2 | 5 healthcare MCP tools in `services/tools/`: NPI Registry, ICD-10, CMS Coverage, Clinical Trials, PubMed | ~2 weeks |
-| 3 | HITL adapter for customer BPM (concrete `pega` or `servicenow` adapter implementing the existing internal-adapter contract) | ~1 week |
-| 4 | Integration testing + customer BPM handshake contracts (request shape, response shape, error semantics, audit hooks) | ~1 week |
+| 0 | New C1 specialist agent type (template + framework) | ~1 week |
+| 1 | 5 specialist overlays (Compliance / Clinical / Coverage / Synthesis / Routing Specialist) — each with prompts + skills + tool allow-lists + RAG config | ~1.5 weeks |
+| 2 | 5 healthcare MCP tools + 3 routing tools (nurse_directory, shift_calendar, queue_depth) | ~2 weeks |
+| 3 | Deterministic workflow_agent (A4) — asyncio pipeline wrapped as agent | ~1 week |
+| 4 | LENIENT HITL config + audit PDF + notification letters | ~1 week |
+| 5 | HealthLake integration (FHIR resource generation, import jobs, synthetic data seeder) + Postgres workflow schema | ~1 week |
+| 6 | **PA-specific Admin UI screens** (CRITICAL — see breakdown below) | ~2 weeks |
+| 7 | Integration testing + Pega contract handshake + E2E | ~1 week |
 
-**Prerequisites (hard sequencing):**
+**Sub-task 6 — PA-specific Admin UI screens (~2 weeks).** Today's Agent Factory UI covers prompt editing, tool allow-list, basic RAG, memory toggles, single-tenant scope. PA Suite needs **10 new config screens** on top of that — without them, operators cannot configure a payer instance from the UI without YAML editing.
+
+| Screen | Purpose | Status today |
+|---|---|---|
+| Synthesis rubric weights | Sliders for Coverage / Clinical / Compliance / Policy weight (default 40/30/20/10) — payer-tunable | 🔲 New |
+| LENIENT-mode HITL toggle | Enforce APPROVE/PEND-only (no auto-DENY) per CMS-0057-F + state AI-PA laws | 🔲 New |
+| Routing rules markdown editor | Edit `skills/routing_rules.md` directly in UI — Excel-equivalent if/then/else with live preview | 🔲 New |
+| Nurse roster + shift schedule integration | Configure connection to payer's nurse directory + scheduling system | 🔲 New |
+| BPM adapter config | Pega vs ServiceNow vs Camunda endpoint configuration, queue mappings, callback URLs | 🔲 New |
+| Plan / LOB filter | Which plans this PA instance serves (Medicare PA / Medicaid by state / commercial) | 🔲 New |
+| Per-tool risk level matrix | Risk_levels per agent × per tool (oncology = MD review, BH = MD review, etc.) | ⚠ Partial — YAML only, no UI |
+| Per-agent KB selection | Multi-KB picker per specialist (Compliance KB / Clinical KB / Coverage KB) | ⚠ Partial — single-KB UI |
+| Audit PDF template editor | Customize the 8-section audit PDF layout/content per payer brand | 🔲 New |
+| Notification letter template editor | Customize approval / pend letter templates per payer | 🔲 New |
+
+**Why this is critical:** without these screens, every payer onboarding requires YAML editing + engineering involvement. UI-driven onboarding is the entire AEA pitch vs Microsoft Foundry's code-bound template. **PA-specific Admin UI is what makes the platform thesis demonstrable.**
+
+**Prerequisites (hard sequencing — revised):**
 
 ```
-A13 (test coverage)  ─┐
-                      ├─▶ A18 PA Suite  (~5 weeks)
-A1 Phase 1 (PDP/PEP) ─┘
+A13 (test coverage on hitl/reasoning/tools)  ─┐
+                                                ├─▶ A18 PA Suite (~6–7 weeks)
+A1 Phase 1 (PDP/PEP, tools to services/tools/) ─┤
+                                                │
+A4 (deterministic workflow_agent type)        ─┤
+                                                │
+A16 (skills wired into runtime — markdown loader)
 ```
 
-A13 + A1 Phase 1 run in parallel (~3–4 weeks each). PA Suite drops on top once both land. **A4 (workflow_agent) is NOT a prerequisite — embedded model means customer BPM owns orchestration.**
+A13, A1 Phase 1, A4, A16 run in parallel. PA Suite drops on top.
 
-**Total runway from today: ~8–9 weeks** to ship a Microsoft-Foundry-equivalent PA capability with the embedded posture.
+**A4 (deterministic workflow_agent) is back as a hard prereq.** Its purpose here is wrapping the asyncio pipeline as an agent that appears in the registry with governance/audit/policy hooks — NOT as an LLM supervisor. Two flavors of A4 to document: (a) deterministic (PA needs this), (b) LLM-driven dynamic supervisor (future use cases like greenfield concierge).
 
-**Strategic positioning vs MS Foundry:**
-> "Microsoft Foundry's PA template owns the whole stack — UI, orchestration, agents, tools — Azure-only, code-bound. AEA is different: we plug *intelligence into the workflow engine the customer already runs*. Pega owns the PA workflow. AEA's specialist agents do compliance assessment, clinical review, coverage check, synthesis — invoked as Pega steps. The customer's BPM stays in control. We add intelligence, not another workflow engine. That matters for the Top-25 payer ICP — they will not replace their BPM."
+**Total runway from today: ~12–14 weeks** to a working AEA PA Suite that beats MS Foundry on Top-25 payer fit + AI-driven HITL routing + UI-driven payer onboarding (no YAML editing required).
 
-**Demo asset:** if/when AEA PA suite ships, it becomes the flagship demo replacing the current pre-call-assessment chat agent as the "AEA at full value" showcase.
+**Strategic positioning vs MS Foundry — updated:**
+> "Microsoft Foundry's PA template ships the whole stack (UI + orchestration + 4 agents + tools), Azure-only, designed to replace the BPM. AEA is different: one Pega step → AEA returns the verdict AND the assigned nurse. We don't replace Pega — we plug into it. We add a 5th agent (Routing Specialist) that reads payer Excel routing rules as markdown and assigns the right nurse for HITL — something MS doesn't do. AEA agents target the 10–20% fall-out slice that already costs payers $35B/year. We don't touch the 80–90% STP that BPM rules already handle correctly."
+
+**Demo asset:** AEA PA Suite becomes flagship — replaces pre-call-assessment as the "AEA at full value" showcase.
+
+**Open implementation questions (resolve at build time):**
+- Naming for the C1 specialist agent type (placeholder: "specialist_agent" or similar)
+- Naming for the deterministic A4 flavor ("workflow_agent: deterministic" vs "pipeline_agent" vs other)
+- Whether Routing Specialist becomes part of the workflow or a separate Pega step (probably part of workflow — return verdict + routing in one response)
 
 ### A17. Tenant + thread resolution from ctx not honored
 🔲 **Bug surfaced during functional testing.** When a request includes `tenant_id` and `thread_id` in the ctx body, those values are ignored — memory writes always go to `default-tenant/default-thread`. As a result, multi-turn memory continuity for any non-default tenant is broken (turn 1 writes to default-thread, turn 2 reads from default-thread but doesn't get prior content because the read scoping doesn't match).
