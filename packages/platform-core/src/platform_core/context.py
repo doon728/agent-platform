@@ -15,7 +15,23 @@ def _get_header(request: Request, name: str) -> Optional[str]:
 
 
 def _get_value(request: Request, payload: Dict[str, Any], header_name: str, payload_key: str) -> str:
-    return _get_header(request, header_name) or str(payload.get(payload_key) or "")
+    """Resolution order: header → top-level payload key → nested under payload['ctx'].
+
+    Nested ctx fallback exists because the system's response shape is
+    `{"answer": ..., "ctx": {"tenant_id": ...}}` — external callers reading the
+    response and reusing the same shape for the next request would otherwise
+    have their tenant/thread IDs silently dropped (writes land in default-tenant).
+    """
+    header_val = _get_header(request, header_name)
+    if header_val:
+        return header_val
+    top_level = payload.get(payload_key)
+    if top_level:
+        return str(top_level)
+    nested = (payload.get("ctx") or {}).get(payload_key)
+    if nested:
+        return str(nested)
+    return ""
 
 
 def _load_domain_scopes() -> list:
@@ -42,13 +58,22 @@ def build_context(request: Request, payload: Dict[str, Any]) -> Dict[str, str]:
         or f"corr-{uuid.uuid4()}"
     )
 
+    nested_ctx = payload.get("ctx") or {}
     ctx: Dict[str, Any] = {
         "tenant_id": tenant_id,
         "user_id": user_id,
         "thread_id": thread_id,
         "correlation_id": correlation_id,
-        "memory_policy_override": payload.get("memory_policy_override") or {},
-        "hitl_override": payload.get("hitl_override") or {},
+        "memory_policy_override": (
+            payload.get("memory_policy_override")
+            or nested_ctx.get("memory_policy_override")
+            or {}
+        ),
+        "hitl_override": (
+            payload.get("hitl_override")
+            or nested_ctx.get("hitl_override")
+            or {}
+        ),
     }
 
     # Dynamically resolve scope ID fields from domain.yaml
